@@ -29,6 +29,18 @@ test('液态玻璃核心：backdrop-filter blur + saturate + 亮度，含 -webki
   assert.ok(css.includes('-webkit-backdrop-filter') && css.includes('backdrop-filter'), '两侧前缀均需要');
 });
 
+test('左侧板块：导航项为玻璃圆角片，激活态为朱砂左缘玻璃', () => {
+  const nav = css.slice(css.indexOf('.nav button {'), css.indexOf('.nav .ico'));
+  assert.ok(nav.includes('-webkit-backdrop-filter: blur(16px)'), '导航项缺 -webkit 磨砂');
+  assert.ok(nav.includes('backdrop-filter: blur(16px)'), '导航项缺标准磨砂');
+  assert.ok(nav.includes('border-radius: 13px'), '导航项应圆角');
+  assert.ok(nav.includes('var(--glass-2)'), '导航项应为半透明玻璃底');
+  assert.ok(nav.includes('.nav button.active'), '缺激活态');
+  const active = nav.slice(nav.indexOf('.nav button.active'));
+  assert.ok(active.includes('inset 3px 0 0 var(--accent)'), '激活应有朱砂左缘');
+  assert.ok(nav.includes(':active { transform: scale(.97)'), '应有点按反馈');
+});
+
 test('不支持 backdrop-filter 的浏览器有降级 @supports', () => {
   assert.ok(css.includes('@supports not'), '缺少降级 @supports');
   assert.ok(/@supports not\s*\(\(backdrop-filter/.test(css), '降级条件应包含 backdrop-filter');

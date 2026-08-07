@@ -106,7 +106,7 @@ body::after {
 /* 不支持 backdrop-filter 的浏览器：降级为较实的底色，保证可读 */
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .glass { background: var(--glass-sober); }
-  .card, .list-item, .rank-card, .modal { background: var(--glass-sober); }
+  .card, .list-item, .rank-card, .modal, .nav button { background: var(--glass-sober); }
 }
 
 /* ---------- 侧边栏 ---------- */
@@ -129,19 +129,30 @@ body::after {
   background: linear-gradient(135deg, var(--accent), #8f2d1f);
   box-shadow: 0 0 0 3px var(--accent-soft);
 }
-.nav { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+.nav { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
 .nav button {
-  display: flex; align-items: center; gap: 10px; width: 100%; padding: 9px 12px;
-  border: 0; background: transparent; color: var(--muted); font-size: 14px; text-align: left;
-  border-radius: 10px; cursor: pointer;
-  transition: background .18s var(--ease), color .18s var(--ease), transform .12s var(--ease);
+  display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 12px;
+  border: 1px solid var(--border);
+  background: var(--glass-2);
+  -webkit-backdrop-filter: blur(16px) saturate(1.7) brightness(1.04);
+  backdrop-filter: blur(16px) saturate(1.7) brightness(1.04);
+  border-radius: 13px;
+  box-shadow: inset 0 1px 0 var(--border-hi), 0 2px 10px rgba(40, 30, 20, 0.10);
+  color: var(--muted); font-size: 14px; text-align: left; cursor: pointer;
+  transition: transform .14s var(--ease), color .18s var(--ease), background .18s var(--ease),
+    border-color .18s var(--ease), box-shadow .18s var(--ease);
 }
-.nav button:hover { background: var(--accent-soft); color: var(--text); transform: translateX(2px); }
+.nav button:hover {
+  color: var(--text); transform: translateY(-1px);
+  border-color: var(--accent);
+  box-shadow: inset 0 1px 0 var(--border-hi), 0 6px 18px rgba(40, 30, 20, 0.12);
+}
 .nav button:active { transform: scale(.97); }
 .nav button.active {
-  background: linear-gradient(120deg, var(--accent-soft), rgba(194, 59, 46, 0.04));
-  border-left: 3px solid var(--accent);
+  background: linear-gradient(120deg, var(--accent-soft), rgba(194, 59, 46, 0.05));
+  border-color: rgba(194, 59, 46, 0.5);
   color: var(--accent); font-weight: 600;
+  box-shadow: inset 3px 0 0 var(--accent), inset 0 1px 0 var(--border-hi), 0 6px 18px rgba(194, 59, 46, 0.16);
 }
 .nav .ico { width: 18px; text-align: center; }
 
