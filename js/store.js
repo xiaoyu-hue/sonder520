@@ -215,20 +215,27 @@
   }
 
   /* ====== 自媒体 ====== */
+  var STAT_FIELDS = ['views', 'likes', 'comments', 'favorites'];
+  function num0(v) { var n = Number(v); return isNaN(n) ? 0 : Math.max(0, n); }
   function postFactory(d) {
-    return {
+    var p = {
       id: uid(), title: String(d.title || '').trim() || '未命名内容',
       platform: String(d.platform || '').trim(), account: String(d.account || '').trim(),
       note: String(d.note || ''), tags: (Array.isArray(d.tags) ? d.tags.slice() : []),
       status: d.status || 'draft', publishDate: d.publishDate || null,
       createdAt: nowISO()
     };
+    STAT_FIELDS.forEach(function (f) { p[f] = num0(d[f]); });
+    return p;
   }
   Store.prototype.addPost = function (d) { var p = postFactory(d); this.state.posts.unshift(p); this.save(); return p; };
   Store.prototype.updatePost = function (id, patch) {
     var p = find(this.state.posts, id); if (!p) return null;
     ['title', 'platform', 'account', 'note', 'status', 'publishDate'].forEach(function (k) {
       if (typeof patch[k] === 'string') p[k] = patch[k];
+    });
+    STAT_FIELDS.forEach(function (f) {
+      if (patch[f] !== undefined && patch[f] !== null && patch[f] !== '') p[f] = num0(patch[f]);
     });
     if (Array.isArray(patch.tags)) p.tags = patch.tags.slice();
     this.save(); return p;
@@ -250,6 +257,23 @@
     var set = {};
     posts.forEach(function (p) { p.tags.forEach(function (t) { set[t] = true; }); });
     return Object.keys(set).sort();
+  }
+  /* 已发布内容的统计数据汇总（供图表）。只统计 status === 'published'。 */
+  function publishedStats(posts) {
+    var published = posts.filter(function (p) { return p.status === 'published'; }).map(function (p) {
+      return {
+        id: p.id, title: p.title,
+        views: num0(p.views), likes: num0(p.likes),
+        comments: num0(p.comments), favorites: num0(p.favorites)
+      };
+    });
+    var sums = { views: 0, likes: 0, comments: 0, favorites: 0 };
+    var max = { views: 0, likes: 0, comments: 0, favorites: 0 };
+    published.forEach(function (p) {
+      STAT_FIELDS.forEach(function (f) { sums[f] += p[f]; if (p[f] > max[f]) max[f] = p[f]; });
+    });
+    var sorted = published.slice().sort(function (a, b) { return b.views - a.views; });
+    return { count: published.length, sums: sums, max: max, posts: sorted };
   }
   /* 导出 CSV - 含字段转义 */
   function toCSV(posts) {
@@ -538,6 +562,7 @@
     groupTasks: groupTasks,
     filterPosts: filterPosts,
     collectTags: collectTags,
+    publishedStats: publishedStats,
     toCSV: toCSV,
     booksByStatus: booksByStatus,
     devProgress: devProgress,

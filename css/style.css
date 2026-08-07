@@ -178,3 +178,15 @@ body {
 /* 详情内嵌 */
 .details { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--border); }
 .notes-area { font-size: 13px; color: var(--text); white-space: pre-wrap; word-break: break-word; }
+
+/* 自媒体统计图表 */
+.st-legend { display: flex; gap: 14px; padding: 6px 0 10px; border-bottom: 1px solid var(--border); margin-bottom: 8px; }
+.st-row { display: grid; grid-template-columns: 150px 1fr; gap: 10px; align-items: center; padding: 7px 0; border-bottom: 1px dashed var(--border); }
+.st-row:last-child { border-bottom: 0; }
+.st-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+.st-bars { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.st-col { display: flex; align-items: center; gap: 6px; }
+.st-bar { flex: 1; height: 14px; background: var(--panel-2); border-radius: 4px; overflow: hidden; }
+.st-bar > i { display: block; height: 100%; }
+.st-val { font-size: 12px; color: var(--muted); min-width: 34px; text-align: right; }
+@media (max-width: 640px) { .st-row { grid-template-columns: 1fr; } .st-title { margin-bottom: 4px; } }

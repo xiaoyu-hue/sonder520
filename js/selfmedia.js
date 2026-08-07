@@ -9,6 +9,7 @@
   function writeTags(tags) {
     return (tags || []).map(function (t) { return '<span class="tag">' + currentCtx.UI.esc(t) + '</span>'; }).join('');
   }
+  function num0(v) { var n = Number(v); return isNaN(n) ? 0 : Math.max(0, n); }
 
   function openAdd(ctx, target) {
     ctx.UI.formModal({
@@ -21,6 +22,10 @@
         { key: 'tags', label: '标签(逗号分隔)', type: 'text', value: target ? (target.tags || []).join(',') : '' },
         { key: 'status', label: '状态', type: 'select', value: target ? target.status : 'draft', options: ['draft', 'queue', 'published'] },
         { key: 'publishDate', label: '发布日期', type: 'date', value: target ? (target.publishDate || '') : '' },
+        { key: 'views', label: '播放量', type: 'number', value: target ? (target.views || 0) : 0 },
+        { key: 'likes', label: '点赞', type: 'number', value: target ? (target.likes || 0) : 0 },
+        { key: 'comments', label: '评论', type: 'number', value: target ? (target.comments || 0) : 0 },
+        { key: 'favorites', label: '收藏', type: 'number', value: target ? (target.favorites || 0) : 0 },
         { key: 'note', label: '备注', type: 'textarea', value: target ? target.note : '' }
       ],
       onSubmit: function (v) {
@@ -69,6 +74,45 @@
       box.appendChild(UI.emptyState('还没有内容', '＋ 新增内容', function () { openAdd(ctx); }));
     }
     list.forEach(function (p) { box.appendChild(itemEl(p, ctx)); });
+
+    /* 已发布数据统计可视化 */
+    container.appendChild(statsSection(store, ctx));
+  }
+
+  var METRICS = [
+    { key: 'views', label: '播放', color: '#4f6ef7' },
+    { key: 'likes', label: '点赞', color: '#2ea86b' },
+    { key: 'comments', label: '评论', color: '#e8a13c' },
+    { key: 'favorites', label: '收藏', color: '#d33b6f' }
+  ];
+  function statsSection(store, ctx) {
+    var UI = ctx.UI, stats = S.publishedStats(store.state.posts);
+    var wrap = UI.el('<div id="smStats"></div>');
+    if (!stats.count) return wrap;
+    var legend = METRICS.map(function (m) {
+      return '<span class="small muted"><i style="display:inline-block;width:10px;height:10px;border-radius:2px;background:' + m.color + ';margin-right:3px"></i>' + m.label + '</span>';
+    }).join('<span style="margin:0 4px"></span>');
+    var pills = [
+      ['总播放', stats.sums.views], ['总点赞', stats.sums.likes],
+      ['总评论', stats.sums.comments], ['总收藏', stats.sums.favorites]
+    ].map(function (x) { return '<span class="pill">' + UI.esc(x[0]) + ' ' + UI.esc(x[1]) + '</span>'; }).join(' ');
+    var rows = stats.posts.map(function (p) {
+      var bars = METRICS.map(function (m) {
+        var v = p[m.key];
+        var w = stats.max[m.key] > 0 ? Math.round((v / stats.max[m.key]) * 100) : 0;
+        return '<div class="st-col"><div class="st-bar"><i style="width:' + w + '%;background:' + m.color + '"></i></div><span class="st-val">' + v + '</span></div>';
+      }).join('');
+      return '<div class="st-row">' +
+        '<div class="st-title" title="' + UI.esc(p.title) + '">' + UI.esc(p.title) + '</div>' +
+        '<div class="st-bars">' + bars + '</div></div>';
+    }).join('');
+    wrap.innerHTML = '<div class="section-title">发布数据统计</div>' +
+      '<div class="card">' +
+      '<div class="row" style="margin-bottom:10px">' + pills + '</div>' +
+      '<div class="st-legend">' + legend + '</div>' +
+      '<div class="st-chart">' + rows + '</div>' +
+      '</div>';
+    return wrap;
   }
 
   function tagsOptions(tags) {
@@ -86,6 +130,9 @@
       '<div class="title">' + UI.esc(p.title) + '</div>' +
       '<div class="sub">' + UI.esc(p.platform || '未设置平台') + (p.account ? ' · ' + UI.esc(p.account) : '') +
       (p.publishDate ? ' · 发布 ' + UI.esc(p.publishDate) : '') + '</div>' +
+      (p.status === 'published'
+        ? '<div class="sub">播放 ' + UI.esc(num0(p.views)) + ' · 点赞 ' + UI.esc(num0(p.likes)) + ' · 评论 ' + UI.esc(num0(p.comments)) + ' · 收藏 ' + UI.esc(num0(p.favorites)) + '</div>'
+        : '') +
       writeTags(p.tags) +
       '</div>' +
       pill +
