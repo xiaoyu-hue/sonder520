@@ -460,11 +460,11 @@
 
   /* 阅读统计：书籍总数 + 按状态分布 + 阅读进度区间分布 */
   var PROG_BUCKETS = [
-    { label: '未开始', min: 0, max: 0, color: '#c7ccd8' },
-    { label: '前期 1-33%', min: 1, max: 33, color: '#e8a13c' },
-    { label: '中期 34-66%', min: 34, max: 66, color: '#4f6ef7' },
-    { label: '后期 67-99%', min: 67, max: 99, color: '#9c6ff5' },
-    { label: '已完成 100%', min: 100, max: 100, color: '#2ea86b' }
+    { label: '未开始', min: 0, max: 0, color: '#a8a297' },
+    { label: '前期 1-33%', min: 1, max: 33, color: '#b0723f' },
+    { label: '中期 34-66%', min: 34, max: 66, color: '#3b4a6b' },
+    { label: '后期 67-99%', min: 67, max: 99, color: '#7a5e9e' },
+    { label: '已完成 100%', min: 100, max: 100, color: '#2e7d63' }
   ];
   function readingStats(books) {
     var want = 0, reading = 0, finished = 0, readingSum = 0, progressSum = 0;
@@ -483,9 +483,9 @@
       buckets[bi]++;
     });
     var statusArr = [
-      { label: '想读', count: want, color: '#9aa0b1' },
-      { label: '在读', count: reading, color: '#4f6ef7' },
-      { label: '已读完', count: finished, color: '#2ea86b' }
+      { label: '想读', count: want, color: '#a8a297' },
+      { label: '在读', count: reading, color: '#3b4a6b' },
+      { label: '已读完', count: finished, color: '#2e7d63' }
     ].filter(function (s) { return s.count > 0; });
     return {
       total: books.length,

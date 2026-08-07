@@ -80,10 +80,10 @@
   }
 
   var METRICS = [
-    { key: 'views', label: '播放', color: '#4f6ef7' },
-    { key: 'likes', label: '点赞', color: '#2ea86b' },
-    { key: 'comments', label: '评论', color: '#e8a13c' },
-    { key: 'favorites', label: '收藏', color: '#d33b6f' }
+    { key: 'views', label: '播放', color: '#3b4a6b' },
+    { key: 'likes', label: '点赞', color: '#2e7d63' },
+    { key: 'comments', label: '评论', color: '#b0723f' },
+    { key: 'favorites', label: '收藏', color: '#c23b2e' }
   ];
   function statsSection(store, ctx) {
     var UI = ctx.UI, stats = S.publishedStats(store.state.posts);
