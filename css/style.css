@@ -192,7 +192,64 @@ body::after {
 @media (max-width: 1000px) { .grid.cols-6, .grid.cols-4, .grid.cols-3 { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 640px) {
   .grid.cols-6, .grid.cols-4, .grid.cols-3, .grid.cols-2 { grid-template-columns: 1fr; }
-  .sidebar { display: none; }
+}
+
+/* =============================================================
+   手机适配：侧栏变为底部液态玻璃导航栏
+   ============================================================= */
+@media (max-width: 720px) {
+  html, body { height: 100dvh; overscroll-behavior-y: none; }
+  .app { flex-direction: column; height: 100dvh; }
+  .main { flex: 1; min-height: 0; }
+  .content { padding: 14px 14px 84px; }
+
+  .sidebar {
+    width: 100%; flex: 0 0 auto; order: 2;
+    flex-direction: row; align-items: center;
+    padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
+    border-right: 0; border-top: 1px solid var(--border);
+    -webkit-backdrop-filter: blur(28px) saturate(1.8);
+    backdrop-filter: blur(28px) saturate(1.8);
+    z-index: 10;
+  }
+  .brand { display: none; }
+  .nav { flex-direction: row; width: 100%; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+  .nav::-webkit-scrollbar { display: none; }
+  .nav button {
+    flex: 1 0 auto; width: auto; min-height: 44px;
+    justify-content: center; font-size: 0; padding: 10px 12px;
+  }
+  .nav button .ico { font-size: 20px; }
+  .nav button.active {
+    background: linear-gradient(180deg, var(--accent-soft), rgba(194, 59, 46, 0.05));
+    box-shadow: inset 0 -3px 0 var(--accent), inset 0 1px 0 var(--border-hi), 0 6px 18px rgba(194, 59, 46, 0.16);
+  }
+  .topbar { min-height: 54px; padding: 0 14px; }
+  .topbar .date { display: none; }
+  .topbar .btn { padding: 6px 12px; }
+
+  .hbar { gap: 8px; }
+  .hbar input, .hbar select, .hbar .tool { flex: 1; min-width: 0; font-size: 16px; }
+  .field input, .field select, .field textarea { font-size: 16px; }
+  .modal { width: 100%; max-height: 82dvh; }
+  .overlay { padding: 10px; align-items: flex-end; }
+  .overlay .modal { animation: popUpIn .28s var(--ease); }
+  .st-row { grid-template-columns: 1fr; }
+  .rd-grid { grid-template-columns: 1fr; }
+  .toast { font-size: 13px; }
+}
+
+/* 触控细节（全局）：防 iOS 聚焦缩放、点按高亮、触控反馈 */
+input, select, textarea, button { font-size: 16px; }
+* { -webkit-tap-highlight-color: transparent; }
+@media (hover: hover) and (pointer: fine) {
+  input, select, textarea, button { font-size: inherit; }
+}
+
+/* 手机上提示条从底部弹入 */
+@keyframes popUpIn {
+  from { opacity: 0; transform: translateY(24px) scale(.98); }
+  to { opacity: 1; transform: none; }
 }
 
 /* ---------- 玻璃卡片 ---------- */
