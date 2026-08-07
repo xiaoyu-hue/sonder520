@@ -25,6 +25,11 @@
     document.documentElement.setAttribute('data-theme', store.state.settings.theme);
   }
 
+  function applyWallpaper() {
+    var v = store.state.settings.wallpaperOpacity;
+    document.documentElement.style.setProperty('--wallpaper-opacity', String(Number(v) / 100));
+  }
+
   function currentPageKey() {
     var h = (location.hash || '').replace(/^#\/?/, '');
     var clean = h.split('/')[0];
@@ -55,6 +60,7 @@
     document.getElementById('pageTitle').textContent = page.title;
     buildNav();
     applyTheme();
+    applyWallpaper();
     page.render(container, ctx);
   }
 
@@ -67,6 +73,7 @@
     Pages: Pages,
     render: function (route) { location.hash = route; render(); },
     applyTheme: applyTheme,
+    applyWallpaper: applyWallpaper,
     todayLine: todayLine
   };
 
@@ -100,6 +107,7 @@
   }
 
   applyTheme();
+  applyWallpaper();
   buildNav();
   todayLine();
   window.addEventListener('hashchange', onHash);

@@ -23,8 +23,8 @@ test('液态玻璃核心：backdrop-filter blur + saturate + 亮度，含 -webki
   ['.glass', '.sidebar', '.topbar', '.card', '.list-item', '.rank-card', '.modal'].forEach(sel => {
     assert.ok(css.includes(sel), '缺少玻璃选择器 ' + sel);
   });
-  const need = css.includes('backdrop-filter: blur(16px) saturate(1.5) brightness(1.04)')
-    && css.includes('-webkit-backdrop-filter: blur(16px) saturate(1.5) brightness(1.04)');
+  const need = css.includes('backdrop-filter: blur(28px) saturate(1.8) brightness(1.06)')
+    && css.includes('-webkit-backdrop-filter: blur(28px) saturate(1.8) brightness(1.06)');
   assert.ok(need, 'glass 需带 saturate/brightness 的标准与 -webkit 前缀');
   assert.ok(css.includes('-webkit-backdrop-filter') && css.includes('backdrop-filter'), '两侧前缀均需要');
 });

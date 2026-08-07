@@ -39,6 +39,7 @@
   /* ---------- 默认数据结构 ---------- */
   var DEFAULT_SETTINGS = {
     theme: 'light',
+    wallpaperOpacity: 40,
     modules: {
       today: true, memo: true, selfmedia: true, dev: true,
       consulting: true, reading: true, news: true, design: true
@@ -86,6 +87,7 @@
     var s = deepClone(dflt);
     if (isPlainObject(raw)) {
       if (typeof raw.theme === 'string') s.theme = raw.theme;
+      if (typeof raw.wallpaperOpacity === 'number') s.wallpaperOpacity = clampOpacity(raw.wallpaperOpacity);
       if (isPlainObject(raw.modules)) {
         for (var k in s.modules) {
           if (typeof raw.modules[k] === 'boolean') s.modules[k] = raw.modules[k];
@@ -93,6 +95,12 @@
       }
     }
     return s;
+  }
+
+  function clampOpacity(v) {
+    var n = Number(v);
+    if (isNaN(n)) return 40;
+    return Math.max(0, Math.min(100, Math.round(n)));
   }
 
   /* ---------- Store ---------- */
@@ -541,6 +549,11 @@
   Store.prototype.setTheme = function (t) {
     this.state.settings.theme = t === 'dark' ? 'dark' : 'light';
     this.save();
+  };
+  Store.prototype.setWallpaperOpacity = function (v) {
+    this.state.settings.wallpaperOpacity = clampOpacity(v);
+    this.save();
+    return this.state.settings.wallpaperOpacity;
   };
   Store.prototype.setModuleEnabled = function (key, on) {
     if (!(key in this.state.settings.modules)) return;

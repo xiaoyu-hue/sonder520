@@ -26,6 +26,27 @@
       });
     });
 
+    var wp = store.state.settings.wallpaperOpacity;
+    var wpCard = UI.el(
+      '<div class="card" style="margin-top:10px">' +
+      '<div class="row">' +
+      '<label class="small muted" for="wallOpacity">背景图片透明度</label>' +
+      '<input type="range" id="wallOpacity" min="0" max="100" step="5" value="' + wp + '" style="flex:1;max-width:220px">' +
+      '<span class="small" id="wallOpacityVal">' + wp + '%</span>' +
+      '<span class="muted small">默认 40%</span>' +
+      '</div></div>'
+    );
+    container.appendChild(wpCard);
+    var wpInput = wpCard.querySelector('#wallOpacity');
+    var wpVal = wpCard.querySelector('#wallOpacityVal');
+    wpInput.addEventListener('input', function () {
+      var v = Number(wpInput.value);
+      store.setWallpaperOpacity(v);
+      document.documentElement.style.setProperty('--wallpaper-opacity', String(v / 100));
+      wpVal.textContent = v + '%';
+    });
+    wpInput.addEventListener('change', function () { hooks.render('settings'); });
+
     container.appendChild(UI.el('<div class="section-title">模块开关</div>'));
     var modBox = UI.el('<div class="card"></div>');
     S.moduleList.forEach(function (m) {
