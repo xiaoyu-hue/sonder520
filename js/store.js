@@ -226,6 +226,8 @@
       createdAt: nowISO()
     };
     STAT_FIELDS.forEach(function (f) { p[f] = num0(d[f]); });
+    p.progress = num0(d.progress);
+    if (p.progress > 100) p.progress = 100;
     return p;
   }
   Store.prototype.addPost = function (d) { var p = postFactory(d); this.state.posts.unshift(p); this.save(); return p; };
@@ -237,6 +239,10 @@
     STAT_FIELDS.forEach(function (f) {
       if (patch[f] !== undefined && patch[f] !== null && patch[f] !== '') p[f] = num0(patch[f]);
     });
+    if (patch.progress !== undefined && patch.progress !== null && patch.progress !== '') {
+      var pr = num0(patch.progress);
+      p.progress = pr > 100 ? 100 : pr;
+    }
     if (Array.isArray(patch.tags)) p.tags = patch.tags.slice();
     this.save(); return p;
   };

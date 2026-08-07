@@ -133,6 +133,11 @@
       (p.status === 'published'
         ? '<div class="sub">播放 ' + UI.esc(num0(p.views)) + ' · 点赞 ' + UI.esc(num0(p.likes)) + ' · 评论 ' + UI.esc(num0(p.comments)) + ' · 收藏 ' + UI.esc(num0(p.favorites)) + '</div>'
         : '') +
+      '<div class="row" style="margin-top:6px">' +
+      '<span class="small muted" style="white-space:nowrap">制作进度</span>' +
+      '<input type="range" min="0" max="100" step="1" value="' + num0(p.progress) + '" data-prog="' + p.id + '" style="flex:1;max-width:240px;accent-color:var(--accent)">' +
+      '<span class="small" data-proglabel="' + p.id + '">' + num0(p.progress) + '%</span>' +
+      '</div>' +
       writeTags(p.tags) +
       '</div>' +
       pill +
@@ -141,6 +146,14 @@
       '</div>'
     );
     row.querySelector('[data-act="edit"]').onclick = function () { openAdd(ctx, p); };
+    var prog = row.querySelector('[data-prog]');
+    if (prog) {
+      prog.addEventListener('change', function () {
+        ctx.store.updatePost(p.id, { progress: Number(prog.value) });
+        var lab = row.querySelector('[data-proglabel]');
+        if (lab) lab.textContent = prog.value + '%';
+      });
+    }
     row.querySelector('[data-act="del"]').onclick = function () {
       UI.confirmBox('确定删除这条内容？').then(function (ok) {
         if (ok) { store.removePost(p.id); render(ctx); }
