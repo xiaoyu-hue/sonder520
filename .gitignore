@@ -1,2 +1,5 @@
 # 依赖（仅测试需要，非应用运行依赖）
-node_modules/netlify-login.log
+node_modules/
+
+# 本地 Netlify 登录日志，勿入库
+netlify-login.log
