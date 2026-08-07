@@ -42,7 +42,7 @@
       '  </div>',
       '  <div class="card">',
       '    <div class="section-title" style="margin:0">快速备忘</div>',
-      '    <textarea id="hmMemo" placeholder="随手记点什么…" style="width:100%;height:52px;margin-top:10px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--panel);color:var(--text);font-family:inherit"></textarea>',
+      '    <textarea id="hmMemo" placeholder="随手记点什么…" style="width:100%;height:52px;margin-top:10px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--glass-2);color:var(--text);font-family:inherit"></textarea>',
       '    <div style="margin-top:8px"><button class="btn primary" id="hmSave">保存备忘</button>',
       '      <button class="btn" data-go="memo" style="margin-left:8px">全部备忘 →</button></div>',
       '    <div class="muted small" style="margin-top:12px">最近一条</div>',

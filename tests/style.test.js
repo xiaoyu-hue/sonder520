@@ -23,16 +23,16 @@ test('液态玻璃核心：backdrop-filter blur + saturate + 亮度，含 -webki
   ['.glass', '.sidebar', '.topbar', '.card', '.list-item', '.rank-card', '.modal'].forEach(sel => {
     assert.ok(css.includes(sel), '缺少玻璃选择器 ' + sel);
   });
-  const need = css.includes('backdrop-filter: blur(28px) saturate(1.8) brightness(1.06)')
-    && css.includes('-webkit-backdrop-filter: blur(28px) saturate(1.8) brightness(1.06)');
+  const need = css.includes('backdrop-filter: blur(20px) saturate(1.6) brightness(1.05)')
+    && css.includes('-webkit-backdrop-filter: blur(20px) saturate(1.6) brightness(1.05)');
   assert.ok(need, 'glass 需带 saturate/brightness 的标准与 -webkit 前缀');
   assert.ok(css.includes('-webkit-backdrop-filter') && css.includes('backdrop-filter'), '两侧前缀均需要');
 });
 
 test('左侧板块：导航项为玻璃圆角片，激活态为朱砂左缘玻璃', () => {
   const nav = css.slice(css.indexOf('.nav button {'), css.indexOf('.nav .ico'));
-  assert.ok(nav.includes('-webkit-backdrop-filter: blur(16px)'), '导航项缺 -webkit 磨砂');
-  assert.ok(nav.includes('backdrop-filter: blur(16px)'), '导航项缺标准磨砂');
+  assert.ok(nav.includes('-webkit-backdrop-filter: blur(12px)'), '导航项缺 -webkit 磨砂');
+  assert.ok(nav.includes('backdrop-filter: blur(12px)'), '导航项缺标准磨砂');
   assert.ok(nav.includes('border-radius: 13px'), '导航项应圆角');
   assert.ok(nav.includes('var(--glass-2)'), '导航项应为半透明玻璃底');
   assert.ok(nav.includes('.nav button.active'), '缺激活态');

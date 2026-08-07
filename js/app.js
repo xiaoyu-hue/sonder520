@@ -22,7 +22,10 @@
   };
 
   function applyTheme() {
-    document.documentElement.setAttribute('data-theme', store.state.settings.theme);
+    var t = store.state.settings.theme;
+    document.documentElement.setAttribute('data-theme', t);
+    var meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute('content', t === 'dark' ? '#171410' : '#f2efe6');
   }
 
   function applyWallpaper() {
@@ -46,6 +49,7 @@
       b.type = 'button';
       b.dataset.route = key;
       b.className = key === active ? 'active' : '';
+      if (key === active) b.setAttribute('aria-current', 'page');
       b.innerHTML = '<span class="ico">' + (ICONS[key] || '') + '</span>' + UI.esc(Pages[key].title);
       b.onclick = function () { ctx.navigate(key); };
       nav.appendChild(b);

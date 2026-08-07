@@ -98,7 +98,7 @@
   function notesArea(b, ctx) {
     if (!b.notes || !b.notes.length) return '';
     return '<div style="margin-top:6px">' + b.notes.map(function (n) {
-      return '<div class="notes-area" data-noteitem data-id="' + n.id + '" style="background:var(--panel-2);padding:6px 8px;border-radius:6px;margin-bottom:4px">' +
+      return '<div class="notes-area" data-noteitem data-id="' + n.id + '" style="background:var(--glass-2);padding:6px 8px;border-radius:6px;margin-bottom:4px">' +
         ctx.UI.esc(n.text) + ' <button class="small-btn" data-note="del">✕</button></div>';
     }).join('') + '</div>';
   }

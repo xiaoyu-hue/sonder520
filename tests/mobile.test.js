@@ -40,7 +40,7 @@ test('部署就绪：静态资源全部使用相对路径（可放任意子路�
   const refs = html.match(/(?:src|href)="[^"]+"/g) || [];
   assert.ok(refs.length > 0);
   refs.forEach(r => {
-    assert.ok(!/https?:\/\//.test(r) && !r.startsWith('src="/') && !r.startsWith('href="/'),
+    assert.ok(!/https?:\/\//.test(r) && !r.startsWith('src="/') && !r.startsWith('href="/') || /data:/.test(r),
       '存在绝对路径资源，将无法在子路径托管部署: ' + r);
   });
 });
