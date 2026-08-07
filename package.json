@@ -1,0 +1,12 @@
+{
+  "name": "sonder",
+  "version": "1.0.0",
+  "private": true,
+  "description": "个人工作生活 App - 纯本地浏览器运行",
+  "scripts": {
+    "test": "node --test tests/store.test.js tests/shell.test.js tests/ui.test.js tests/m3.test.js tests/m4.test.js tests/m5.test.js tests/acceptance.test.js"
+  },
+  "devDependencies": {
+    "jsdom": "^24.0.0"
+  }
+}
