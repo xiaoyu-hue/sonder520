@@ -452,6 +452,45 @@
     return out;
   }
 
+  /* 阅读统计：书籍总数 + 按状态分布 + 阅读进度区间分布 */
+  var PROG_BUCKETS = [
+    { label: '未开始', min: 0, max: 0, color: '#c7ccd8' },
+    { label: '前期 1-33%', min: 1, max: 33, color: '#e8a13c' },
+    { label: '中期 34-66%', min: 34, max: 66, color: '#4f6ef7' },
+    { label: '后期 67-99%', min: 67, max: 99, color: '#9c6ff5' },
+    { label: '已完成 100%', min: 100, max: 100, color: '#2ea86b' }
+  ];
+  function readingStats(books) {
+    var want = 0, reading = 0, finished = 0, readingSum = 0, progressSum = 0;
+    var buckets = PROG_BUCKETS.map(function () { return 0; });
+    books.forEach(function (b) {
+      var pr = Number(b.progress);
+      if (isNaN(pr)) pr = 0;
+      progressSum += pr;
+      if (b.status === '已读完') finished++;
+      else if (b.status === '在读') { reading += 1; readingSum += pr; }
+      else want++;
+      var bi = 0;
+      for (var i = PROG_BUCKETS.length - 1; i >= 0; i--) {
+        if (pr >= PROG_BUCKETS[i].min) { bi = i; break; }
+      }
+      buckets[bi]++;
+    });
+    var statusArr = [
+      { label: '想读', count: want, color: '#9aa0b1' },
+      { label: '在读', count: reading, color: '#4f6ef7' },
+      { label: '已读完', count: finished, color: '#2ea86b' }
+    ].filter(function (s) { return s.count > 0; });
+    return {
+      total: books.length,
+      want: want, reading: reading, finished: finished,
+      avgReading: reading ? Math.round(readingSum / reading) : 0,
+      avgAll: books.length ? Math.round(progressSum / books.length) : 0,
+      byStatus: statusArr,
+      buckets: PROG_BUCKETS.map(function (b, i) { return { label: b.label, color: b.color, count: buckets[i] }; })
+    };
+  }
+
   /* ====== 看新闻计划 ====== */
   Store.prototype.addNews = function (d) {
     var n = { id: uid(), title: String(d.title || '').trim() || '未命名资讯', url: String(d.url || ''), source: String(d.source || ''), tags: (Array.isArray(d.tags) ? d.tags.slice() : []), status: d.status || 'unread', note: String(d.note || ''), time: nowISO() };
@@ -565,6 +604,7 @@
     publishedStats: publishedStats,
     toCSV: toCSV,
     booksByStatus: booksByStatus,
+    readingStats: readingStats,
     devProgress: devProgress,
     normalize: normalize,
     moduleList: moduleKeysList

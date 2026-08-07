@@ -14,6 +14,7 @@
       container.appendChild(UI.emptyState('书单是空的', '＋ 新建书', function () { openBook(ctx); }));
       return;
     }
+    container.appendChild(statsSection(store, ctx));
     var groups = window.SonderStore.booksByStatus(store.state.books);
     ['想读', '在读', '已读完'].forEach(function (grp) {
       var list = groups[grp];
@@ -21,6 +22,48 @@
       container.appendChild(UI.el('<div class="section-title">' + grp + ' ' + list.length + '</div>'));
       list.forEach(function (b) { container.appendChild(bookCard(store, ctx, b)); });
     });
+  }
+
+  function statsSection(store, ctx) {
+    var UI = ctx.UI, stats = window.SonderStore.readingStats(store.state.books);
+    var pills = [
+      ['书籍总数', stats.total], ['在读', stats.reading], ['已读完', stats.finished],
+      ['想读', stats.want], ['在读平均进度', stats.avgReading + '%']
+    ].map(function (x) { return '<span class="pill">' + UI.esc(x[0]) + ' ' + UI.esc(x[1]) + '</span>'; }).join(' ');
+
+    /* 状态分布环形图（conic-gradient） */
+    var total = Math.max(1, stats.total);
+    var cum = 0;
+    var stops = stats.byStatus.map(function (s) {
+      var pct = Math.round((s.count / total) * 100);
+      var stop = s.color + ' ' + cum + '% ' + (cum + pct) + '%';
+      cum += pct;
+      return stop;
+    }).join(', ');
+    var donutBg = stats.total ? 'conic-gradient(' + stops + ')' : 'none';
+    var legend = stats.byStatus.map(function (s) {
+      return '<div class="rd-legend"><i style="background:' + s.color + '"></i>' + UI.esc(s.label) + ' <b>' + s.count + '</b></div>';
+    }).join('');
+
+    /* 进度区间分布条形图 */
+    var maxBucket = Math.max.apply(null, stats.buckets.map(function (b) { return b.count; }));
+    var bars = stats.buckets.map(function (b) {
+      var w = maxBucket > 0 ? Math.round((b.count / maxBucket) * 100) : 0;
+      return '<div class="rd-brow"><span class="rd-blabel">' + UI.esc(b.label) + '</span>' +
+        '<div class="st-bar"><i style="width:' + w + '%;background:' + b.color + '"></i></div>' +
+        '<span class="st-val">' + b.count + '</span></div>';
+    }).join('');
+
+    return UI.el(
+      '<div class="card" style="margin-bottom:16px">' +
+      '<div class="section-title" style="margin-top:0">阅读统计</div>' +
+      '<div class="row" style="margin-bottom:14px;flex-wrap:wrap">' + pills + '</div>' +
+      '<div class="rd-grid">' +
+      '  <div><div class="rd-donut" style="background:' + donutBg + '"></div>' +
+      '    <div class="rd-donut-legend">' + legend + '</div></div>' +
+      '  <div><div class="section-title" style="margin-top:0">按阅读进度分布</div>' + bars + '</div>' +
+      '</div></div>'
+    );
   }
 
   function bookCard(container, ctx, b) {
