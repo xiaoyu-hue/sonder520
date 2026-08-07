@@ -31,6 +31,8 @@
 
   --shadow: 0 10px 34px rgba(60, 50, 30, 0.14), inset 0 1px 0 var(--border-hi);
   --radius: 16px;
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-ink: cubic-bezier(0.4, 0, 0.2, 1);
 }
 [data-theme="dark"] {
   /* 深色 / 墨黑山水 */
@@ -104,9 +106,11 @@ body {
 .nav button {
   display: flex; align-items: center; gap: 10px; width: 100%; padding: 9px 12px;
   border: 0; background: transparent; color: var(--muted); font-size: 14px; text-align: left;
-  border-radius: 10px; cursor: pointer; transition: background .18s, color .18s;
+  border-radius: 10px; cursor: pointer;
+  transition: background .18s var(--ease), color .18s var(--ease), transform .12s var(--ease);
 }
-.nav button:hover { background: var(--accent-soft); color: var(--text); }
+.nav button:hover { background: var(--accent-soft); color: var(--text); transform: translateX(2px); }
+.nav button:active { transform: scale(.97); }
 .nav button.active {
   background: linear-gradient(120deg, var(--accent-soft), rgba(194, 59, 46, 0.04));
   border-left: 3px solid var(--accent);
@@ -161,6 +165,7 @@ body {
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   position: relative;
+  transition: transform .2s var(--ease), border-color .2s var(--ease), box-shadow .2s var(--ease);
 }
 .card { padding: 18px; }
 .card::before, .list-item::before, .rank-card::before, .modal::before {
@@ -172,6 +177,7 @@ body {
 .list-item {
   padding: 13px 15px; display: flex; align-items: center; gap: 12px; margin-bottom: 10px;
 }
+.list-item:hover { transform: translateX(3px); border-color: var(--accent); }
 .list-item .grow { flex: 1; min-width: 0; }
 .list-item .title { font-weight: 600; }
 .list-item .sub { color: var(--muted); font-size: 12px; margin-top: 3px; }
@@ -205,7 +211,8 @@ body {
   border: 1px solid var(--border); background: var(--glass-2); color: var(--muted);
   padding: 3px 9px; border-radius: 8px; cursor: pointer; font-size: 12px; transition: all .15s;
 }
-.small-btn:hover { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+.small-btn:hover { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); transform: translateY(-1px); }
+.small-btn:active { transform: scale(.94); }
 .small-btn.danger { color: var(--danger); }
 .row { display: flex; align-items: center; gap: 8px; }
 
@@ -265,13 +272,16 @@ body {
 
 .btn {
   border: 1px solid var(--border); background: var(--glass-2); color: var(--text);
-  padding: 7px 15px; border-radius: 10px; cursor: pointer; font-size: 13px; transition: all .15s;
+  padding: 7px 15px; border-radius: 10px; cursor: pointer; font-size: 13px;
+  transition: background .15s var(--ease), border-color .15s var(--ease), color .15s var(--ease), transform .12s var(--ease), filter .15s var(--ease);
   -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
 }
 .btn:hover { background: var(--accent-soft); border-color: var(--accent); }
+.btn:active { transform: scale(.96); }
 .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
 .btn.primary:hover { filter: brightness(1.08); }
 .btn.danger { color: var(--danger); border-color: rgba(194, 59, 46, 0.5); }
+.rank-card:hover .num { color: var(--accent); }
 
 /* ---------- Toast ---------- */
 #toastWrap { position: fixed; top: 16px; right: 16px; z-index: 100; display: flex; flex-direction: column; gap: 8px; }
@@ -319,3 +329,90 @@ input[type="range"] { -webkit-appearance: none; appearance: none; height: 6px; b
 input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 16px; height: 16px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--warn)); border: 2px solid #fff; box-shadow: 0 2px 6px rgba(0,0,0,.25); cursor: grab; transition: transform .1s; }
 input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.15); }
 input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: var(--accent); border: 2px solid #fff; cursor: grab; }
+
+/* =============================================================
+   微动态交互：水墨入画感
+   入场 = 淡入上浮；图表 = 墨液流出(scaleX)；卡片悬停 = 微抬+朱印
+   触摸即缩放反馈；尊重 prefers-reduced-motion
+   ============================================================= */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes popIn {
+  from { opacity: 0; transform: translateY(14px) scale(.97); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes toastIn {
+  from { opacity: 0; transform: translateX(24px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes barsGrow {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+@keyframes inkBreathe {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-6px) scale(1.05); }
+}
+@keyframes dotPulse {
+  0%, 100% { box-shadow: 0 0 0 0 var(--accent-soft); }
+  50% { box-shadow: 0 0 0 8px transparent; }
+}
+@keyframes donutGlow {
+  0%, 100% { box-shadow: var(--shadow); }
+  50% { box-shadow: var(--shadow), 0 0 0 6px var(--accent-soft); }
+}
+
+/* 页面入场：内容区整体淡入，卡片轻微上浮 */
+.content > * {
+  animation: fadeUp .4s var(--ease) both;
+}
+.content > *:nth-child(2) { animation-delay: .03s; }
+.content > *:nth-child(3) { animation-delay: .06s; }
+.content > *:nth-child(4) { animation-delay: .09s; }
+.content > *:nth-child(5) { animation-delay: .12s; }
+.content > *:nth-child(6) { animation-delay: .15s; }
+
+/* 图表 "墨液蔓延"：进度条/条形图从 0 滋开到目标值 */
+.progress > i, .st-bar > i {
+  transform-origin: left center;
+  animation: barsGrow .8s var(--ease) both;
+}
+.rd-donut { animation: fadeIn .6s var(--ease) both, donutGlow 4s ease-in-out 1s infinite; }
+.rd-donut-legend, .st-legend { animation: fadeIn .5s var(--ease) both; }
+
+/* 弹窗层级 */
+.overlay { animation: fadeIn .18s var(--ease); }
+.overlay .modal { animation: popIn .3s var(--ease); }
+
+/* Toast 滑入 */
+.toast { animation: toastIn .3s var(--ease); }
+
+/* 空状态喘气（墨晕呼吸） */
+.empty .big { display: inline-block; animation: inkBreathe 3.6s var(--ease) infinite; }
+
+/* 品牌印章脉动 */
+.brand .dot { animation: dotPulse 3.2s var(--ease) infinite; }
+
+/* 尊重系统减少动效设置 */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .001s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001s !important;
+  }
+}
+
+/* ---------- 水墨细滚动条 ---------- */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(var(--border), var(--muted));
+  border-radius: 10px; border: 2px solid transparent; background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover { background: linear-gradient(var(--muted), var(--accent)); background-clip: padding-box; }

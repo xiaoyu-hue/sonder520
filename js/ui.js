@@ -27,7 +27,7 @@
   function toast(msg, type) {
     var node = el('<div class="toast' + (type === 'err' ? ' err' : '') + '">' + esc(msg) + '</div>');
     toastWrap().appendChild(node);
-    setTimeout(function () { node.style.opacity = '0'; node.style.transition = 'opacity .3s'; }, 2200);
+    setTimeout(function () { node.style.transition = 'opacity .3s, transform .3s'; node.style.opacity = '0'; node.style.transform = 'translateX(24px)'; }, 2200);
     setTimeout(function () { if (node.parentNode) node.parentNode.removeChild(node); }, 2600);
   }
 
