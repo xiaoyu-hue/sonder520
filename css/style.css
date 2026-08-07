@@ -6,6 +6,7 @@
    ============================================================= */
 
 :root {
+  color-scheme: light;
   /* 浅色 · 宣纸水墨 */
   --bg: #f2efe6;
   --ink-blob-1: rgba(128, 116, 92, 0.20);
@@ -36,6 +37,7 @@
   --ease-ink: cubic-bezier(0.4, 0, 0.2, 1);
 }
 [data-theme="dark"] {
+  color-scheme: dark;
   /* 深色 / 墨黑山水 */
   --bg: #171410;
   --ink-blob-1: rgba(226, 214, 190, 0.06);
@@ -93,7 +95,7 @@ body::after {
   opacity: 0.35;
   pointer-events: none;
 }
-.app { display: flex; height: 100vh; overflow: hidden; }
+.app { display: flex; height: 100vh; height: 100dvh; overflow: hidden; }
 
 /* ---------- 液态玻璃基类 ---------- */
 .glass {
@@ -198,8 +200,8 @@ body::after {
    手机适配：侧栏变为底部液态玻璃导航栏
    ============================================================= */
 @media (max-width: 720px) {
-  html, body { height: 100dvh; overscroll-behavior-y: none; }
-  .app { flex-direction: column; height: 100dvh; }
+  html, body { height: 100vh; height: 100dvh; overscroll-behavior-y: none; }
+  .app { flex-direction: column; height: 100vh; height: 100dvh; }
   .main { flex: 1; min-height: 0; }
   .content { padding: 14px 14px 84px; }
 
@@ -237,6 +239,40 @@ body::after {
   .st-row { grid-template-columns: 1fr; }
   .rd-grid { grid-template-columns: 1fr; }
   .toast { font-size: 13px; }
+}
+
+/* 超小屏手机（≤360px）：压缩留白，保证导航不挤爆 */
+@media (max-width: 360px) {
+  .content { padding: 10px 10px 80px; }
+  .nav button { padding: 10px 8px; }
+  .nav button .ico { font-size: 18px; }
+  .topbar .btn { padding: 6px 9px; font-size: 12px; }
+  .modal .body, .modal .foot { padding-left: 14px; padding-right: 14px; }
+  .hbar input, .hbar select, .hbar .tool { font-size: 15px; }
+}
+
+/* 手机横屏：压缩高度相关布局 */
+@media (max-width: 900px) and (max-height: 480px) {
+  .content { padding: 10px 14px 66px; }
+  .topbar { min-height: 46px; }
+  .sidebar { padding: 4px 8px calc(4px + env(safe-area-inset-bottom)); }
+  .nav button { min-height: 38px; padding: 6px 10px; }
+  .nav button .ico { font-size: 17px; }
+}
+
+/* =============================================================
+   平板适配（721–960px）：侧栏折叠为图标栏，腾出内容空间
+   ============================================================= */
+@media (min-width: 721px) and (max-width: 960px) {
+  .sidebar { width: 70px; flex: 0 0 70px; padding: 18px 8px; align-items: center; }
+  .brand { padding: 6px 0 18px; justify-content: center; font-size: 0; }
+  .brand .dot { width: 16px; height: 16px; }
+  .nav button { font-size: 0; justify-content: center; padding: 12px 0; }
+  .nav button .ico { font-size: 20px; }
+  .nav button.active {
+    box-shadow: inset 0 0 0 2px var(--accent), inset 0 1px 0 var(--border-hi), 0 6px 18px rgba(194, 59, 46, 0.16);
+  }
+  .content { padding: 20px; }
 }
 
 /* 触控细节（全局）：防 iOS 聚焦缩放、点按高亮、触控反馈 */

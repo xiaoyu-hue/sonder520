@@ -51,3 +51,29 @@ test('手机端弹窗为底部抽屉（overlay 底部对齐 + 底部弹入动画
   assert.ok(mobile.includes('.overlay .modal { animation: popUpIn'), '应有底部弹入动画');
   assert.ok(css.includes('@keyframes popUpIn'), '缺 popUpIn 关键帧');
 });
+
+test('全平台高度：100dvh 带 100vh 回退（老 iOS/安卓）', () => {
+  assert.ok(css.includes('height: 100vh; height: 100dvh'), '.app 缺 vh→dvh 回退');
+  const mobile = css.split('@media (max-width: 720px)')[1].split('@keyframes')[0];
+  assert.ok(mobile.includes('height: 100vh; height: 100dvh'), '移动端缺 vh→dvh 回退');
+});
+
+test('色域声明：浅色 light / 深色 dark（表单与滚动条跟随主题）', () => {
+  assert.ok(css.includes('color-scheme: light'), ':root 缺浅色 color-scheme');
+  const darkBlk = css.split('[data-theme="dark"]')[1].split('}')[0];
+  assert.ok(darkBlk.includes('color-scheme: dark'), '深色缺 color-scheme');
+});
+
+test('平板（721–960px）：侧栏折叠为图标栏', () => {
+  const tablet = css.split('@media (min-width: 721px) and (max-width: 960px)')[1].split('@media')[0];
+  assert.ok(tablet, '缺平板断点');
+  assert.ok(tablet.includes('width: 70px'), '图标栏应 70px 宽');
+  assert.ok(tablet.includes('font-size: 0'), '按钮文字应隐藏（仅图标）');
+  assert.ok(tablet.includes('.nav button .ico { font-size: 20px; }'), '图标应放大');
+  assert.ok(tablet.includes('inset 0 0 0 2px var(--accent)'), '激活态应有朱砂描边');
+});
+
+test('超小屏（≤360px）与手机横屏有专门适配', () => {
+  assert.ok(css.includes('@media (max-width: 360px)'), '缺超小屏断点');
+  assert.ok(css.includes('@media (max-width: 900px) and (max-height: 480px)'), '缺横屏断点');
+});
