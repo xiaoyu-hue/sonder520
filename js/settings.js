@@ -105,6 +105,7 @@
       statBox('阅读计划', s.reading.total, '在读 ' + s.reading.reading) +
       statBox('看新闻计划', s.news.total, '待读 ' + s.news.unread) +
       statBox('设计计划', s.design.total, '进行中 ' + s.design.active) +
+      statBox('娱乐游戏', s.game.total, '胜 ' + s.game.wins + ' 平 ' + s.game.draws) +
       '</div>' +
       '<div class="row" style="margin-top:14px"><span class="small muted">今日任务完成率</span>' +
       '<div class="progress grow"><i style="width:' + rate + '%"></i></div>' +
@@ -118,13 +119,15 @@
 
   function exportBackup(ctx) {
     var json = ctx.store.exportBackup();
-    var blob = new Blob([json], { type: 'application/json' });
+var blob = new Blob([json], { type: 'application/json' });
+    var url = URL.createObjectURL(blob);
     var a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
+    a.href = url;
     a.download = 'sonder-backup-' + S.todayStr() + '.json';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
   }
 
   Pages.settings = {

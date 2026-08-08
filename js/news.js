@@ -42,7 +42,8 @@
   }
 
   function tagOptions(items) {
-    return items.map(function (i) { return '<option value="' + i + '">' + i + '</option>'; }).join('');
+    var esc = currentCtx.UI.esc;
+    return items.map(function (i) { return '<option value="' + esc(i) + '">' + esc(i) + '</option>'; }).join('');
   }
 
   function itemEl(n, ctx) {

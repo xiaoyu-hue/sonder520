@@ -116,7 +116,8 @@
   }
 
   function tagsOptions(tags) {
-    return tags.map(function (t) { return '<option value="' + t + '">' + t + '</option>'; }).join('');
+    var esc = currentCtx.UI.esc;
+    return tags.map(function (t) { return '<option value="' + esc(t) + '">' + esc(t) + '</option>'; }).join('');
   }
 
   function itemEl(p, ctx) {
@@ -165,12 +166,14 @@
   function exportCsv() {
     var csv = S.toCSV(S.filterPosts(currentCtx.store.state.posts, { tag: state.tag, status: state.status }));
     var blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
     var a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
+    a.href = url;
     a.download = 'selfmedia.csv';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
   }
 
   Pages.selfmedia = {

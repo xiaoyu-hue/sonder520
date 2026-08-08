@@ -36,13 +36,21 @@
     if (root.lastChild) root.removeChild(root.lastChild);
   }
 
-  function overlay(innerHtml) {
+  function overlay(innerHtml, onClose) {
     var root = overlayRoot();
     var ov = el('<div class="overlay"></div>');
     ov.appendChild(el(innerHtml));
     root.appendChild(ov);
-    ov.addEventListener('mousedown', function (e) { if (e.target === ov) closeTopOverlay(); });
-    var onKey = function (e) { if (e.key === 'Escape') { closeTopOverlay(); document.removeEventListener('keydown', onKey); } };
+    ov.addEventListener('mousedown', function (e) {
+      if (e.target === ov) { closeTopOverlay(); if (onClose) onClose(); }
+    });
+    var onKey = function (e) {
+      if (e.key === 'Escape') {
+        closeTopOverlay();
+        document.removeEventListener('keydown', onKey);
+        if (onClose) onClose();
+      }
+    };
     document.addEventListener('keydown', onKey);
     return ov;
   }
@@ -56,7 +64,8 @@
         '<div class="foot">' +
         '<button class="btn" data-act="no">取消</button>' +
         '<button class="btn danger" data-act="yes">' + esc(okText || '删除') + '</button>' +
-        '</div></div>'
+        '</div></div>',
+        function () { resolve(false); }
       );
       ov.querySelector('[data-act="no"]').onclick = function () { ov.remove(); resolve(false); };
       ov.querySelector('[data-act="yes"]').onclick = function () { ov.remove(); resolve(true); };

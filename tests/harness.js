@@ -4,8 +4,9 @@ const path = require('node:path');
 const { JSDOM } = require('jsdom');
 
 const root = path.join(__dirname, '..');
-const SCRIPT_ORDER = ['store.js', 'ui.js', 'home.js', 'today.js', 'memo.js', 'selfmedia.js',
-  'dev.js', 'consulting.js', 'reading.js', 'news.js', 'design.js', 'settings.js', 'app.js'];
+const SCRIPT_ORDER = ['store.js', 'ui.js', 'quotes.js', 'home.js', 'today.js', 'memo.js', 'selfmedia.js',
+  'dev.js', 'consulting.js', 'reading.js', 'news.js', 'design.js', 'games-logic.js', 'games.js',
+  'settings.js', 'app.js'];
 
 /* 启动一个完整 App 的 JSDOM 实例。每个实例有自己独立的 localStorage。 */
 function boot(opts = {}) {

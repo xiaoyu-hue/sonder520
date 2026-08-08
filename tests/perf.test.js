@@ -10,13 +10,13 @@ const css = fs.readFileSync(path.join(root, 'css', 'style.css'), 'utf8');
 const appJs = fs.readFileSync(path.join(root, 'js', 'app.js'), 'utf8');
 
 test('性能：壁纸预加载 + 站点图标内联（首次绘制提速，无 404）', () => {
-  assert.ok(html.includes('<link rel="preload" as="image" href="img/wallpaper.png">'), '应预加载壁纸');
+  assert.ok(html.includes('<link rel="preload" as="image" href="img/wallpaper.jpg">'), '应预加载壁纸');
   assert.ok(html.includes('<link rel="icon" href="data:image/svg+xml'), '应有内联 favicon');
 });
 
 test('性能：不再使用 background-attachment: fixed（滚动重绘开销）', () => {
   assert.ok(!/background-attachment:\s*fixed/.test(css), 'body 不应再 fixed 背景');
-  assert.ok(css.includes('url("../img/wallpaper.png")') && css.includes('position: fixed'), '壁纸仍由固定层承载');
+  assert.ok(css.includes('url("../img/wallpaper.jpg")') && css.includes('position: fixed'), '壁纸仍由固定层承载');
 });
 
 test('性能：玻璃磨砂降档（移动端低端机不卡），双侧前缀一致', () => {

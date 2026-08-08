@@ -30,6 +30,7 @@
   function render(container, ctx) {
     var UI = ctx.UI, store = ctx.store;
     currentEl = container;
+    container.innerHTML = '';
     container.appendChild(UI.el(
       '<div class="hbar">' +
       '<button class="btn primary" id="memoAdd">＋ 新建备忘</button>' +

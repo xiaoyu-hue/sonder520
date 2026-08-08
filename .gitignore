@@ -3,3 +3,5 @@ node_modules/
 
 # 本地 Netlify 登录日志，勿入库
 netlify-login.log
+# Local Netlify folder
+.netlify

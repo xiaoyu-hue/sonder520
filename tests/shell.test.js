@@ -9,8 +9,8 @@ const jsDir = path.join(root, 'js');
 const files = fs.readdirSync(jsDir).filter(f => f.endsWith('.js'));
 
 test('js 目录含所有必要模块文件', () => {
-  const expected = ['store.js', 'ui.js', 'app.js', 'home.js', 'today.js', 'memo.js', 'selfmedia.js',
-    'dev.js', 'consulting.js', 'reading.js', 'news.js', 'design.js', 'settings.js'];
+  const expected = ['store.js', 'ui.js', 'quotes.js', 'app.js', 'home.js', 'today.js', 'memo.js', 'selfmedia.js',
+    'dev.js', 'consulting.js', 'reading.js', 'news.js', 'design.js', 'settings.js', 'games-logic.js', 'games.js'];
   expected.forEach(f => assert.ok(files.includes(f), '缺少 ' + f));
 });
 
@@ -24,8 +24,9 @@ test('每个 JS 文件均非空且语法有效（可编译）', () => {
 
 test('index.html 顺序引入所有 js 且路径正确', () => {
   const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
-  const order = ['store.js', 'ui.js', 'home.js', 'today.js', 'memo.js', 'selfmedia.js',
-    'dev.js', 'consulting.js', 'reading.js', 'news.js', 'design.js', 'settings.js', 'app.js'];
+  const order = ['store.js', 'ui.js', 'quotes.js', 'home.js', 'today.js', 'memo.js', 'selfmedia.js',
+    'dev.js', 'consulting.js', 'reading.js', 'news.js', 'design.js', 'games-logic.js', 'games.js',
+    'settings.js', 'app.js'];
   order.forEach(f => {
     const tag = '<script src="js/' + f + '"></script>';
     assert.ok(html.includes(tag), '缺少引入: ' + f);

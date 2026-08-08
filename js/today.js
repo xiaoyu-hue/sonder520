@@ -31,6 +31,7 @@
     var UI = ctx.UI, store = ctx.store;
     currentCtx = ctx;
     currentEl = container;
+    container.innerHTML = '';
     container.appendChild(UI.el(
       '<div class="hbar">' +
       '  <input type="date" id="tplDate" value="' + UI.esc(S.todayStr()) + '" class="tool">' +
@@ -47,7 +48,7 @@
       renderGroups(box, store, e.target.value);
     });
     container.querySelector('#tplAdd').addEventListener('click', function () { openAdd(ctx); });
-    container.querySelector('#tplRefresh').addEventListener('click', function () { render(); });
+    container.querySelector('#tplRefresh').addEventListener('click', function () { render(currentEl, currentCtx); });
 
     renderGroups(box, store, S.todayStr());
   }
@@ -70,7 +71,7 @@
       var prio = PRI_CLASS[t.priority] || 'mid';
       return '<div class="list-item" data-id="' + t.id + '">' +
         '<input type="checkbox" class="tpl-done" ' + (t.done ? 'checked' : '') + '>' +
-        (t.done ? '' : buttonsUpDown(t.id)) +
+        (t.done ? delOnly(t.id) : buttonsUpDown(t.id)) +
         '<div class="grow"><div class="title ' + (t.done ? 'done' : '') + '">' + esc(t.title) + '</div>' +
         (t.note ? '<div class="sub">' + esc(t.note) + '</div>' : '') +
         '</div>' +
@@ -83,6 +84,11 @@
   var PRI_CLASS = { '高': 'hi', '中': 'mid', '低': 'lo' };
 
   var esc = window.UI.esc;
+  function delOnly(id) {
+    return '<span class="row">' +
+      '<button class="small-btn danger" data-act="del" data-id="' + id + '" title="删除">✕</button>' +
+      '</span>';
+  }
   function buttonsUpDown(id) {
     return '<span class="row">' +
       '<button class="small-btn" data-act="up" data-id="' + id + '" title="上移">↑</button>' +

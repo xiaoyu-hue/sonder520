@@ -54,15 +54,16 @@ test('UI：设置页有透明度滑块，拖动更新存储与 CSS 变量', () =
 
 test('CSS：壁纸层使用 url 且透明度走 var(--wallpaper-opacity) 默认 0.4', () => {
   const css = fs.readFileSync(path.join(root, 'css', 'style.css'), 'utf8');
-  assert.ok(css.includes('url("../img/wallpaper.png")'), '应引用 img/wallpaper.png');
+  assert.ok(css.includes('url("../img/wallpaper.jpg")'), '应引用 img/wallpaper.jpg');
   const before = css.split('body::before')[1].split('}')[0];
   assert.ok(before.includes('background-size: cover'), '应 cover 铺满');
   assert.ok(before.includes('opacity: var(--wallpaper-opacity, 0.4)'), '应使用透明度变量');
   assert.ok(css.includes('--wallpaper-opacity: 0.4'), '默认透明度 0.4');
 });
 
-test('图片文件已内置到项目 img/', () => {
-  const p = path.join(root, 'img', 'wallpaper.png');
-  assert.ok(fs.existsSync(p), '缺少 img/wallpaper.png');
+test('图片文件已内置到项目 img/ 且已优化（≤300KB）', () => {
+  const p = path.join(root, 'img', 'wallpaper.jpg');
+  assert.ok(fs.existsSync(p), '缺少 img/wallpaper.jpg');
   assert.ok(fs.statSync(p).size > 1000, '图片过小无效');
+  assert.ok(fs.statSync(p).size < 300 * 1024, '壁纸应压缩优化（移动端首屏提速）');
 });

@@ -17,6 +17,9 @@
     var UI = ctx.UI, store = ctx.store;
     var sum = store.summarize();
     var day = S.todayStr();
+    var quote = (window.SonderQuotes && typeof window.SonderQuotes.quoteOfDay === 'function')
+      ? UI.esc(window.SonderQuotes.quoteOfDay(day))
+      : '';
     var g = S.groupTasks(store.state.tasks, day);
     var todayList = g.now.slice(0, 6);
 
@@ -33,6 +36,7 @@
 
     container.innerHTML = [
       '<div class="section-title" style="margin-top:0">' + UI.esc(greeting()) + '</div>',
+      '<div class="quote">' + (quote ? '「' + quote + '」' : '') + '</div>',
       '<div class="grid cols-2">',
       '  <div class="card">',
       '    <div class="row"><div class="section-title" style="margin:0">今日计划</div>',
@@ -50,13 +54,14 @@
       '  </div>',
       '</div>',
       '<div class="section-title">各模块概览</div>',
-      '<div class="grid cols-6">',
+      '<div class="grid cols-7">',
       rankCard('selfmedia', sum.selfmedia.total, '自媒体', '待发布 ' + sum.selfmedia.pending) +
       rankCard('dev', sum.dev.total, '开发工作', '进行中 ' + sum.dev.active) +
       rankCard('consulting', sum.consulting.total, '咨询工作', '待跟进 ' + sum.consulting.followups) +
       rankCard('reading', sum.reading.total, '阅读计划', '在读 ' + sum.reading.reading) +
       rankCard('news', sum.news.total, '看新闻计划', '待读 ' + sum.news.unread) +
-      rankCard('design', sum.design.total, '设计计划', '进行中 ' + sum.design.active),
+      rankCard('design', sum.design.total, '设计计划', '进行中 ' + sum.design.active) +
+      rankCard('game', sum.game.total, '娱乐游戏', '胜 ' + sum.game.wins + ' · 平 ' + sum.game.draws),
       '</div>'
     ].join('');
 

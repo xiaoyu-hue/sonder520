@@ -129,7 +129,7 @@
         '<div class="grow"><div class="title" style="font-weight:500">¥' + (Number(i.amount) || 0) + '</div>' +
         '<div class="sub">' + UI.esc(i.date || '') + (i.note ? ' · ' + UI.esc(i.note) : '') + '</div></div>' +
         '<button class="small-btn" data-ie="1">编辑</button>' +
-        '<button class="small-btn danger" data-id="1">✕</button></div>';
+        '<button class="small-btn danger" data-idel="1">✕</button></div>';
     }).join('') : '<div class="muted small">暂无收入记录</div>';
     wrap.querySelectorAll('[data-ie]').forEach(function (b) {
       b.onclick = function () {
@@ -137,10 +137,10 @@
         openIncome(ctx, c.id, inc);
       };
     });
-    wrap.querySelectorAll('[data-id]').forEach(function (b) {
+    wrap.querySelectorAll('[data-idel]').forEach(function (b) {
       b.onclick = function () {
-        store.removeClientIncome(c.id, b.closest('.cs-item').dataset.id);
-        render(ctx);
+        var id = b.closest('.cs-item').dataset.id;
+        UI.confirmBox('删除该笔收入？').then(function (ok) { if (ok) { store.removeClientIncome(c.id, id); render(ctx); } });
       };
     });
   }

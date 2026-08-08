@@ -6,11 +6,11 @@
   var UI = window.UI;
 
   /* 导航顺序；可被"数据与设置"开关隐藏的为业务模块 */
-  var TOGGLEABLE = { today: 1, memo: 1, selfmedia: 1, dev: 1, consulting: 1, reading: 1, news: 1, design: 1 };
-  var NAV = ['home', 'today', 'memo', 'selfmedia', 'dev', 'consulting', 'reading', 'news', 'design', 'settings'];
+  var TOGGLEABLE = { today: 1, memo: 1, selfmedia: 1, dev: 1, consulting: 1, reading: 1, news: 1, design: 1, game: 1 };
+  var NAV = ['home', 'today', 'memo', 'selfmedia', 'dev', 'consulting', 'reading', 'news', 'design', 'game', 'settings'];
   var ICONS = {
     home: '🏠', today: '📅', memo: '📝', selfmedia: '📣', dev: '💻',
-    consulting: '🤝', reading: '📚', news: '📰', design: '🎨', settings: '⚙️'
+    consulting: '🤝', reading: '📚', news: '📰', design: '🎨', game: '🎮', settings: '⚙️'
   };
 
   var ctx = {
