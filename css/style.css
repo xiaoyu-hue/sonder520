@@ -239,11 +239,17 @@ body::after {
   .st-row { grid-template-columns: 1fr; }
   .rd-grid { grid-template-columns: 1fr; }
   .toast { font-size: 13px; }
+
+  /* 五子棋大棋盘手机端：压缩边距与格距，15×15 保持方正不溢出 */
+  .game-board.big { width: min(97vw, 480px); gap: 2px; padding: 8px; }
+  .game-board.big .cell { border-radius: 4px; }
+  .game-board.big .stone { width: 86%; height: 86%; }
 }
 
 /* 超小屏手机（≤360px）：压缩留白，保证导航不挤爆 */
 @media (max-width: 360px) {
   .content { padding: 10px 10px 80px; }
+  .game-board.big { gap: 1.5px; padding: 6px; }
   .nav button { padding: 10px 8px; }
   .nav button .ico { font-size: 18px; }
   .topbar .btn { padding: 6px 9px; font-size: 12px; }
@@ -584,6 +590,7 @@ input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border-radius
 }
 .game-board.small { grid-template-columns: repeat(3, 1fr); width: min(92vw, 300px); }
 .game-board.big { grid-template-columns: repeat(15, 1fr); }
+.game-board.big .cell { min-height: 0; }
 .cell {
   position: relative; aspect-ratio: 1/1; min-height: 26px; padding: 0; border: 1px solid var(--border);
   background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center;

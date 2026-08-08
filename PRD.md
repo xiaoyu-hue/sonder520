@@ -218,4 +218,4 @@
 - **代码组织**：`store.js`（数据层：localStorage 读写、字段归一化、统计聚合）、`ui.js`（弹窗/Toast/表单组件）、各模块一个 JS 文件（home/today/memo/selfmedia/dev/consulting/reading/news/design/settings）、`app.js`（外壳与导航）。
 - **主题系统**：CSS 自定义属性 + 深浅双主题变量；`@supports` 为不支持 `backdrop-filter` 的浏览器提供降级；壁纸层独立于玻璃层并支持透明度变量。
 - **数据兼容**：数据读取时做字段归一化（缺失字段补默认值、非法值夹取范围），便于未来版本安全迁移。
-- **自动化测试**：基于 jsdom 的 Node 测试（`node --test`），覆盖存储、UI、各模块、样式、动效、壁纸、移动端适配、性能、游戏引擎与交互质量回归，当前 144 项全部通过（`npm test`）。
+- **自动化测试**：基于 jsdom 的 Node 测试（`node --test`），覆盖存储、UI、各模块、样式、动效、壁纸、移动端适配、性能、游戏引擎与交互质量回归，当前 145 项全部通过（`npm test`）。
