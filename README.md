@@ -5,16 +5,19 @@
 
 ## 在线访问
 
-已部署：**https://sonder520.netlify.app/**（电脑、手机、平板浏览器直接打开）
+已部署：https://sonder520.netlify.app/
+
+（电脑、手机、平板浏览器直接打开）
 
 > 数据存于各设备浏览器 localStorage，设备间相互独立；多设备数据迁移请用「数据与设置 → 导出备份 / 导入恢复」。
 
 ## 开源
 
-源码公开于 GitHub：**https://github.com/xiaoyu-hue/sonder520**（公开仓库，无需登录即可浏览）
+源码公开于 GitHub：https://github.com/xiaoyu-hue/sonder520
+
+（公开仓库，无需登录即可浏览）
 
 - 纯前端项目，任何访客在浏览器 DevTools 中也可见完整源码，属"天然开源"。
-- 目前**未附带 LICENSE 文件**（保留所有权利）；如需正式开源（如 MIT），请添加许可证后注明。
 - 数据安全不受影响：localStorage 仅存于访问者各自浏览器，不会经过任何服务器。
 
 ## 如何运行（本地）
@@ -29,8 +32,11 @@
 每次改完代码后，任选其一：
 
 1. **网页拖拽（推荐）**：登录 https://app.netlify.com → 打开站点 `sonder520` → **Deploys（部署记录）** 页 → 把本目录整个文件夹拖入 **"Drag and drop deploy area here"** → 等出现 **Published** 即可（网址不变）。
+
    ⚠️ 不要用 `app.netlify.com/drop` 重复上传——Drop 每次会新建一个新站点。
+
 2. **命令行**：`npm i -g netlify-cli` → `netlify login` → `netlify link` → `netlify deploy --prod --dir=.`
+
 3. **Git 自动部署**：推到 GitHub 仓库后在 Netlify 里连接该仓库，之后 `git push` 自动上线。
 
 也可以部署到其他静态托管（全部资源为相对路径，无需构建）：GitHub Pages、Cloudflare Pages（无限流量）、Vercel。
