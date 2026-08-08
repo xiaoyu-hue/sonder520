@@ -13,10 +13,11 @@
 
 ## 开源
 
-源码公开于 GitHub：https://github.com/xiaoyu-hue/sonder520（公开仓库，无需登录即可浏览）
+源码公开于 GitHub：https://github.com/xiaoyu-hue/sonder520
+
+（公开仓库，无需登录即可浏览）
 
 - 纯前端项目，任何访客在浏览器 DevTools 中也可见完整源码，属"天然开源"。
-- 目前**未附带 LICENSE 文件**（保留所有权利）；如需正式开源（如 MIT），请添加许可证后注明。
 - 数据安全不受影响：localStorage 仅存于访问者各自浏览器，不会经过任何服务器。
 
 ## 如何运行（本地）
