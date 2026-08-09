@@ -1,6 +1,7 @@
 # Sonder · 个人工作生活 App
 
 个人工作/生活管理工具，纯 HTML/CSS/原生 JS，零构建、零依赖。
+
 「水墨 × 液态玻璃」视觉风格，支持自定义壁纸背景（默认透明度 40%）。
 
 ## 在线访问
@@ -47,7 +48,7 @@
 
 3. **Git 自动部署**：推到 GitHub 仓库后在 Netlify 里连接该仓库，之后 `git push` 自动上线。
 
-也可以部署到其他静态托管（全部资源为相对路径，无需构建）：GitHub Pages、Cloudflare Pages（无限流量）、Vercel。
+也可以部署到其他静态托管（全部资源为相对路径，无需构建）：GitHub Pages、Cloudflare Pages、Vercel。
 
 ## 全平台适配
 
