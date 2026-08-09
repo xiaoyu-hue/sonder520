@@ -1,7 +1,11 @@
 # 个人工作生活 App · 产品需求文档（PRD）
 
 > 版本：v1.2
-> 状态：已完成开发并上线（https://sonder520.netlify.app/），本文档随实现同步更新
+> 状态：已完成开发并上线
+https://sonder520.netlify.app/
+
+本文档随实现同步更新
+
 > 运行环境：纯前端静态站点，无任何后端；数据存于访问者浏览器 localStorage
 
 ---
