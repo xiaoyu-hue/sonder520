@@ -3,13 +3,14 @@
 > 版本：v2.0
 > 状态：已完成开发并上线
 > 在线地址：
+
 主站1:
 https://sonder520.netlify.app/
 
 主站2:
 https://sonder520.pages.dev/
 
-备用
+备用:
 https://xiaoyu-hue.github.io/sonder520/
 
 本文档随实现同步更新
