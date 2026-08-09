@@ -5,9 +5,13 @@
 
 ## 在线访问
 
-已部署：https://sonder520.netlify.app/
+- 主站 1：https://sonder520.netlify.app/
 
-（电脑、手机、平板浏览器直接打开）
+- 主站 2：https://sonder520.pages.dev/
+
+- 备用：https://xiaoyu-hue.github.io/sonder520/
+
+三个站点内容同步更新，任选一个打开即可。
 
 > 数据存于各设备浏览器 localStorage，设备间相互独立；多设备数据迁移请用「数据与设置 → 导出备份 / 导入恢复」。
 
