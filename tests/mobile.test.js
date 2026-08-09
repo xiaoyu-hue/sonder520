@@ -39,8 +39,15 @@ test('移动端触控：防 iOS 聚焦缩放、取消点按高亮', () => {
 test('部署就绪：静态资源全部使用相对路径（可放任意子路径）', () => {
   const refs = html.match(/(?:src|href)="[^"]+"/g) || [];
   assert.ok(refs.length > 0);
+  const EXTERNAL_LINKS = [
+    'href="https://github.com/xiaoyu-hue/sonder520"',
+    'href="https://www.netlify.com"'
+  ];
   refs.forEach(r => {
-    assert.ok(!/https?:\/\//.test(r) && !r.startsWith('src="/') && !r.startsWith('href="/') || /data:/.test(r),
+    const isExternalLink = EXTERNAL_LINKS.includes(r);
+    const isRelative = !/https?:\/\//.test(r) && !r.startsWith('src="/') && !r.startsWith('href="/');
+    const isInlineData = /data:/.test(r);
+    assert.ok(isExternalLink || isRelative || isInlineData,
       '存在绝对路径资源，将无法在子路径托管部署: ' + r);
   });
 });

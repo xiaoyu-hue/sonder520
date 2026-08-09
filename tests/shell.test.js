@@ -47,3 +47,14 @@ test('index.html 包含外壳结构元素', () => {
     assert.ok(html.includes(sel), '缺少外壳元素: ' + sel);
   });
 });
+
+test('开源合规：页脚含 Netlify 与 GitHub 链接（Netlify 开源计划要求）', () => {
+  const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+  assert.ok(html.includes('This site is powered by Netlify'), '缺 Netlify 托管声明');
+  assert.ok(html.includes('https://www.netlify.com'), 'Netlify 链接应指向 netlify.com');
+  assert.ok(html.includes('https://github.com/xiaoyu-hue/sonder520'), '缺 GitHub 仓库链接');
+  const css = fs.readFileSync(path.join(root, 'css', 'style.css'), 'utf8');
+  assert.ok(css.includes('.site-footer'), '缺页脚样式');
+  assert.ok(fs.existsSync(path.join(root, 'LICENSE')), '仓库缺 LICENSE');
+  assert.ok(fs.existsSync(path.join(root, 'CODE_OF_CONDUCT.md')), '仓库缺 CODE_OF_CONDUCT.md');
+});

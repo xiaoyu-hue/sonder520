@@ -328,6 +328,15 @@ input, select, textarea, button { font-size: 16px; }
 .muted { color: var(--muted); }
 .small { font-size: 12px; }
 
+/* ---------- 页脚：开源说明与托管链接 ---------- */
+.site-footer {
+  flex: 0 0 auto; display: flex; align-items: center; justify-content: center; flex-wrap: wrap;
+  gap: 4px 10px; padding: 12px 16px 16px; color: var(--muted);
+  font-size: 12px; text-align: center; border-top: 1px dashed var(--border);
+}
+.site-footer a { color: var(--muted); text-decoration: underline; text-underline-offset: 3px; }
+.site-footer a:hover { color: var(--accent); }
+
 /* 印章式标签 */
 .tag {
   display: inline-block; background: var(--accent-soft); color: var(--accent);
