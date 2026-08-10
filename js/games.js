@@ -49,14 +49,32 @@
   }
 
   /* ---------- 休闲小游戏 ---------- */
+  var MS_DIFFS = {
+    easy: { label: '简单', rows: 9, cols: 9, mines: 10 },
+    mid: { label: '中等', rows: 12, cols: 12, mines: 20 },
+    hard: { label: '困难', rows: 16, cols: 16, mines: 40 }
+  };
+  var MS_DEFAULT_DIFF = 'easy';
+  var msFlagMode = false;
+
   function startMini(ctx, kind) {
     state.game = null;
-    state.mini = { kind: kind, g: kind === 'guessnum' ? G.guessNumStart() : null };
+    if (kind === 'guessnum') {
+      state.mini = { kind: 'guessnum', g: G.guessNumStart() };
+    } else if (kind === 'minesweeper') {
+      var diff = miniBest2('minesweeper', 'diff') || MS_DEFAULT_DIFF;
+      var d = MS_DIFFS[diff] || MS_DIFFS[MS_DEFAULT_DIFF];
+      state.mini = { kind: 'minesweeper', g: G.mineStart(d.rows, d.cols, d.mines), diff: diff };
+      msFlagMode = false;
+    } else {
+      state.mini = { kind: kind, g: null };
+    }
     render(ctx);
   }
 
   function miniView(ctx) {
     if (state.mini.kind === 'guessnum') return guessNumView(ctx);
+    if (state.mini.kind === 'minesweeper') return mineView(ctx);
     return pickView(ctx);
   }
 
@@ -70,6 +88,21 @@
   }
   function saveMiniBest(kind, best) {
     try { window.localStorage.setItem('sonder_games_' + kind, JSON.stringify({ best: best })); } catch (e) { /* 存储不可用则忽略 */ }
+  }
+  function miniRec(kind) {
+    try {
+      var raw = window.localStorage.getItem('sonder_games_' + kind);
+      return raw ? JSON.parse(raw) : {};
+    } catch (e) { return {}; }
+  }
+  function miniBest2(kind, key) {
+    var o = miniRec(kind);
+    return key in o ? o[key] : null;
+  }
+  function saveMiniRec(kind, patch) {
+    var o = miniRec(kind);
+    Object.keys(patch).forEach(function (k) { o[k] = patch[k]; });
+    try { window.localStorage.setItem('sonder_games_' + kind, JSON.stringify(o)); } catch (e) { /* 忽略 */ }
   }
 
   /* -------- 猜数字 -------- */
@@ -130,7 +163,75 @@
     return wrap;
   }
 
-  function histHtml(g) {
+  /* -------- 扫雷 -------- */
+  function mineView(ctx) {
+    var UI = ctx.UI, m = state.mini, g = m.g;
+    var wrap = UI.el('<div></div>');
+    wrap.appendChild(UI.el(
+      '<div class="hbar">' +
+      '<div class="lab" style="font-size:15px">💣 扫雷</div>' +
+      '<select id="msDiff" title="雷区尺寸与雷数" aria-label="选择扫雷难度">' +
+      Object.keys(MS_DIFFS).map(function (k) {
+        var d = MS_DIFFS[k];
+        return '<option value="' + k + '"' + (state.mini.diff === k ? ' selected' : '') + '>' + d.label + '（' + d.rows + '×' + d.cols + ' · ' + d.mines + '雷）</option>';
+      }).join('') +
+      '</select>' +
+      '<span class="sp"></span>' +
+      '<button class="btn" data-mact="back" type="button">← 选游戏</button>' +
+      '</div>'
+    ));
+    var rec = miniRec('minesweeper');
+    var statsTxt = rec.wins !== undefined
+      ? '胜 ' + rec.wins + ' · 负 ' + rec.losses
+      : '还没有战绩，来一局！';
+    var statusTxt = g.over
+      ? (g.won ? '🎉 扫雷成功！点对了吗？再来挑战更高难度！' : '💥 踩到雷了，下次小心！')
+      : '剩余 ' + Math.max(0, g.mines - g.flagged) + ' 雷';
+    var card = UI.el(
+      '<div class="card">' +
+      '<div class="row" style="align-items:center;gap:10px;flex-wrap:wrap">' +
+      '<span class="muted small">' + statusTxt + '</span>' +
+      '<label class="toggle small" style="margin-left:auto"><input type="checkbox" id="msFlagMode"' + (msFlagMode ? ' checked' : '') + '> ⚑ 标记模式' + '</label>' +
+      '<span class="muted small">' + statsTxt + '</span>' +
+      '</div>' +
+      '<div class="ms-board" id="msBoard" style="grid-template-columns:repeat(' + g.cols + ',1fr)" role="grid" aria-label="扫雷雷区">' + mineCellsHtml(g, ctx.UI) + '</div>' +
+      '<div class="row" style="margin-top:12px">' +
+      '<button class="btn" data-mact="again" type="button" style="min-height:44px">🔄 再来一局</button>' +
+      '</div>' +
+      '</div>'
+    );
+    msFlagChange(card, ctx);
+    var board = card.querySelector('#msBoard');
+    board.querySelectorAll('.ms-cell').forEach(function (cell) {
+      cell.addEventListener('click', function () { mineCellClick(ctx, cell); });
+      cell.addEventListener('contextmenu', function (e) {
+        e.preventDefault();
+        mineCellFlag(ctx, cell);
+      });
+    });
+    wrap.appendChild(card);
+    wrap.querySelectorAll('[data-mact]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        if (b.dataset.mact === 'back') {
+          state.mini = null;
+          render(ctx);
+        } else if (b.dataset.mact === 'again') {
+          msRestart(ctx);
+        }
+      });
+    });
+    wrap.appendChild(card);
+    var diffReal = wrap.querySelector('#msDiff');
+    if (diffReal) diffReal.addEventListener('change', function () {
+      state.mini.diff = diffReal.value;
+      saveMiniRec('minesweeper', { diff: diffReal.value });
+      msRestart(ctx);
+      UI.toast('已切换难度并重新开始');
+    });
+    return wrap;
+  }
+
+function histHtml(g) {
     if (!g.attempts.length) return '<div class="muted small" style="margin-top:10px">还没开始，输入数字点击「猜！」</div>';
     var rows = '';
     g.attempts.forEach(function (n, i) {
@@ -157,6 +258,86 @@
       html = '机会用完了，答案是 <b>' + g.target + '</b>，下次加油！';
     }
     return html;
+  }
+
+  function mineCellsHtml(g, UI) {
+    if (!g.board) {
+      var empty = '';
+      for (var i = 0; i < g.rows * g.cols; i++) {
+        empty += '<button type="button" class="ms-cell" aria-label="未翻开" style="min-height:28px"></button>';
+      }
+      return empty;
+    }
+    var html = '';
+    for (var r = 0; r < g.rows; r++) {
+      for (var c = 0; c < g.cols; c++) {
+        var cell = g.board[r][c];
+        var inner = '', cls = 'ms-cell';
+        var label;
+        if (g.over && cell.mine && !cell.flagged) {
+          inner = '💥'; cls += ' mined';
+          label = '雷';
+        } else if (cell.flagged) {
+          inner = '⚑'; cls += ' flagged';
+          label = '已标记';
+        } else if (cell.revealed) {
+          if (cell.mine) { inner = '💥'; label = '雷'; }
+          else if (cell.adj) { inner = cell.adj; cls += ' n' + cell.adj; label = '数字 ' + cell.adj; }
+          else { cls += ' open'; label = '空白格'; }
+        } else {
+          label = '未翻开';
+        }
+        html += '<button type="button" class="' + cls + '" data-r="' + r + '" data-c="' + c + '" ' +
+          'aria-label="第' + (r + 1) + '行第' + (c + 1) + '列，' + label + '" style="min-height:28px">' + inner + '</button>';
+      }
+    }
+    return html;
+  }
+
+  function msFlagChange(card, ctx) {
+    var cb = card.querySelector('#msFlagMode');
+    if (!cb) return;
+    cb.addEventListener('change', function () {
+      msFlagMode = cb.checked;
+      ctx.UI.toast(msFlagMode ? '标记模式已开启：点击格子将插旗' : '已切回翻开模式');
+    });
+  }
+
+  function mineCellClick(ctx, cell) {
+    var g = state.mini.g;
+    if (g.over) return;
+    var r = Number(cell.dataset.r), c = Number(cell.dataset.c);
+    if (msFlagMode) {
+      mineCellFlag(ctx, cell);
+      return;
+    }
+    var res = G.mineReveal(g, r, c);
+    if (!res.ok) { ctx.UI.toast(res.error, 'err'); return; }
+    if (res.over) {
+      var rec = miniRec('minesweeper');
+      rec.wins = (rec.wins || 0) + (res.won ? 1 : 0);
+      rec.losses = (rec.losses || 0) + (res.won ? 0 : 1);
+      rec.diff = state.mini.diff;
+      saveMiniRec('minesweeper', rec);
+      render(ctx);
+      return;
+    }
+    render(ctx);
+  }
+
+  function mineCellFlag(ctx, cell) {
+    var g = state.mini.g;
+    if (g.over) return;
+    var res = G.mineToggleFlag(g, Number(cell.dataset.r), Number(cell.dataset.c));
+    if (!res.ok) { ctx.UI.toast(res.error, 'err'); return; }
+    render(ctx);
+  }
+
+  function msRestart(ctx) {
+    var d = MS_DIFFS[state.mini.diff] || MS_DIFFS[MS_DEFAULT_DIFF];
+    state.mini = { kind: 'minesweeper', g: G.mineStart(d.rows, d.cols, d.mines), diff: state.mini.diff };
+    msFlagMode = false;
+    render(ctx);
   }
 
   /* ---------- 游戏选择 ---------- */
@@ -189,6 +370,11 @@
       '<div class="lab">🎯 猜数字</div>' +
       '<div class="sub">1~100 心里数 · 7 次机会</div>' +
       '<div class="sub">大小提示 · 最佳纪录</div>' +
+      '</div>' +
+      '<div class="card lg-pick" data-pick="minesweeper">' +
+      '<div class="lab">💣 扫雷</div>' +
+      '<div class="sub">经典扫雷 · 三档难度</div>' +
+      '<div class="sub">⚑ 标记模式 · 右键插旗</div>' +
       '</div>' +
       '</div>' +
       '</div>'
@@ -531,11 +717,43 @@
       difficulty: state.difficulty,
       busy: busy,
       game: g && { kind: g.kind, turn: g.turn, moves: g.moves.length, over: g.over, winner: g.winner },
-      mini: state.mini && { kind: state.mini.kind, target: state.mini.g.target, attempts: state.mini.g.attempts.length, over: state.mini.g.over, won: state.mini.g.won }
+      mini: state.mini && (state.mini.kind === 'guessnum'
+        ? { kind: 'guessnum', target: state.mini.g.target, attempts: state.mini.g.attempts.length, over: state.mini.g.over, won: state.mini.g.won }
+        : { kind: state.mini.kind, over: state.mini.g.over, won: state.mini.g.won, revealed: state.mini.g.revealed, flagged: state.mini.g.flagged })
     };
   };
   /* 测试钩子：注入确定的猜数字答案（仅测试用） */
   window.__gamesDbg.setMiniTarget = function (n) {
     if (state.mini && state.mini.kind === 'guessnum') state.mini.g.target = n;
+  };
+  /* 测试钩子：注入确定的扫雷雷位布局（仅测试用） */
+  window.__gamesDbg.setMineField = function (rows, cols, mineList) {
+    if (!state.mini || state.mini.kind !== 'minesweeper') return;
+    var s = state.mini.g;
+    var b = [], i, j;
+    for (i = 0; i < rows; i++) {
+      b.push([]);
+      for (j = 0; j < cols; j++) b[i].push({ mine: false, revealed: false, flagged: false, adj: 0 });
+    }
+    mineList.forEach(function (p) { b[p[0]][p[1]].mine = true; });
+    for (i = 0; i < rows; i++) {
+      for (j = 0; j < cols; j++) {
+        if (b[i][j].mine) continue;
+        var a = 0;
+        for (var dr = -1; dr <= 1; dr++) {
+          for (var dc = -1; dc <= 1; dc++) {
+            if (!dr && !dc) continue;
+            var rr = i + dr, cc = j + dc;
+            if (rr >= 0 && rr < rows && cc >= 0 && cc < cols && b[rr][cc].mine) a++;
+          }
+        }
+        b[i][j].adj = a;
+      }
+    }
+    s.board = b;
+    s.first = false;
+    s.revealed = 0;
+    s.flagged = 0;
+    render(currentCtx);
   };
 })();

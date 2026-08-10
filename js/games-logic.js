@@ -348,6 +348,120 @@
     return res;
   }
 
+  /* ================================================================
+   * 扫雷：经典扫雷纯逻辑（雷区首次翻开时布雷，首击必安全）
+   * ================================================================ */
+  function mineStart(rows, cols, mines) {
+    var n = Math.max(1, rows * cols - 1);
+    return {
+      rows: rows, cols: cols, mines: Math.min(mines, n),
+      board: null, over: false, won: false,
+      revealed: 0, flagged: 0, first: true
+    };
+  }
+  function mineCell() {
+    return { mine: false, revealed: false, flagged: false, adj: 0 };
+  }
+  /* 首次翻开时布雷：(r,c) 及其 3×3 邻域不布雷，保证首击安全 */
+  function mineLay(s, r, c) {
+    var b = [];
+    for (var i = 0; i < s.rows; i++) {
+      b.push([]);
+      for (var j = 0; j < s.cols; j++) b[i].push(mineCell());
+    }
+    var exclude = {};
+    for (var dr = -1; dr <= 1; dr++) {
+      for (var dc = -1; dc <= 1; dc++) {
+        var er = r + dr, ec = c + dc;
+        if (er >= 0 && er < s.rows && ec >= 0 && ec < s.cols) exclude[er + ',' + ec] = 1;
+      }
+    }
+    var placed = 0, guard = 0;
+    while (placed < s.mines && guard++ < 5000) {
+      var mr = Math.floor(Math.random() * s.rows);
+      var mc = Math.floor(Math.random() * s.cols);
+      var key = mr + ',' + mc;
+      if (exclude[key] || b[mr][mc].mine) continue;
+      b[mr][mc].mine = true;
+      exclude[key] = 1;
+      placed++;
+    }
+    for (i = 0; i < s.rows; i++) {
+      for (j = 0; j < s.cols; j++) {
+        if (b[i][j].mine) continue;
+        var a = 0;
+        for (dr = -1; dr <= 1; dr++) {
+          for (dc = -1; dc <= 1; dc++) {
+            if (!dr && !dc) continue;
+            er = i + dr; ec = j + dc;
+            if (er >= 0 && er < s.rows && ec >= 0 && ec < s.cols && b[er][ec].mine) a++;
+          }
+        }
+        b[i][j].adj = a;
+      }
+    }
+    s.board = b;
+    s.first = false;
+    return b;
+  }
+  function mineNeighbors(s, r, c) {
+    var out = [];
+    for (var dr = -1; dr <= 1; dr++) {
+      for (var dc = -1; dc <= 1; dc++) {
+        if (!dr && !dc) continue;
+        var nr = r + dr, nc = c + dc;
+        if (nr >= 0 && nr < s.rows && nc >= 0 && nc < s.cols) out.push([nr, nc]);
+      }
+    }
+    return out;
+  }
+  function mineReveal(s, r, c) {
+    if (!s || s.over) return { ok: false, error: '本局已结束' };
+    if (r < 0 || r >= s.rows || c < 0 || c >= s.cols) return { ok: false, error: '越界' };
+    if (!s.board) mineLay(s, r, c);
+    var b = s.board;
+    if (b[r][c].revealed) return { ok: false, error: '该格已翻开' };
+    if (b[r][c].flagged) return { ok: false, error: '该格已被标记，先取消标记再翻开' };
+    if (b[r][c].mine) {
+      s.over = true;
+      b[r][c].revealed = true;
+      s.revealed++;
+      return { ok: true, mine: true, over: true };
+    }
+    var opened = 0;
+    var queue = [[r, c]];
+    b[r][c].revealed = true;
+    opened++;
+    while (queue.length) {
+      var cur = queue.shift();
+      if (b[cur[0]][cur[1]].adj === 0) {
+        mineNeighbors(s, cur[0], cur[1]).forEach(function (n) {
+          var cell = b[n[0]][n[1]];
+          if (cell.revealed || cell.flagged || cell.mine) return;
+          cell.revealed = true;
+          opened++;
+          queue.push(n);
+        });
+      }
+    }
+    s.revealed += opened;
+    if (s.revealed >= s.rows * s.cols - s.mines) {
+      s.over = true;
+      s.won = true;
+      return { ok: true, opened: opened, won: true, over: true };
+    }
+    return { ok: true, opened: opened };
+  }
+  function mineToggleFlag(s, r, c) {
+    if (!s || s.over) return { ok: false, error: '本局已结束' };
+    if (r < 0 || r >= s.rows || c < 0 || c >= s.cols) return { ok: false, error: '越界' };
+    var b = s.board || mineLay(s, r, c), cell = b[r][c];
+    if (cell.revealed) return { ok: false, error: '已翻开的格子不能标记' };
+    cell.flagged = !cell.flagged;
+    s.flagged += cell.flagged ? 1 : -1;
+    return { ok: true, flagged: cell.flagged, left: s.mines - s.flagged };
+  }
+
   return {
     createGame: createGame,
     cloneGame: cloneGame,
@@ -357,6 +471,10 @@
     tttAiMove: tttAiMove,
     gomokuAiMove: gomokuAiMove,
     guessNumStart: guessNumStart,
-    guessNumTry: guessNumTry
+    guessNumTry: guessNumTry,
+    mineStart: mineStart,
+    mineLay: mineLay,
+    mineReveal: mineReveal,
+    mineToggleFlag: mineToggleFlag
   };
 });

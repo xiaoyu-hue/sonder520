@@ -834,3 +834,25 @@ input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border-radius
   margin-top: 14px; padding: 12px 14px; border-radius: 10px;
   background: var(--accent-soft); color: var(--text); font-size: 15px; line-height: 1.8;
 }
+
+/* ============ v3 · 扫雷 ============ */
+.ms-board {
+  display: grid; gap: 2px; margin-top: 12px;
+  background: var(--border); padding: 2px; border-radius: 10px; border: 1px solid var(--border);
+}
+.ms-cell {
+  min-height: 28px; display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 700; line-height: 1;
+  background: var(--card); border: none; border-radius: 4px; color: var(--text);
+  cursor: pointer; padding: 0;
+  transition: background 120ms ease;
+}
+.ms-cell:hover { background: var(--accent-soft); }
+.ms-cell.open { background: rgba(120, 120, 120, 0.08); pointer-events: none; color: var(--text); }
+.ms-cell.flagged { color: var(--accent); }
+.ms-cell.mined { color: var(--accent); background: var(--accent-soft); animation: ms-boom .3s ease; }
+.ms-cell.n1 { color: #3a86e8; }
+.ms-cell.n2 { color: var(--ok); }
+.ms-cell.n3 { color: var(--accent); }
+.ms-cell.n4, .ms-cell.n5, .ms-cell.n6, .ms-cell.n7, .ms-cell.n8 { color: var(--warn); }
+@keyframes ms-boom { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.18); } }
