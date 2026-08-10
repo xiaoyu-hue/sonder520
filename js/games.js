@@ -280,7 +280,10 @@ function histHtml(g) {
         var cell = g.board[r][c];
         var inner = '', cls = 'ms-cell';
         var label;
-        if (g.over && cell.mine && !cell.flagged) {
+        if (cell.flagged && g.over && !cell.mine) {
+          inner = '⚑'; cls += ' flagged wrong-flag';
+          label = '插旗错误';
+        } else if (g.over && cell.mine && !cell.flagged) {
           inner = '💥'; cls += ' mined';
           label = '雷';
         } else if (cell.flagged) {
