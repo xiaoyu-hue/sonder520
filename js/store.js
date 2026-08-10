@@ -16,6 +16,8 @@
   /* 加密盐（16 字节 base64）独立明文存放：未解锁时也须能读它以派生密钥。
    * 盐无需保密（仅防彩虹表），数据本体仍是密文。 */
   var STORAGE_SALT_KEY = 'sonder_encsalt_v1';
+/* 自定义壁纸（base64 data URL，独立存放：不进主快照/IDB，避免撑爆配额） */
+var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
   var ENC_FORMAT = 'sonder-enc-v1';
   var BACKUP_ENC_FORMAT = 'sonder-enc-backup-v1';
 
@@ -978,6 +980,20 @@
     this.state.settings.wallpaperOpacity = clampOpacity(v);
     this.save();
     return this.state.settings.wallpaperOpacity;
+  };
+  /* 自定义壁纸：data URL 存取，不走主快照（返回是否成功，配额写满返回 false） */
+  Store.prototype.getCustomWallpaper = function () {
+    try { return this._storage ? this._storage.getItem(STORAGE_WALLPAPER_KEY) : null; } catch (e) { return null; }
+  };
+  Store.prototype.setCustomWallpaper = function (dataUrl) {
+    if (typeof dataUrl !== 'string' || dataUrl.indexOf('data:image/') !== 0) return false;
+    try {
+      this._storage.setItem(STORAGE_WALLPAPER_KEY, dataUrl);
+      return true;
+    } catch (e) { return false; }
+  };
+  Store.prototype.clearCustomWallpaper = function () {
+    try { if (this._storage) this._storage.removeItem(STORAGE_WALLPAPER_KEY); } catch (e) { /* 忽略 */ }
   };
   Store.prototype.setTaskReminder = function (on) {
     this.state.settings.taskReminder = !!on;

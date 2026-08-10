@@ -86,6 +86,16 @@
     });
   }
 
+  /* 轻量提示框：仅一个按钮，点击/Esc/点遮罩关闭 */
+  function alertBox(message, confirmText) {
+    var ov = overlay(
+      '<div class="modal"><h3>提示</h3>' +
+      '<div class="body"><p style="margin:0">' + esc(message) + '</p></div>' +
+      '<div class="foot"><button class="btn primary" data-act="ok">' + esc(confirmText || '知道了') + '</button></div></div>'
+    );
+    ov.querySelector('[data-act="ok"]').onclick = function () { ov.remove(); };
+  }
+
   /* 表单弹窗
    * fields: [{key,label,type,options,value,required,placeholder,step}]
    * onSubmit(values) -> true 关闭；返回字符串则作为错误提示显示
@@ -185,5 +195,5 @@
     return d;
   }
 
-  return { esc: esc, sanitize: sanitize, sanitizeUrl: sanitizeUrl, el: el, toast: toast, confirmBox: confirmBox, formModal: formModal, emptyState: emptyState };
+  return { esc: esc, sanitize: sanitize, sanitizeUrl: sanitizeUrl, el: el, toast: toast, confirmBox: confirmBox, alertBox: alertBox, formModal: formModal, emptyState: emptyState };
 });

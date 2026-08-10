@@ -77,7 +77,7 @@ body::before {
   position: fixed;
   inset: 0;
   z-index: -1;
-  background-image: url("../img/wallpaper.jpg");
+  background-image: var(--wallpaper-url, url("../img/wallpaper.jpg"));
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;

@@ -54,6 +54,66 @@
     });
 
     var wp = store.state.settings.wallpaperOpacity;
+    var customWall = store.getCustomWallpaper();
+    var wallSrc = customWall || 'img/wallpaper.jpg';
+    container.appendChild(UI.el(
+      '<div class="card" style="margin-top:10px">' +
+      '<div class="row" style="align-items:center;gap:16px;flex-wrap:wrap">' +
+      '<div>' +
+      '<div class="small muted" style="margin-bottom:6px">当前壁纸</div>' +
+      '<img id="wallThumb" alt="当前壁纸" src="' + UI.esc(wallSrc) + '" ' +
+      'style="width:120px;height:70px;object-fit:cover;border-radius:10px;border:1px solid var(--border)">' +
+      '</div>' +
+      '<div style="display:flex;flex-direction:column;gap:8px">' +
+      '<button class="btn primary" id="wallUpload" type="button">🖼️ 上传壁纸</button>' +
+      (customWall ? '<button class="btn" id="wallReset" type="button">🏞️ 恢复默认</button>' : '') +
+      '<input type="file" id="wallFile" accept="image/jpeg,image/png,image/webp,image/gif" style="display:none">' +
+      '</div>' +
+      '<span class="muted small">支持 jpg / png / webp / gif，不超过 2MB</span>' +
+      '</div></div>'
+    ));
+    var wallThumb = container.querySelector('#wallThumb');
+    container.querySelector('#wallUpload').addEventListener('click', function () {
+      container.querySelector('#wallFile').click();
+    });
+    if (customWall) {
+      container.querySelector('#wallReset').addEventListener('click', function () {
+        store.clearCustomWallpaper();
+        wallThumb.src = 'img/wallpaper.jpg';
+        document.documentElement.style.removeProperty('--wallpaper-url');
+        UI.toast('已恢复默认壁纸');
+        hooks.render('settings');
+      });
+    }
+    container.querySelector('#wallFile').addEventListener('change', function (e) {
+      var file = e.target.files && e.target.files[0];
+      if (!file) return;
+      if (file.size > 2 * 1024 * 1024) {
+        UI.alertBox('图片过大，请压缩后上传（不超过 2MB）');
+        e.target.value = '';
+        return;
+      }
+      if (!/^image\/(jpeg|png|webp|gif)$/.test(String(file.type))) {
+        UI.alertBox('仅支持 jpg / png / webp / gif 图片');
+        e.target.value = '';
+        return;
+      }
+      var reader = new FileReader();
+      reader.onload = function () {
+        var dataUrl = String(reader.result);
+        if (!store.setCustomWallpaper(dataUrl)) {
+          UI.alertBox('存储空间不足，图片过大，请压缩后上传');
+          e.target.value = '';
+          return;
+        }
+        wallThumb.src = dataUrl;
+        document.documentElement.style.setProperty('--wallpaper-url', 'url("' + dataUrl + '")');
+        UI.toast('壁纸已更新');
+        hooks.render('settings');
+      };
+      reader.readAsDataURL(file);
+    });
+
     var wpCard = UI.el(
       '<div class="card" style="margin-top:10px">' +
       '<div class="row">' +
