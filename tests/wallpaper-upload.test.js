@@ -66,27 +66,37 @@ test('设置页：默认显示默认壁纸缩略图与上传按钮，无恢复�
   assert.equal($('#wallReset'), null, '默认状态不应有恢复默认按钮');
 });
 
+function poll(fn, stepMs, timeoutMs) {
+  return new Promise((resolve, reject) => {
+    const t0 = Date.now();
+    (function tick() {
+      let r = null;
+      try { r = fn(); } catch (e) { return reject(e); }
+      if (r) return resolve(r);
+      if (Date.now() - t0 > (timeoutMs || 8000)) return reject(new Error('poll 超时'));
+      setTimeout(tick, stepMs || 80);
+    })();
+  });
+}
+
 test('上传成功：立即预览、背景实时更换、base64 存入 localStorage', async () => {
   const { window, hooks, $ } = boot({ seed: BASE });
   hooks.render('settings');
   uploadFile(window, $('#wallFile'));
-  await wait(150);
-  assert.equal(hooks.store.getCustomWallpaper(), localStorageGet(window), '应存入 localStorage');
+  await poll(() => window.localStorage.getItem(WALL_KEY), 80, 8000);
+  assert.equal(hooks.store.getCustomWallpaper(), window.localStorage.getItem(WALL_KEY), '应存入 localStorage');
   assert.ok(window.localStorage.getItem(WALL_KEY).startsWith('data:image/'), '应为 base64 data URL');
   assert.ok($('#wallThumb').getAttribute('src').startsWith('data:image/'), '缩略图应预览新图');
   const url = window.document.documentElement.style.getPropertyValue('--wallpaper-url');
   assert.ok(url.includes('data:image/'), '背景应实时切换为自定义图');
   assert.ok($('#wallReset'), '上传后应出现恢复默认按钮');
-  function localStorageGet(w) {
-    return w.localStorage.getItem(WALL_KEY);
-  }
 });
 
 test('刷新后：自定义壁纸仍在（缩略图 + 背景）', async () => {
   const a = boot({ seed: BASE });
   a.hooks.render('settings');
   uploadFile(a.window, a.$('#wallFile'));
-  await wait(150);
+  await poll(() => a.window.localStorage.getItem(WALL_KEY), 80, 8000);
   const raw = a.window.localStorage.getItem(WALL_KEY);
   assert.ok(raw, '应先保存成功');
 
@@ -103,7 +113,7 @@ test('超过 2MB：弹窗提示且不应用', async () => {
   const { window, hooks, $ } = boot({ seed: BASE });
   hooks.render('settings');
   uploadFile(window, $('#wallFile'), { size: 2 * 1024 * 1024 + 1 });
-  await wait(150);
+  await poll(() => window.document.querySelector('#overlayRoot .modal'), 50, 4000);
   const ov = window.document.querySelector('#overlayRoot .modal');
   assert.ok(ov && /图片过大，请压缩后上传/.test(ov.textContent), '应弹出大小提示');
   assert.equal(window.localStorage.getItem(WALL_KEY), null, '不得存储超大图');
@@ -115,7 +125,7 @@ test('非图片类型：拒绝应用', async () => {
   const { window, $ } = boot({ seed: BASE });
   window.__sonderHooks.render('settings');
   uploadFile(window, $('#wallFile'), { type: 'application/pdf', name: 'doc.pdf' });
-  await wait(150);
+  await poll(() => window.document.querySelector('#overlayRoot .modal'), 50, 4000);
   const ov = window.document.querySelector('#overlayRoot .modal');
   assert.ok(ov && /仅支持/.test(ov.textContent), '非图片应提示');
   assert.equal(window.localStorage.getItem(WALL_KEY), null);
@@ -125,11 +135,10 @@ test('恢复默认：清除存储、背景回默认图、缩略图回默认', as
   const { window, hooks, $ } = boot({ seed: BASE });
   hooks.render('settings');
   uploadFile(window, $('#wallFile'));
-  await wait(150);
+  await poll(() => hooks.store.getCustomWallpaper(), 80, 8000);
   assert.ok(hooks.store.getCustomWallpaper(), '先上传成功');
   $('#wallReset').click();
-  await wait(80);
-  assert.equal(window.localStorage.getItem(WALL_KEY), null, '存储应清除');
+  await poll(() => !window.localStorage.getItem(WALL_KEY), 50, 4000);
   assert.equal(window.document.documentElement.style.getPropertyValue('--wallpaper-url'), '', '背景应移除自定义 URL');
   assert.ok(/wallpaper\.jpg$/.test($('#wallThumb').getAttribute('src')), '缩略图应回默认');
 });
@@ -138,7 +147,7 @@ test('透明度滑块：自定义壁纸下仍联动 opacity 变量', async () =>
   const { window, hooks, $ } = boot({ seed: BASE });
   hooks.render('settings');
   uploadFile(window, $('#wallFile'));
-  await wait(150);
+  await poll(() => window.localStorage.getItem(WALL_KEY), 80, 8000);
   const slider = $('#wallOpacity');
   slider.value = '70';
   slider.dispatchEvent(new window.Event('input', { bubbles: true }));
