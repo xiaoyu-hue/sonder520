@@ -302,3 +302,63 @@ test('AI 难度：对局中切换难度需确认并重开清盘', async () => {
   assert.equal(h.window.__gamesDbg().difficulty, 'easy');
   assert.equal(h.window.__gamesDbg().game.moves, 0, '确认后应重开清盘');
 });
+
+test('战绩：AI 对局记录带难度且战绩栏显示难度', async () => {
+  const h = boot();
+  h.goto('game');
+  h.window.document.querySelector('[data-pick="tictactoe"]').click();
+  cell(h, 0, 0).click();
+  await wait(30);
+  h.window.document.querySelector('[data-act="resign"]').click();
+  await wait(20);
+  h.window.document.querySelector('[data-act="yes"]').click();
+  await wait(60);
+  const recs = h.store.state.gameRecords;
+  assert.equal(recs.length, 1);
+  assert.equal(recs[0].mode, 'ai');
+  assert.equal(recs[0].difficulty, 'normal', 'AI 对局应记录当前难度（默认普通）');
+  const badges = Array.from(h.window.document.querySelectorAll('#content .title span.small.muted')).map(e => e.textContent);
+  assert.ok(badges.includes('普通'), '战绩栏应显示难度徽标「普通」，实际：' + badges.join(','));
+});
+
+test('战绩：选择困难后对局记录难度为 hard 并显示', async () => {
+  const h = boot();
+  h.goto('game');
+  const sel = h.window.document.querySelector('#gDiffPick');
+  sel.value = 'hard';
+  sel.dispatchEvent(new h.window.Event('change', { bubbles: true }));
+  await wait(20);
+  h.window.document.querySelector('[data-pick="tictactoe"]').click();
+  cell(h, 0, 0).click();
+  await wait(30);
+  h.window.document.querySelector('[data-act="resign"]').click();
+  await wait(20);
+  h.window.document.querySelector('[data-act="yes"]').click();
+  await wait(60);
+  assert.equal(h.store.state.gameRecords[0].difficulty, 'hard');
+  const badges = Array.from(h.window.document.querySelectorAll('#content .title span.small.muted')).map(e => e.textContent);
+  assert.ok(badges.includes('困难'), '战绩栏应显示难度徽标「困难」，实际：' + badges.join(','));
+});
+
+test('战绩：双人对局不记录难度，旧记录无难度字段也正常渲染', async () => {
+  const seed = { version: 1, settings: { modules: {} }, gameRecords: [
+    { kind: 'gomoku', mode: 'ai', player: 'X', winner: 'X', byResign: false, date: '2026-08-01' }
+  ] };
+  const h = boot({ seed });
+  h.goto('game');
+  const badges = h.window.document.querySelectorAll('#content .title span.small.muted');
+  assert.equal(badges.length, 0, '无难度字段的旧记录不应显示难度徽标');
+  assert.ok(h.window.document.getElementById('content').textContent.includes('五子棋'), '旧记录应正常渲染');
+  h.window.document.querySelector('[data-pick="tictactoe"]').click();
+  h.window.document.querySelector('[data-mode="pvp"]').click();
+  cell(h, 0, 0).click();
+  h.window.document.querySelector('[data-act="resign"]').click();
+  await wait(20);
+  h.window.document.querySelector('[data-act="yes"]').click();
+  await wait(60);
+  const pvpRec = h.store.state.gameRecords[0];
+  assert.equal(pvpRec.mode, 'pvp');
+  assert.equal(pvpRec.difficulty, null, '双人对局不应有难度');
+  const afterBadges = h.window.document.querySelectorAll('#content .title span.small.muted');
+  assert.equal(afterBadges.length, 0, '双人记录不应显示难度徽标');
+});

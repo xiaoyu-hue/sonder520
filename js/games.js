@@ -325,7 +325,8 @@
     ctx.store.addGameRecord({
       kind: g.kind, mode: state.mode,
       player: state.mode === 'ai' ? state.playerStone : 'X',
-      winner: g.winner, byResign: g.byResign
+      winner: g.winner, byResign: g.byResign,
+      difficulty: state.mode === 'ai' ? state.difficulty : null
     });
   }
   function recordEnd(ctx) {
@@ -347,6 +348,12 @@
   function shortDate(d) {
     return String(d || '').slice(5);
   }
+  function diffBadge(r) {
+    if (r.mode !== 'ai' || !r.difficulty) return '';
+    var label = DIFF_LABEL[r.difficulty] || r.difficulty;
+    return '<span class="small muted" style="margin-left:8px;white-space:nowrap">' + window.UI.esc(label) + '</span>';
+  }
+
   function recordsArea(ctx) {
     var UI = ctx.UI, recs = ctx.store.state.gameRecords;
     var box = UI.el('<div></div>');
@@ -359,7 +366,7 @@
         card.appendChild(UI.el(
           '<div class="list-item">' +
           '<div class="grow">' +
-          '<div class="title">' + UI.esc(kindName({ kind: r.kind })) + ' · ' + (r.mode === 'ai' ? 'AI 对决' : '双人对弈') + '</div>' +
+          '<div class="title">' + UI.esc(kindName({ kind: r.kind })) + ' · ' + (r.mode === 'ai' ? 'AI 对决' : '双人对弈') + diffBadge(r) + '</div>' +
           '<div class="sub">' + UI.esc(shortDate(r.date)) + (r.byResign ? ' · 认输' : '') + '</div>' +
           '</div>' +
           '<span class="pill ' + resultPill(r) + '">' + resultText(r) + '</span>' +

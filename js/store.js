@@ -694,6 +694,8 @@
       player: d.player === 'O' ? 'O' : 'X',
       winner: d.winner === 'draw' ? 'draw' : (d.winner === 'O' ? 'O' : 'X'),
       byResign: !!d.byResign,
+      /* 仅 AI 对决记录难度档位；双人对弈与旧记录为 null */
+      difficulty: d.mode === 'pvp' ? null : (d.difficulty === 'easy' || d.difficulty === 'hard' ? d.difficulty : 'normal'),
       date: todayStr(),
       time: nowISO()
     };
