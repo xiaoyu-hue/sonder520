@@ -5,10 +5,19 @@
   var G = window.SonderGames;
 
   var currentEl = null, currentCtx = null;
-  var state = { game: null, mode: 'ai', playerStone: 'X' };
+  var state = { game: null, mode: 'ai', playerStone: 'X', difficulty: 'normal' };
   var busy = false;
   var aiTimer = null;
   var confirmOpen = false;
+
+  var DIFF_LABEL = { easy: '简单', normal: '普通', hard: '困难' };
+  function diffOptions(sel) {
+    var s = '';
+    ['easy', 'normal', 'hard'].forEach(function (d) {
+      s += '<option value="' + d + '"' + (sel === d ? ' selected' : '') + '>' + DIFF_LABEL[d] + '</option>';
+    });
+    return s;
+  }
 
   /* 统一确认框：防连点/叠加（同一时刻只允许一个弹窗），返回 Promise<boolean>。
    * 已有弹窗时新请求被忽略并提示，避免用户"点了没反应"。 */
@@ -43,6 +52,14 @@
   function pickView(ctx) {
     var UI = ctx.UI;
     var box = UI.el(
+      '<div>' +
+      '<div class="card" style="margin-bottom:14px">' +
+      '<div class="row">' +
+      '<span class="muted" style="margin-right:12px;white-space:nowrap">AI 难度</span>' +
+      '<select id="gDiffPick" title="AI 难度档位">' + diffOptions(state.difficulty) + '</select>' +
+      '<span class="muted small" style="margin-left:auto">困难 AI 更会进攻与布防</span>' +
+      '</div>' +
+      '</div>' +
       '<div class="grid cols-2">' +
       '<div class="card lg-pick" data-pick="tictactoe">' +
       '<div class="lab">井字棋</div>' +
@@ -54,11 +71,14 @@
       '<div class="sub">15×15 标准盘 · 五连即胜</div>' +
       '<div class="sub">AI 对决 / 双人对弈 · 悔棋 · 认输</div>' +
       '</div>' +
+      '</div>' +
       '</div>'
     );
     box.querySelectorAll('[data-pick]').forEach(function (c) {
       c.addEventListener('click', function () { startGame(ctx, c.dataset.pick); });
     });
+    var diffSel = box.querySelector('#gDiffPick');
+    diffSel.addEventListener('change', function (e) { switchDiff(ctx, e.target.value); });
     return box;
   }
 
@@ -76,7 +96,8 @@
         ? '<select id="gFirst" title="先后手">' +
           '<option value="X"' + (state.playerStone === 'X' ? ' selected' : '') + '>执先（' + sym('X') + '）</option>' +
           '<option value="O"' + (state.playerStone === 'O' ? ' selected' : '') + '>执后（' + sym('O') + '）</option>' +
-          '</select>'
+          '</select>' +
+          '<select id="gDiff" title="AI 难度档位">' + diffOptions(state.difficulty) + '</select>'
         : '') +
       '<button class="btn" data-act="new" type="button">新开局</button>' +
       '</div>'
@@ -121,6 +142,8 @@
     wrap.querySelector('[data-act="back"]').addEventListener('click', function () { backToPick(ctx); });
     var firstSel = wrap.querySelector('#gFirst');
     if (firstSel) firstSel.addEventListener('change', function (e) { switchFirst(ctx, e.target.value); });
+    var diffSel = wrap.querySelector('#gDiff');
+    if (diffSel) diffSel.addEventListener('change', function (e) { switchDiff(ctx, e.target.value); });
     boardWrap.querySelectorAll('.cell').forEach(function (cell) {
       cell.addEventListener('click', function () {
         if (busy || !state.game || state.game.over) return;
@@ -178,7 +201,7 @@
       aiTimer = null;
       busy = false;
       if (!state.game || state.game !== g || state.game.over || state.game.turn !== aiStone()) return;
-      var mv = state.game.kind === 'tictactoe' ? G.tttAiMove(state.game, aiStone()) : G.gomokuAiMove(state.game, aiStone());
+      var mv = state.game.kind === 'tictactoe' ? G.tttAiMove(state.game, aiStone(), state.difficulty) : G.gomokuAiMove(state.game, aiStone(), state.difficulty);
       var res = G.place(state.game, mv.r, mv.c);
       render(ctx);
       if (res.winner || res.draw) recordEnd(ctx);
@@ -284,6 +307,18 @@
     else go();
   }
 
+  function switchDiff(ctx, v) {
+    if (state.difficulty === v) return;
+    var g = state.game;
+    var go = function () {
+      state.difficulty = ctx.store.setGameDifficulty(v);
+      if (g) startGame(ctx, g.kind);
+      else render(ctx);
+    };
+    if (g && (g.moves.length || g.over)) askConfirm(ctx, '切换难度将重新开局，确定？', '切换').then(function (ok) { if (ok === true) go(); });
+    else go();
+  }
+
   /* ---------- 战绩 ---------- */
   function recordMatch(ctx) {
     var g = state.game;
@@ -348,7 +383,13 @@
 
   Pages.game = {
     title: '娱乐游戏',
-    render: function (container, ctx) { currentEl = container; currentCtx = ctx; render(ctx); }
+    render: function (container, ctx) {
+      currentEl = container;
+      currentCtx = ctx;
+      var d = ctx.store.state.settings.gameDifficulty;
+      if (d === 'easy' || d === 'hard' || d === 'normal') state.difficulty = d;
+      render(ctx);
+    }
   };
 
   /* 测试/调试钩子：只读快照，对正常运行无害 */
@@ -357,6 +398,7 @@
     return {
       mode: state.mode,
       playerStone: state.playerStone,
+      difficulty: state.difficulty,
       busy: busy,
       game: g && { kind: g.kind, turn: g.turn, moves: g.moves.length, over: g.over, winner: g.winner }
     };

@@ -2,6 +2,7 @@
 const { test } = require('node:test');
 const assert = require('node:assert');
 const { boot } = require('./harness.js');
+const LG = require('../js/games-logic.js');
 
 const wait = ms => new Promise(r => setTimeout(r, ms));
 
@@ -215,4 +216,89 @@ test('游戏：任意时刻点新开局必须清空棋盘', async () => {
   await wait(20);
   assert.equal(emptyBoardHelper(h).filled.length, 0, '五子棋新开局棋盘必须全空');
   assert.equal(h.window.__gamesDbg().game.moves, 0);
+});
+
+/* ---------- 第 2 轮：AI 难度分级（简单 / 普通 / 困难） ---------- */
+
+test('AI 难度：普通/困难五子棋必封对手冲四（确定性）', () => {
+  ['normal', 'hard'].forEach(diff => {
+    const g = LG.createGame('gomoku');
+    g.board[7][3] = 'O'; g.board[7][4] = 'O'; g.board[7][5] = 'O'; g.board[7][6] = 'O';
+    const mv = LG.gomokuAiMove(g, 'X', diff);
+    assert.ok((mv.r === 7 && mv.c === 2) || (mv.r === 7 && mv.c === 7),
+      diff + ' 难度应封堵对手冲四一端，实际: ' + JSON.stringify(mv));
+  });
+});
+
+test('AI 难度：普通/困难五子棋必走己方成五点（确定性）', () => {
+  ['normal', 'hard'].forEach(diff => {
+    const g = LG.createGame('gomoku');
+    for (let c = 3; c < 7; c++) g.board[7][c] = 'X';
+    const mv = LG.gomokuAiMove(g, 'X', diff);
+    assert.ok((mv.r === 7 && mv.c === 2) || (mv.r === 7 && mv.c === 7),
+      diff + ' 难度应直接成五取胜，实际: ' + JSON.stringify(mv));
+  });
+});
+
+test('AI 难度：困难井字棋在必胜局面必走胜点', () => {
+  const g = LG.createGame('tictactoe');
+  g.board[0][0] = 'X'; g.board[0][1] = 'X'; g.board[2][0] = 'O';
+  const mv = LG.tttAiMove(g, 'X', 'hard');
+  assert.deepEqual(mv, { r: 0, c: 2 }, '困难难度应立即取胜');
+});
+
+test('AI 难度：简单井字棋不执意取胜（30 次至少一次不走胜点）', () => {
+  const g = LG.createGame('tictactoe');
+  g.board[0][0] = 'X'; g.board[0][1] = 'X'; g.board[2][0] = 'O';
+  let wins = 0;
+  for (let i = 0; i < 30; i++) {
+    const mv = LG.tttAiMove(g, 'X', 'easy');
+    if (mv.r === 0 && mv.c === 2) wins++;
+  }
+  assert.ok(wins < 30, '简单难度不应每次都直取胜点');
+});
+
+test('AI 难度：简单五子棋面对对方四连经常不封堵（统计）', () => {
+  let blocked = 0;
+  for (let i = 0; i < 30; i++) {
+    const g = LG.createGame('gomoku');
+    for (let c = 3; c < 7; c++) g.board[7][c] = 'O';
+    const mv = LG.gomokuAiMove(g, 'X', 'easy');
+    if ((mv.r === 7 && mv.c === 2) || (mv.r === 7 && mv.c === 7)) blocked++;
+  }
+  assert.ok(blocked < 25, '简单难度不应每次都封堵冲四，实际封堵 ' + blocked + '/30');
+});
+
+test('AI 难度：默认普通，选择页可切换并持久化', () => {
+  const h = boot();
+  h.goto('game');
+  const pickSel = h.window.document.querySelector('#gDiffPick');
+  assert.ok(pickSel, '选择页应有难度下拉');
+  assert.equal(pickSel.value, 'normal', '默认普通');
+  pickSel.value = 'hard';
+  pickSel.dispatchEvent(new h.window.Event('change', { bubbles: true }));
+  assert.equal(h.store.state.settings.gameDifficulty, 'hard', '应持久化到设置');
+  assert.equal(h.window.__gamesDbg().difficulty, 'hard');
+  h.goto('home');
+  h.goto('game');
+  const again = h.window.document.querySelector('#gDiffPick');
+  assert.equal(again.value, 'hard', '重进页面应沿用难度');
+});
+
+test('AI 难度：对局中切换难度需确认并重开清盘', async () => {
+  const h = boot();
+  h.goto('game');
+  h.window.document.querySelector('[data-pick="tictactoe"]').click();
+  assert.ok(h.window.document.querySelector('#gDiff'), 'AI 模式对局条应有难度下拉');
+  cell(h, 0, 0).click();
+  assert.equal(emptyBoardHelper(h).filled.length, 1, '先落一子');
+  const diffSel = h.window.document.querySelector('#gDiff');
+  diffSel.value = 'easy';
+  diffSel.dispatchEvent(new h.window.Event('change', { bubbles: true }));
+  await wait(20);
+  assert.ok(h.window.document.querySelector('[data-act="yes"]'), '切换难度应弹确认');
+  h.window.document.querySelector('[data-act="yes"]').click();
+  await wait(20);
+  assert.equal(h.window.__gamesDbg().difficulty, 'easy');
+  assert.equal(h.window.__gamesDbg().game.moves, 0, '确认后应重开清盘');
 });

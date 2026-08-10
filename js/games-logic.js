@@ -148,7 +148,18 @@
     return game.winner;
   }
 
-  /* ---------- 井字棋 AI（Minimax 完全搜索，必不输） ---------- */
+  /* ---------- 井字棋 AI（Minimax 完全搜索，必不输）
+   * 难度：easy=随机落子；normal=完全搜索但 25% 失手；hard=完全搜索从不失误 ---------- */
+  function emptyCells(game) {
+    var out = [], i, j;
+    for (i = 0; i < game.size; i++) for (j = 0; j < game.size; j++) {
+      if (game.board[i][j] === null) out.push({ r: i, c: j });
+    }
+    return out;
+  }
+  function randOf(list) {
+    return list[Math.floor(Math.random() * list.length)] || null;
+  }
   function tttMinimax(board, player, aiStone) {
     var w = tttStateWinner(board);
     if (w === 'draw') return 0;
@@ -164,8 +175,11 @@
     }
     return best;
   }
-  function tttAiMove(game, aiStone) {
+  function tttAiMove(game, aiStone, diff) {
     var board = game.board, best = null, bestScore = -Infinity, i, j, sc;
+    var empties = emptyCells(game);
+    if (diff === 'easy') return randOf(empties);
+    if (diff === 'normal' && Math.random() < 0.25) return randOf(empties);
     for (i = 0; i < 3; i++) for (j = 0; j < 3; j++) {
       if (board[i][j] !== null) continue;
       board[i][j] = aiStone;
@@ -176,7 +190,8 @@
     return best;
   }
 
-  /* ---------- 五子棋 AI（评分启发式：进攻 1.2 / 防守 1.0 加权） ---------- */
+  /* ---------- 五子棋 AI（评分启发式）
+   * easy=随机空位（新手）；normal=进攻 1.2 / 防守 1.0 加权；hard=进攻 1.35 + 一层前瞻（评估对手最佳应对） ---------- */
   function gomokuPattern(seg, open) {
     if (seg >= 5) return 1000000;
     if (seg === 4) return open === 2 ? 100000 : open === 1 ? 10000 : 0;
@@ -230,20 +245,53 @@
     }
     return out;
   }
-  function gomokuAiMove(game, aiStone) {
+  /* 常规最佳应手（win → block → 加权评分），供 normal 与 hard 的前瞻复用 */
+  function gomokuBestMove(board, size, p) {
+    var opp = p === 'X' ? 'O' : 'X';
+    var winCell = findWinCell(board, size, p);
+    if (winCell) return winCell;
+    var block = findWinCell(board, size, opp);
+    if (block) return block;
+    var cands = candidates(board, size), best = null, bestScore = -Infinity;
+    var ctr = (size - 1) / 2;
+    for (var i = 0; i < cands.length; i++) {
+      var m = cands[i];
+      var s = evalCell(board, size, m.r, m.c, p) * 1.2 + evalCell(board, size, m.r, m.c, opp);
+      s -= (Math.abs(m.r - ctr) + Math.abs(m.c - ctr)) * 0.5;
+      if (s > bestScore) { bestScore = s; best = m; }
+    }
+    return best || { r: Math.floor(size / 2), c: Math.floor(size / 2) };
+  }
+  function gomokuAiMove(game, aiStone, diff) {
     var size = game.size, board = game.board, opp = aiStone === 'X' ? 'O' : 'X';
     var filled = 0, r, c, i;
     for (r = 0; r < size; r++) for (c = 0; c < size; c++) if (board[r][c]) filled++;
     if (!filled) return { r: Math.floor(size / 2), c: Math.floor(size / 2) };
+    if (diff === 'easy') return randOf(emptyCells(game));
     var winCell = findWinCell(board, size, aiStone);
     if (winCell) return winCell;
     var block = findWinCell(board, size, opp);
     if (block) return block;
     var cands = candidates(board, size), best = null, bestScore = -Infinity;
     var ctr = (size - 1) / 2;
+    var wMul = diff === 'hard' ? 1.35 : 1.2;
     for (i = 0; i < cands.length; i++) {
       var m = cands[i];
-      var s = evalCell(board, size, m.r, m.c, aiStone) * 1.2 + evalCell(board, size, m.r, m.c, opp);
+      var s;
+      if (diff === 'hard') {
+        var my = evalCell(board, size, m.r, m.c, aiStone);
+        board[m.r][m.c] = aiStone;
+        var bm = gomokuBestMove(board, size, opp);
+        var loss = 0;
+        if (bm) {
+          var w = gomokuWins(board, bm.r, bm.c, opp);
+          loss = w ? 500000 : evalCell(board, size, bm.r, bm.c, aiStone);
+        }
+        board[m.r][m.c] = null;
+        s = my * wMul - loss;
+      } else {
+        s = evalCell(board, size, m.r, m.c, aiStone) * wMul + evalCell(board, size, m.r, m.c, opp);
+      }
       s -= (Math.abs(m.r - ctr) + Math.abs(m.c - ctr)) * 0.5;
       if (s > bestScore) { bestScore = s; best = m; }
     }

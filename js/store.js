@@ -40,6 +40,7 @@
   var DEFAULT_SETTINGS = {
     theme: 'light',
     wallpaperOpacity: 40,
+    gameDifficulty: 'normal',
     modules: {
       today: true, memo: true, selfmedia: true, dev: true,
       consulting: true, reading: true, news: true, design: true,
@@ -90,6 +91,7 @@
     if (isPlainObject(raw)) {
       if (typeof raw.theme === 'string') s.theme = raw.theme;
       if (typeof raw.wallpaperOpacity === 'number') s.wallpaperOpacity = clampOpacity(raw.wallpaperOpacity);
+      if (raw.gameDifficulty === 'easy' || raw.gameDifficulty === 'normal' || raw.gameDifficulty === 'hard') s.gameDifficulty = raw.gameDifficulty;
       if (isPlainObject(raw.modules)) {
         for (var k in s.modules) {
           if (typeof raw.modules[k] === 'boolean') s.modules[k] = raw.modules[k];
@@ -582,6 +584,12 @@
     if (!(key in this.state.settings.modules)) return;
     this.state.settings.modules[key] = !!on;
     this.save();
+  };
+  Store.prototype.setGameDifficulty = function (d) {
+    var v = d === 'easy' || d === 'hard' ? d : 'normal';
+    this.state.settings.gameDifficulty = v;
+    this.save();
+    return v;
   };
   var moduleKeysList = [{ key: 'today', label: '今日计划' }, { key: 'memo', label: '快速备忘' }, { key: 'selfmedia', label: '自媒体' }, { key: 'dev', label: '开发工作' }, { key: 'consulting', label: '咨询工作' }, { key: 'reading', label: '阅读计划' }, { key: 'news', label: '看新闻计划' }, { key: 'design', label: '设计计划' }, { key: 'game', label: '娱乐游戏' }];
 
