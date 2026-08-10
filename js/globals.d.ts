@@ -3,11 +3,14 @@
 declare var SonderStore: any;
 declare var SonderGames: any;
 declare var SonderQuotes: any;
+declare var SonderCrypto: any;
+declare var require: any;
 
 interface Window {
   SonderStore: any;
   SonderGames: any;
   SonderQuotes: any;
+  SonderCrypto: any;
   Pages: any;
   UI: any;
   __sonderHooks: any;

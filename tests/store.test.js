@@ -187,21 +187,21 @@ test('设置：主题与模块开关', () => {
   assert.equal(s.state.settings.modules.dev, true);
 });
 
-test('导出/导入：roundtrip 一致，非法文件报错', () => {
+test('导出/导入：roundtrip 一致，非法文件报错', async () => {
   const s = newStore();
   s.addTask({ title: 'A', priority: '低' });
   s.addBook({ title: 'B' });
   const json = s.exportBackup();
   const s2 = newStore();
-  const r = s2.importBackup(json);
+  const r = await s2.importBackup(json);
   assert.equal(r.ok, true);
   assert.equal(s2.state.tasks.length, 1);
   assert.equal(s2.state.tasks[0].title, 'A');
   assert.equal(s2.state.books.length, 1);
-  const bad = s2.importBackup('not json');
+  const bad = await s2.importBackup('not json');
   assert.equal(bad.ok, false);
   assert.equal(bad.error, '文件不是有效的 JSON');
-  const noVer = s2.importBackup(JSON.stringify({ foo: 1 }));
+  const noVer = await s2.importBackup(JSON.stringify({ foo: 1 }));
   assert.equal(noVer.ok, false);
 });
 

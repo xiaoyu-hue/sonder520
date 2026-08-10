@@ -155,12 +155,26 @@
   }
 
   function exportBackup(ctx) {
-    var json = ctx.store.exportBackup();
-var blob = new Blob([json], { type: 'application/json' });
+    var UI = window.UI;
+    var out = ctx.store.exportBackup();
+    if (out && typeof out.then === 'function') {
+      UI.toast('正在生成加密备份…');
+      out.then(function (json) {
+        download(json, 'sonder-backup-enc-' + S.todayStr() + '.json');
+        UI.toast('已导出加密备份（导入需密码）');
+      }).catch(function (err) {
+        UI.toast(err && err.message ? err.message : '导出失败');
+      });
+      return;
+    }
+    download(out, 'sonder-backup-' + S.todayStr() + '.json');
+  }
+  function download(json, name) {
+    var blob = new Blob([json], { type: 'application/json' });
     var url = URL.createObjectURL(blob);
     var a = document.createElement('a');
     a.href = url;
-    a.download = 'sonder-backup-' + S.todayStr() + '.json';
+    a.download = name;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);

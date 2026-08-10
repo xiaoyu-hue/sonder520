@@ -13,6 +13,11 @@
 
   var STORAGE_KEY = 'sonder_data_v1';
   var STORAGE_META_KEY = 'sonder_meta_v1';
+  /* 加密盐（16 字节 base64）独立明文存放：未解锁时也须能读它以派生密钥。
+   * 盐无需保密（仅防彩虹表），数据本体仍是密文。 */
+  var STORAGE_SALT_KEY = 'sonder_encsalt_v1';
+  var ENC_FORMAT = 'sonder-enc-v1';
+  var BACKUP_ENC_FORMAT = 'sonder-enc-backup-v1';
 
   /* ---------- IndexedDB 层 ----------
    * localStorage 上限约 5MB，数据增长后可能写满。Sonder 采用双写双存：
@@ -22,6 +27,14 @@
   var IDB_STORE = 'state';
   var IDB_KEY = 'state';
   var QUOTA_SOFT_LIMIT = Math.round(4.5 * 1024 * 1024);
+
+  /* 加密核心（浏览器 window.SonderCrypto / Node require('./encryption.js')） */
+  var Crypto = null;
+  try {
+    Crypto = (typeof window !== 'undefined' && window.SonderCrypto) ||
+      (typeof module === 'object' && typeof require === 'function' ? require('./encryption.js') : null);
+  } catch (e) { Crypto = null; }
+  function cryptoReady() { return !!Crypto; }
 
   function idbAvailable() {
     return typeof indexedDB !== 'undefined' && typeof IDBKeyRange !== 'undefined';
@@ -155,7 +168,7 @@
   }
 
   /* ---------- Store ---------- */
-  /** @constructor @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _idbWrite: any, _lastJson: string, _rev: number }} */
+  /** @constructor @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _idbWrite: any, _lastJson: string, _rev: number, _encKey: any, _encSize: number, _hasEncSnapshot: Function, _idbEncLocked: boolean }} */
   function Store(storage) {
     this._storage = storage || (typeof localStorage !== 'undefined' ? localStorage : null);
     var persisted = null;
@@ -163,12 +176,58 @@
       try { persisted = JSON.parse(this._storage.getItem(STORAGE_KEY)); }
       catch (e) { persisted = null; }
     }
-    this.state = normalize(persisted);
+    this.state = normalize(this._hasEncSnapshot() ? null : persisted);
     this._meta = null;
     this._idbPromise = null;
     this._lastJson = null;
     this._rev = 0;
+    this._encKey = null;
+    this._encSize = 0;
+    this._idbEncLocked = false;
   }
+
+  /* 主快照是否为密文（未解锁时据此判定"需要解锁"） */
+  Store.prototype._hasEncSnapshot = function () {
+    if (!this._storage) return false;
+    try {
+      var raw = this._storage.getItem(STORAGE_KEY);
+      if (!raw) return false;
+      var parsed = JSON.parse(raw);
+      return !!(parsed && parsed.e === 1 && parsed.v === ENC_FORMAT);
+    } catch (e) { return false; }
+  };
+  Store.prototype._encSalt = function () {
+    if (!this._storage || !Crypto) return null;
+    try {
+      var b64 = this._storage.getItem(STORAGE_SALT_KEY);
+      if (!b64) return null;
+      var bytes = Crypto.b64ToBytes(b64);
+      return bytes && bytes.length === 16 ? bytes : null;
+    } catch (e) { return null; }
+  };
+  /* 盐获取（localStorage 缺失时从 IndexedDB 冗余读取，配合双写恢复） */
+  Store.prototype._encSaltAsync = function () {
+    var self = this;
+    var local = this._encSalt();
+    if (local) return Promise.resolve(local);
+    if (!idbAvailable()) return Promise.resolve(null);
+    return openIdb().then(function (db) {
+      return idbGet(db, IDB_KEY).then(function (entry) {
+        if (!entry || typeof entry !== 'object') return null;
+        if (entry.salt && Crypto) {
+          try {
+            var bytes = Crypto.b64ToBytes(entry.salt);
+            if (bytes.length === 16) return bytes;
+          } catch (e) { /* 继续 */ }
+        }
+        return null;
+      });
+    }).catch(function () { return null; });
+  };
+  /* 未解锁判定：localStorage 主快照为密文，或 IDB 侧存在待解锁密文（loadIdb 探测标记） */
+  Store.prototype.needsUnlock = function () {
+    return !!this._encKey ? false : (this._hasEncSnapshot() || !!this._idbEncLocked);
+  };
 
   function clone(o) { return deepClone(o); }
 
@@ -185,60 +244,100 @@
   };
 
   /* 异步写 IndexedDB。串行队列避免事务竞争；失败静默（localStorage 仍兜底）。
-   * 可传入 save 已序列化的 json 避免二次 stringify。 */
+   * 可传入 save 已序列化的 json 避免二次 stringify；extra 合并进 entry（如加密盐）。 */
   /** @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _idbWrite: any, _lastJson: string, _rev: number }} */
-  Store.prototype._idbWrite = function (json) {
+  Store.prototype._idbWrite = function (json, extra) {
     if (!idbAvailable()) return;
     var useJson = json || JSON.stringify(this.state);
     var meta = this._meta || nowISO();
     var prev = this._idbPromise || Promise.resolve();
     this._idbPromise = prev.then(function () {
       return openIdb().then(function (db) {
-        return idbPut(db, IDB_KEY, { savedAt: meta, data: useJson });
+        var entry = extra ? Object.assign({}, extra) : {};
+        entry.savedAt = meta;
+        entry.data = useJson;
+        return idbPut(db, IDB_KEY, entry);
       });
     }).catch(function () {});
   };
 
-  /** @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _idbWrite: any, _lastJson: string, _rev: number }} */
+  /** @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _idbWrite: any, _lastJson: string, _rev: number, _encKey: any, _encSize: number, _encSave: Function }} */
   Store.prototype.save = function () {
     var json = JSON.stringify(this.state);
     if (json === this._lastJson) return; /* 内容未变：零序列化零 IO */
     this._lastJson = json;
     this._rev++;
-    this._persistLocal();
-    this._idbWrite(json);
+    if (this._encKey) { this._encSave(json).catch(function () {}); }
+    else { this._persistLocal(json); this._idbWrite(json); }
+  };
+
+  /* 加密落盘：AES-GCM 异步（微任务级，用户操作间隙完成）；失败仅吞日志，
+   * 存储里上一份快照仍完好，下次 save 重试 */
+  Store.prototype._encSave = function (json) {
+    var self = this;
+    if (!this._encKey || !Crypto) return Promise.resolve();
+    return Crypto.encryptText(json, this._encKey).then(function (bundle) {
+      var payload = JSON.stringify({ e: 1, v: bundle.v, iv: bundle.iv, data: bundle.data });
+      self._encSize = payload.length;
+      self._persistLocal(payload);
+      var salt = self._storage ? self._storage.getItem(STORAGE_SALT_KEY) : null;
+      self._idbWrite(payload, salt ? { salt: salt } : {});
+    }).catch(function (err) {
+      /* eslint-disable no-console */
+      if (typeof console !== 'undefined' && console.error) console.error('encrypt save failed', err);
+    });
   };
 
   /* 启动时调用：优先从 IndexedDB 恢复（若更新）。返回 Promise<是否采用 IDB 数据> */
-  /** @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _idbWrite: any, _lastJson: string, _rev: number, save: Function }} */
+  /** @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _idbWrite: any, _lastJson: string, _rev: number, save: Function, _encKey: any, _decryptParse: Function, _idbEncLocked: boolean }} */
   Store.prototype.loadIdb = function () {
     var self = this;
     if (!idbAvailable()) return Promise.resolve(false);
     return openIdb().then(function (db) {
       return idbGet(db, IDB_KEY).then(function (entry) {
-        if (!entry) {
-          self._idbWrite();
-          return false;
-        }
-        var idbSavedAt = (entry && (typeof entry === 'string' ? '' : entry.savedAt)) || '';
-        var idbData = entry && (typeof entry === 'string' ? entry : entry.data);
-        var localMeta = null;
+        if (!entry) { self._idbWrite(); return false; }
+        var idbSavedAt = (entry && typeof entry === 'object' && !Array.isArray(entry)) ? entry.savedAt : '';
+        var idbData = (entry && typeof entry === 'object' && !Array.isArray(entry)) ? entry.data : entry;
+        var localMeta = null, localRaw = null;
         if (self._storage) {
-          try { localMeta = self._storage.getItem(STORAGE_META_KEY); } catch (e) { localMeta = null; }
+          try { localMeta = self._storage.getItem(STORAGE_META_KEY); localRaw = self._storage.getItem(STORAGE_KEY); } catch (e) { localMeta = null; }
         }
-        /* localStorage 数据更新时以它为准并把 IDB 追平，否则采用 IDB */
-        if (localMeta && localMeta > idbSavedAt) {
-          self._idbWrite();
+        /* localStorage 更新 → 用本地原文（明文或密文）追平 IDB，不采用 IDB */
+        if (localMeta && localMeta > idbSavedAt && localRaw) {
+          self._idbWrite(localRaw);
           return false;
         }
-        var parsed = null;
-        try { parsed = JSON.parse(idbData); } catch (e) { parsed = null; }
-        if (!parsed) return false;
-        self.state = normalize(parsed);
-        self.save();
-        return true;
+        return self._decryptParse(idbData).then(function (parsed) {
+          if (!parsed) {
+            var isEnc = false;
+            try { isEnc = !!(JSON.parse(idbData) && JSON.parse(idbData).e === 1); } catch (e) { isEnc = false; }
+            if (isEnc) self._idbEncLocked = true; /* IDB 侧有待解锁密文：提示 UI 走解锁流程 */
+            return false;
+          }
+          self._idbEncLocked = false;
+          self.state = normalize(parsed);
+          self._lastJson = JSON.stringify(self.state);
+          self._rev++;
+          self._persistLocal(idbData);
+          self._idbWrite(idbData);
+          return true;
+        });
       });
     }).catch(function () { return false; });
+  };
+
+  /* 把存储字符串解析为 state 对象；密文格式（e===1）需已解锁并解密，失败一律返回 null 不动数据 */
+  Store.prototype._decryptParse = function (data) {
+    var self = this;
+    var parsed = null;
+    try { parsed = JSON.parse(data); } catch (e) { return Promise.resolve(null); }
+    if (parsed && parsed.e === 1 && parsed.v === ENC_FORMAT) {
+      if (!self._encKey || !Crypto) return Promise.resolve(null);
+      return Crypto.decryptBundle(parsed, self._encKey).then(function (json) {
+        try { return JSON.parse(json); } catch (e) { return null; }
+      }).catch(function () { return null; });
+    }
+    return Promise.resolve(parsed);
   };
 
   /* 手动迁移：立即把当前全部数据写入 IndexedDB（只复制不删旧数据） */
@@ -253,9 +352,11 @@
     }).catch(function () { return false; });
   };
 
-  /* 当前数据体积（字节）。接近 5MB 上限时前端显示警示条。复用上次序列化结果，页面切换时不重复计算 */
-  /** @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _idbWrite: any, _lastJson: string, _rev: number }} */
+  /* 当前数据体积（字节）。接近 5MB 上限时前端显示警示条。复用上次序列化结果，页面切换时不重复计算
+   * 加密模式下按最近一次密文长度计。 */
+  /** @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _idbWrite: any, _lastJson: string, _rev: number, _encKey: any, _encSize: number }} */
   Store.prototype.storageUsage = function () {
+    if (this._encKey) return this._encSize || (this._lastJson ? this._lastJson.length : 0);
     try { return (this._lastJson || JSON.stringify(this.state)).length; } catch (e) { return 0; }
   };
   Store.prototype.isNearQuota = function () {
@@ -278,6 +379,156 @@
     for (var i = 0; i < arr.length; i++) if (arr[i].id === id) return i;
     return -1;
   }
+
+  /* ====== 可选加密（默认关闭；开启后本地快照为密文，需解锁使用） ====== */
+  Store.prototype.encryptionEnabled = function () {
+    return this._encKey ? true : this.needsUnlock();
+  };
+  Store.prototype.encryptionMode = function () {
+    return this._encKey ? 'unlocked' : (this.needsUnlock() ? 'locked' : 'off');
+  };
+  Store.prototype.lock = function () {
+    this._encKey = null;
+  };
+  /* 启用加密：自检锁 → 派生密钥 → 全量密文落盘 → 回读验证。
+   * 任何一步失败即中止，旧明文快照与内存数据原样保留。 */
+  Store.prototype.enableEncryption = function (password) {
+    var self = this;
+    if (!cryptoReady()) return Promise.reject(new Error('当前环境不支持 Web Crypto'));
+    if (typeof password !== 'string' || password.length < 4) return Promise.reject(new Error('密码至少 4 位'));
+    if (this._encKey) return Promise.reject(new Error('已处于加密模式'));
+    var salt = Crypto.saltBytes();
+    return Crypto.selfTest(password, salt).then(function (ok) {
+      if (!ok) throw new Error('加密引擎自检异常，已中断启用');
+      return Crypto.deriveKey(password, salt);
+    }).then(function (key) {
+      self._encKey = key;
+      if (self._storage) {
+        try { self._storage.setItem(STORAGE_SALT_KEY, Crypto.bytesToB64(salt)); } catch (e) { throw new Error('盐存储失败，已中止'); }
+      }
+      var json = JSON.stringify(self.state);
+      self._lastJson = json;
+      self._rev++;
+      return self._encSave(json).then(function () {
+        /* 回读验证：密文必须能解回并保留关键数据 */
+        return self.readSnapshot('local').then(function (dec) {
+          if (!dec || !dec.settings || !isPlainObject(dec.settings)) throw new Error('加密回读验证失败');
+          if (dec.tasks.length !== self.state.tasks.length) throw new Error('加密回读数据不一致，已中止');
+          return true;
+        });
+      });
+    }).catch(function (err) {
+      self._encKey = null;
+      if (self._storage) {
+        try { self._storage.removeItem(STORAGE_SALT_KEY); } catch (e) { /* 忽略 */ }
+      }
+      /* 兜底：把内存明文快照写回双存（若密文已部分落盘则覆盖为明文） */
+      var fallback = JSON.stringify(self.state);
+      self._persistLocal(fallback);
+      self._idbWrite(fallback);
+      throw err;
+    });
+  };
+  /* 解锁：用密码派生密钥并解密主快照（localStorage 优先，缺则 IndexedDB）；
+   * 成功进入可用状态并复位锁定标记，失败状态原样 */
+  Store.prototype.unlock = function (password) {
+    var self = this;
+    if (!cryptoReady()) return Promise.resolve(false);
+    if (typeof password !== 'string' || !password) return Promise.resolve(false);
+    return this._encSaltAsync().then(function (salt) {
+      if (!salt) return false;
+      return Crypto.deriveKey(password, salt).then(function (key) {
+        self._encKey = key;
+        return self.readSnapshot('any').then(function (dec) {
+          if (!dec) { self._encKey = null; return false; }
+          self.state = normalize(dec);
+          self._lastJson = JSON.stringify(self.state);
+          self._rev++;
+          self._idbEncLocked = false;
+          /* 回填双存：解锁即保证 localStorage 与 IDB 都是最新密文快照 */
+          return self._encSave(self._lastJson).then(function () { return true; });
+        }).catch(function () { self._encKey = null; return false; });
+      }).catch(function () { self._encKey = null; return false; });
+    });
+  };
+  /* 停用加密：必须用输入的密码派生密钥解出快照（不能用当前会话密钥），
+   * 密码错误则拒绝且密文快照原样保留 */
+  Store.prototype.disableEncryption = function (password) {
+    var self = this;
+    if (!cryptoReady()) return Promise.reject(new Error('当前环境不支持 Web Crypto'));
+    if (!this.needsUnlock() && !this._encKey) return Promise.reject(new Error('未启用加密'));
+    return this._encSaltAsync().then(function (salt) {
+      if (!salt) throw new Error('盐缺失，无法验证密码');
+      return Crypto.deriveKey(password, salt).then(function (key) {
+        return self._decryptSnapshotKey(key).then(function (dec) {
+          if (!dec) throw new Error('密码不正确或快照损坏，已中止');
+          self.state = normalize(dec);
+          self._encKey = null;
+          self._idbEncLocked = false;
+          if (self._storage) {
+            try { self._storage.removeItem(STORAGE_SALT_KEY); } catch (e) { /* 忽略 */ }
+          }
+          self._lastJson = null; /* 破除幂等保护，强制明文双写 */
+          self.save(); /* 明文双写（_encKey 已空） */
+          return true;
+        });
+      });
+    });
+  };
+  /* 用给定密钥解密主快照（local 优先，缺则 IDB），失败一律 null */
+  Store.prototype._decryptSnapshotKey = function (key) {
+    var self = this;
+    if (!Crypto) return Promise.resolve(null);
+    var localRaw = null;
+    if (self._storage) {
+      try { localRaw = self._storage.getItem(STORAGE_KEY); } catch (e) { localRaw = null; }
+    }
+    function fromRaw(raw) {
+      var parsed = null;
+      try { parsed = JSON.parse(raw); } catch (e) { return Promise.resolve(null); }
+      if (!parsed || parsed.e !== 1 || parsed.v !== ENC_FORMAT) return Promise.resolve(null);
+      return Crypto.decryptBundle(parsed, key).then(function (json) {
+        try { return JSON.parse(json); } catch (e) { return null; }
+      }).catch(function () { return null; });
+    }
+    if (localRaw) return fromRaw(localRaw);
+    if (!idbAvailable()) return Promise.resolve(null);
+    return openIdb().then(function (db) {
+      return idbGet(db, IDB_KEY).then(function (entry) {
+        if (!entry) return null;
+        var data = (entry && typeof entry === 'object' && !Array.isArray(entry)) ? entry.data : entry;
+        return fromRaw(data);
+      });
+    }).catch(function () { return null; });
+  };
+  /* 读取当前主快照（加密则需已解锁）：source = 'local' | 'idb' | 'any'。
+   * 返回解析后的 state 对象或 null（读取/解密失败一律 null，绝不抛出覆盖调用方）。 */
+  Store.prototype.readSnapshot = function (source) {
+    var self = this;
+    function readLocal() {
+      if (!self._storage) return Promise.resolve(null);
+      var raw = null;
+      try { raw = self._storage.getItem(STORAGE_KEY); } catch (e) { return Promise.resolve(null); }
+      if (!raw) return Promise.resolve(null);
+      return self._decryptParse(raw);
+    }
+    function readIdb() {
+      if (!idbAvailable()) return Promise.resolve(null);
+      return openIdb().then(function (db) {
+        return idbGet(db, IDB_KEY).then(function (entry) {
+          if (!entry) return null;
+          var data = (entry && typeof entry === 'object' && !Array.isArray(entry)) ? entry.data : entry;
+          return self._decryptParse(data);
+        });
+      }).catch(function () { return null; });
+    }
+    if (source === 'local') return readLocal();
+    if (source === 'idb') return readIdb();
+    return readLocal().then(function (dec) {
+      if (dec) return dec;
+      return readIdb();
+    });
+  };
 
   /* ====== 通用 ====== */
   Store.prototype.clearAll = function () {
@@ -744,23 +995,56 @@
   };
   var moduleKeysList = [{ key: 'today', label: '今日计划' }, { key: 'memo', label: '快速备忘' }, { key: 'selfmedia', label: '自媒体' }, { key: 'dev', label: '开发工作' }, { key: 'consulting', label: '咨询工作' }, { key: 'reading', label: '阅读计划' }, { key: 'news', label: '看新闻计划' }, { key: 'design', label: '设计计划' }, { key: 'game', label: '娱乐游戏' }];
 
-  /* ====== 导出 / 导入 ====== */
+  /* ====== 导出 / 导入 ======
+   * 明文模式：导出完整明文 JSON（同步字符串）。
+   * 加密模式：导出密文备份包 { format, salt, iv, data }（不包含密码；导入需密码），异步 Promise。 */
   Store.prototype.exportBackup = function () {
-    return JSON.stringify(this.state, null, 2);
+    var self = this;
+    if (!this.needsUnlock() && !this._encKey) return JSON.stringify(this.state, null, 2);
+    if (this.needsUnlock() && !this._encKey) return Promise.reject(new Error('需要解锁后才能导出加密备份'));
+    var salt = this._encSalt();
+    if (!salt) return Promise.reject(new Error('盐缺失，无法导出加密备份'));
+    return this.readSnapshot('any').then(function (dec) {
+      if (dec) return Promise.resolve(dec);
+      return Promise.reject(new Error('当前快照无法读取，导出中止'));
+    }).then(function (dec) {
+      if (!self._encKey) return Promise.reject(new Error('需要解锁后才能导出'));
+      return Crypto.encryptText(JSON.stringify(dec), self._encKey).then(function (bundle) {
+        return JSON.stringify({ format: BACKUP_ENC_FORMAT, salt: Crypto.bytesToB64(salt), iv: bundle.iv, data: bundle.data }, null, 2);
+      });
+    });
   };
-  Store.prototype.importBackup = function (jsonStr) {
+  /* 导入：明文备份同步完成；加密备份需 password。统一返回 Promise<{ok, error?}> */
+  Store.prototype.importBackup = function (jsonStr, password) {
     var parsed;
-    try {
-      parsed = JSON.parse(jsonStr);
-    } catch (e) {
-      return { ok: false, error: '文件不是有效的 JSON' };
-    }
+    try { parsed = JSON.parse(jsonStr); } catch (e) { return Promise.resolve({ ok: false, error: '文件不是有效的 JSON' }); }
+    if (parsed && parsed.format === BACKUP_ENC_FORMAT) return this._importEncBackup(parsed, password);
     if (!isPlainObject(parsed) || typeof parsed.version !== 'number') {
-      return { ok: false, error: '文件缺少必要字段(version)，无法识别为备份文件' };
+      return Promise.resolve({ ok: false, error: '文件缺少必要字段(version)，无法识别为备份文件' });
     }
     this.state = normalize(parsed);
     this.save();
-    return { ok: true };
+    return Promise.resolve({ ok: true });
+  };
+  Store.prototype._importEncBackup = function (pkg, password) {
+    var self = this;
+    if (!cryptoReady()) return Promise.resolve({ ok: false, error: '当前环境不支持 Web Crypto' });
+    if (typeof password !== 'string' || !password) return Promise.resolve({ ok: false, error: '导入加密备份需要密码' });
+    var salt;
+    try { salt = Crypto.b64ToBytes(pkg.salt); } catch (e) { return Promise.resolve({ ok: false, error: '备份盐格式无效' }); }
+    if (salt.length !== 16) return Promise.resolve({ ok: false, error: '备份盐长度无效' });
+    return Crypto.deriveKey(password, salt).then(function (key) {
+      return Crypto.decryptBundle(pkg, key).then(function (json) {
+        var parsed;
+        try { parsed = JSON.parse(json); } catch (e) { return { ok: false, error: '解密结果不是有效数据' }; }
+        if (!isPlainObject(parsed) || typeof parsed.version !== 'number') return { ok: false, error: '解密结果缺少必要字段' };
+        self.state = normalize(parsed);
+        self.save();
+        return { ok: true };
+      }).catch(function () {
+        return { ok: false, error: '密码错误或备份已损坏，导入中止（原数据未动）' };
+      });
+    });
   };
 
   /* ====== 统计汇总（首页 + 数据页） ====== */
