@@ -84,6 +84,21 @@
       });
     });
 
+    container.appendChild(UI.el('<div class="section-title">提醒</div>'));
+    var rm = store.state.settings.taskReminder;
+    container.appendChild(UI.el(
+      '<div class="card">' +
+      '<div class="row">' +
+      '<label class="toggle">' +
+      '<input type="checkbox" id="taskReminder" ' + (rm ? 'checked' : '') + '> 开启今日任务提醒</label>' +
+      '<span class="muted small" style="margin-left:auto">每次打开页面时，通知今日未完成任务（需浏览器授权）</span>' +
+      '</div></div>'
+    ));
+    container.querySelector('#taskReminder').addEventListener('change', function () {
+      store.setTaskReminder(container.querySelector('#taskReminder').checked);
+      hooks.render('settings');
+    });
+
     container.appendChild(UI.el('<div class="section-title">数据统计</div>'));
     container.appendChild(statsCard(store, UI));
 

@@ -102,7 +102,8 @@
       consulting: true, reading: true, news: true, design: true,
       game: true
     },
-    quotaNoticeDismissed: false
+    quotaNoticeDismissed: false,
+    taskReminder: false
   };
 
   function moduleKeys() {
@@ -152,6 +153,7 @@
       if (raw.frameRate === 60 || raw.frameRate === 90) s.frameRate = raw.frameRate;
       else if (raw.frameRate === 120) s.frameRate = 120;
       if (typeof raw.quotaNoticeDismissed === 'boolean') s.quotaNoticeDismissed = raw.quotaNoticeDismissed;
+      if (typeof raw.taskReminder === 'boolean') s.taskReminder = raw.taskReminder;
       if (isPlainObject(raw.modules)) {
         for (var k in s.modules) {
           if (typeof raw.modules[k] === 'boolean') s.modules[k] = raw.modules[k];
@@ -975,6 +977,11 @@
     this.state.settings.wallpaperOpacity = clampOpacity(v);
     this.save();
     return this.state.settings.wallpaperOpacity;
+  };
+  Store.prototype.setTaskReminder = function (on) {
+    this.state.settings.taskReminder = !!on;
+    this.save();
+    return this.state.settings.taskReminder;
   };
   Store.prototype.setModuleEnabled = function (key, on) {
     if (!(key in this.state.settings.modules)) return;

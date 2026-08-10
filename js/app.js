@@ -136,7 +136,38 @@
   };
   window.__sonderHooks.idbReady.then(function () {
     if (store.needsUnlock()) { autoUnlockOnce(); }
+    else { todayReminder(); }
   });
+
+  /* ---------- 今日任务桌面提醒（设置页开关，每次打开/刷新页面触发一次） ---------- */
+  function todayReminder() {
+    var s = store.state.settings;
+    if (!s.taskReminder) return;
+    if (!('Notification' in window) || typeof window.Notification !== 'function') return;
+    var today = SonderStore.todayStr();
+    var todays = store.state.tasks.filter(function (t) { return t.date === today; });
+    if (todays.length === 0) return;
+    var undone = todays.filter(function (t) { return !t.done; });
+    if (undone.length === 0) {
+      notify('🌿 今日事今日毕，了不起！', '今天的所有计划都已完成，真是充实的一天。');
+      return;
+    }
+    var names = undone.slice(0, 3).map(function (t) { return t.title; });
+    notify('🌿 今日尚有未竟之事', names.join('、') + (undone.length > 3 ? ' 等 ' + undone.length + ' 项未完成' : ''));
+  }
+  function notify(title, body) {
+    var N = window.Notification;
+    function show() {
+      try { new N(title, { body: body, tag: 'sonder-daily' }); } catch (e) { /* 忽略构造失败 */ }
+    }
+    if (N.permission === 'granted') { show(); return; }
+    if (N.permission === 'denied') return;
+    /* default：先弹窗询问授权，授权通过后才通知 */
+    if (typeof N.requestPermission === 'function') {
+      try { N.requestPermission(function (p) { if (p === 'granted') show(); }); } catch (e) { /* 忽略 */ }
+    }
+  }
+  window.__sonderHooks.todayReminder = todayReminder;
 
   /* ---------- 加密锁屏 ---------- */
   var lockScreenEl = null, lockPwdEl = null, lockErrEl = null, lockRememberEl = null;
@@ -185,6 +216,7 @@
         lockErrEl.textContent = '';
         lockPwdEl.value = '';
         onHash();
+        todayReminder();
       });
     }
     btn.onclick = tryUnlock;
@@ -199,7 +231,7 @@
     try { pwd = sessionStorage.getItem('sonder_session_pwd'); } catch (e) { pwd = null; }
     if (!pwd) { showLockScreen(); return; }
     store.unlock(pwd).then(function (ok) {
-      if (ok) { onHash(); }
+      if (ok) { onHash(); todayReminder(); }
       else {
         try { sessionStorage.removeItem('sonder_session_pwd'); } catch (e) { /* ignore */ }
         showLockScreen();
