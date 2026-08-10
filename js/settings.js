@@ -26,6 +26,28 @@
       });
     });
 
+    var fr = store.state.settings.frameRate;
+    var frCard = UI.el(
+      '<div class="card" style="margin-top:10px">' +
+      '<div class="row">' +
+      '<label class="small muted" style="margin-right:12px;white-space:nowrap">动画帧率</label>' +
+      '<label class="toggle"><input type="radio" name="frame" value="60" ' + (fr === 60 ? 'checked' : '') + '> 60</label>' +
+      '<label class="toggle"><input type="radio" name="frame" value="90" ' + (fr === 90 ? 'checked' : '') + '> 90</label>' +
+      '<label class="toggle"><input type="radio" name="frame" value="120" ' + (fr === 120 ? 'checked' : '') + '> 120</label>' +
+      '<span class="muted small" style="margin-left:auto">数值越低动画越省资源</span>' +
+      '</div></div>'
+    );
+    container.appendChild(frCard);
+    container.querySelectorAll('input[name="frame"]').forEach(function (r) {
+      r.addEventListener('change', function () {
+        if (!r.checked) return;
+        var f = store.setFrameRate(Number(r.value));
+        document.documentElement.setAttribute('data-frame', String(f));
+        UI.toast(f === 60 ? '已切换为省电模式（60）' : '动画帧率已设为 ' + f);
+        hooks.render('settings');
+      });
+    });
+
     var wp = store.state.settings.wallpaperOpacity;
     var wpCard = UI.el(
       '<div class="card" style="margin-top:10px">' +

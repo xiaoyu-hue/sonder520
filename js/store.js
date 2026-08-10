@@ -41,6 +41,7 @@
     theme: 'light',
     wallpaperOpacity: 40,
     gameDifficulty: 'normal',
+    frameRate: 120,
     modules: {
       today: true, memo: true, selfmedia: true, dev: true,
       consulting: true, reading: true, news: true, design: true,
@@ -92,6 +93,8 @@
       if (typeof raw.theme === 'string') s.theme = raw.theme;
       if (typeof raw.wallpaperOpacity === 'number') s.wallpaperOpacity = clampOpacity(raw.wallpaperOpacity);
       if (raw.gameDifficulty === 'easy' || raw.gameDifficulty === 'normal' || raw.gameDifficulty === 'hard') s.gameDifficulty = raw.gameDifficulty;
+      if (raw.frameRate === 60 || raw.frameRate === 90) s.frameRate = raw.frameRate;
+      else if (raw.frameRate === 120) s.frameRate = 120;
       if (isPlainObject(raw.modules)) {
         for (var k in s.modules) {
           if (typeof raw.modules[k] === 'boolean') s.modules[k] = raw.modules[k];
@@ -588,6 +591,12 @@
   Store.prototype.setGameDifficulty = function (d) {
     var v = d === 'easy' || d === 'hard' ? d : 'normal';
     this.state.settings.gameDifficulty = v;
+    this.save();
+    return v;
+  };
+  Store.prototype.setFrameRate = function (f) {
+    var v = f === 60 || f === 90 ? f : 120;
+    this.state.settings.frameRate = v;
     this.save();
     return v;
   };

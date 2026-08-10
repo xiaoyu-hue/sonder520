@@ -561,6 +561,20 @@ input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border-radius
   }
 }
 
+/* =============================================================
+   动画帧率档位：120=满速原版（无覆盖规则）
+   90=折中：装饰性循环动效降频；60=极省：关闭全部动画仅留按压反馈
+   ============================================================= */
+[data-frame="90"] .brand .dot { animation-duration: 6.4s; }
+[data-frame="90"] .empty .big { animation-duration: 7.2s; }
+[data-frame="90"] .rd-donut { animation: fadeIn .6s var(--ease) both, donutGlow 8s ease-in-out 2s infinite; }
+[data-frame="90"] .game-board.done .cell.win { animation-duration: 2.2s; }
+[data-frame="60"] *, [data-frame="60"] *::before, [data-frame="60"] *::after {
+  animation-duration: .001s !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: .12s !important;
+}
+
 /* ---------- 水墨细滚动条 ---------- */
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-track { background: transparent; }

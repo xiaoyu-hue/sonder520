@@ -28,6 +28,12 @@
     if (meta) meta.setAttribute('content', t === 'dark' ? '#171410' : '#f2efe6');
   }
 
+  /* 动画帧率档位：60=极省（关循环动效）、90=折中（循环动效降频）、120=满速原版 */
+  function applyFrame() {
+    var f = store.state.settings.frameRate;
+    document.documentElement.setAttribute('data-frame', String(f));
+  }
+
   function applyWallpaper() {
     var v = store.state.settings.wallpaperOpacity;
     document.documentElement.style.setProperty('--wallpaper-opacity', String(Number(v) / 100));
@@ -65,6 +71,7 @@
     buildNav();
     applyTheme();
     applyWallpaper();
+    applyFrame();
     page.render(container, ctx);
   }
 
@@ -78,6 +85,7 @@
     render: function (route) { location.hash = route; render(); },
     applyTheme: applyTheme,
     applyWallpaper: applyWallpaper,
+    applyFrame: applyFrame,
     todayLine: todayLine
   };
 
@@ -112,6 +120,7 @@
 
   applyTheme();
   applyWallpaper();
+  applyFrame();
   buildNav();
   todayLine();
   window.addEventListener('hashchange', onHash);
