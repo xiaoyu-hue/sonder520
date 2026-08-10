@@ -61,12 +61,23 @@
     return input ? input.value : '';
   }
 
+  /* 优先复用应用运行实例（避免每次击键全量反序列化）；数据版本 _rev 未变时索引复用 */
+  var idxCache = { rev: -1, index: [] };
+  function getIndex() {
+    var hooks = window.__sonderHooks;
+    var store = (hooks && hooks.store) || SonderStore.createStore();
+    if (idxCache.rev !== store._rev) {
+      idxCache.index = buildIndex(store);
+      idxCache.rev = store._rev;
+    }
+    return idxCache.index;
+  }
+
   function onInput() {
     var q = currentQuery();
     var qs = terms(q);
     if (!qs.length) { hidePanel(); return; }
-    var store = SonderStore.createStore();
-    var hits = buildIndex(store).filter(function (r) { return matches(r.text, qs); });
+    var hits = getIndex().filter(function (r) { return matches(r.text, qs); });
     showPanel(qs, hits);
   }
 

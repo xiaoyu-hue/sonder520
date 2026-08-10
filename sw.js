@@ -2,7 +2,7 @@
  * 部署新版本时请递增 CACHE 版本号；sw 更新后会自动清理旧缓存。 */
 'use strict';
 
-var CACHE = 'sonder-v7';
+var CACHE = 'sonder-v8';
 
 var ASSETS = [
   './',

@@ -275,10 +275,25 @@
     var cands = candidates(board, size), best = null, bestScore = -Infinity;
     var ctr = (size - 1) / 2;
     var wMul = diff === 'hard' ? 1.35 : 1.2;
+    /* 困难模式前瞻预算：候选过多时仅对评分最高的前 HARD_LOOKAHEAD 个做一层前瞻，其余用基础评分。
+       避免终盘百级候选数的平方级评估拖慢低端手机，棋力损失可忽略 */
+    var HARD_LOOKAHEAD = 16;
+    var topIdx = null;
+    if (diff === 'hard' && cands.length > HARD_LOOKAHEAD) {
+      var scoreArr = new Array(cands.length);
+      for (i = 0; i < cands.length; i++) {
+        scoreArr[i] = evalCell(board, size, cands[i].r, cands[i].c, aiStone) * wMul + evalCell(board, size, cands[i].r, cands[i].c, opp);
+      }
+      var idxs = [];
+      for (i = 0; i < cands.length; i++) idxs.push(i);
+      idxs.sort(function (a, b) { return scoreArr[b] - scoreArr[a]; });
+      topIdx = {};
+      for (i = 0; i < HARD_LOOKAHEAD; i++) topIdx[idxs[i]] = 1;
+    }
     for (i = 0; i < cands.length; i++) {
       var m = cands[i];
       var s;
-      if (diff === 'hard') {
+      if (diff === 'hard' && (!topIdx || topIdx[i])) {
         var my = evalCell(board, size, m.r, m.c, aiStone);
         board[m.r][m.c] = aiStone;
         var bm = gomokuBestMove(board, size, opp);

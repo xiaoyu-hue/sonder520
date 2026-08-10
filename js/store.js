@@ -155,7 +155,7 @@
   }
 
   /* ---------- Store ---------- */
-  /** @constructor @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _idbWrite: any }} */
+  /** @constructor @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _idbWrite: any, _lastJson: string, _rev: number }} */
   function Store(storage) {
     this._storage = storage || (typeof localStorage !== 'undefined' ? localStorage : null);
     var persisted = null;
@@ -166,43 +166,51 @@
     this.state = normalize(persisted);
     this._meta = null;
     this._idbPromise = null;
+    this._lastJson = null;
+    this._rev = 0;
   }
 
   function clone(o) { return deepClone(o); }
 
-  /* 同步写 localStorage（权威快照，永不阻塞正常流程；写满时忽略错误，IDB 兜底） */
-  /** @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _idbWrite: any }} */
-  Store.prototype._persistLocal = function () {
+  /* 同步写 localStorage（权威快照，永不阻塞正常流程；写满时忽略错误，IDB 兜底）。
+   * 可传入 save 已序列化的 json 避免二次 stringify。 */
+  /** @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _idbWrite: any, _lastJson: string, _rev: number }} */
+  Store.prototype._persistLocal = function (json) {
     if (!this._storage) return;
     this._meta = nowISO();
     try {
-      this._storage.setItem(STORAGE_KEY, JSON.stringify(this.state));
+      this._storage.setItem(STORAGE_KEY, json || JSON.stringify(this.state));
       this._storage.setItem(STORAGE_META_KEY, this._meta);
     } catch (e) { /* 存储满等错误在此忽略，IDB 副本兜底 */ }
   };
 
-  /* 异步写 IndexedDB。串行队列避免事务竞争；失败静默（localStorage 仍兜底） */
-  /** @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _idbWrite: any }} */
-  Store.prototype._idbWrite = function () {
+  /* 异步写 IndexedDB。串行队列避免事务竞争；失败静默（localStorage 仍兜底）。
+   * 可传入 save 已序列化的 json 避免二次 stringify。 */
+  /** @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _idbWrite: any, _lastJson: string, _rev: number }} */
+  Store.prototype._idbWrite = function (json) {
     if (!idbAvailable()) return;
-    var json = JSON.stringify(this.state);
+    var useJson = json || JSON.stringify(this.state);
     var meta = this._meta || nowISO();
     var prev = this._idbPromise || Promise.resolve();
     this._idbPromise = prev.then(function () {
       return openIdb().then(function (db) {
-        return idbPut(db, IDB_KEY, { savedAt: meta, data: json });
+        return idbPut(db, IDB_KEY, { savedAt: meta, data: useJson });
       });
     }).catch(function () {});
   };
 
-  /** @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _idbWrite: any }} */
+  /** @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _idbWrite: any, _lastJson: string, _rev: number }} */
   Store.prototype.save = function () {
+    var json = JSON.stringify(this.state);
+    if (json === this._lastJson) return; /* 内容未变：零序列化零 IO */
+    this._lastJson = json;
+    this._rev++;
     this._persistLocal();
-    this._idbWrite();
+    this._idbWrite(json);
   };
 
   /* 启动时调用：优先从 IndexedDB 恢复（若更新）。返回 Promise<是否采用 IDB 数据> */
-  /** @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _idbWrite: any }} */
+  /** @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _idbWrite: any, _lastJson: string, _rev: number, save: Function }} */
   Store.prototype.loadIdb = function () {
     var self = this;
     if (!idbAvailable()) return Promise.resolve(false);
@@ -227,8 +235,7 @@
         try { parsed = JSON.parse(idbData); } catch (e) { parsed = null; }
         if (!parsed) return false;
         self.state = normalize(parsed);
-        self._persistLocal();
-        self._idbWrite();
+        self.save();
         return true;
       });
     }).catch(function () { return false; });
@@ -246,10 +253,10 @@
     }).catch(function () { return false; });
   };
 
-  /* 当前数据体积（字节）。接近 5MB 上限时前端显示警示条 */
-  /** @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _idbWrite: any }} */
+  /* 当前数据体积（字节）。接近 5MB 上限时前端显示警示条。复用上次序列化结果，页面切换时不重复计算 */
+  /** @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _idbWrite: any, _lastJson: string, _rev: number }} */
   Store.prototype.storageUsage = function () {
-    try { return JSON.stringify(this.state).length; } catch (e) { return 0; }
+    try { return (this._lastJson || JSON.stringify(this.state)).length; } catch (e) { return 0; }
   };
   Store.prototype.isNearQuota = function () {
     return this.storageUsage() > QUOTA_SOFT_LIMIT;
