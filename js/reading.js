@@ -1,8 +1,58 @@
-/* reading.js - 阅读计划：书单三状态、进度、读书笔记 */
+/* reading.js - 阅读计划：书单三状态、进度、读书笔记、阅读计时、摘抄金句、我的书摘页 */
 (function () {
   'use strict';
   var Pages = window.Pages = window.Pages || {};
+  var S = window.SonderStore;
   var currentEl = null, currentCtx = null;
+
+  /* ---------- 阅读计时（当前正在计时的书，会话结束才落账） ---------- */
+  var timer = null; // { bookId, startTs }
+  function timerOn(id) { return !!timer && timer.bookId === id; }
+  function elapsedSecs() { return timer ? (Date.now() - timer.startTs) / 1000 : 0; }
+  function mmss(s) {
+    s = Math.max(0, Math.floor(s));
+    var m = Math.floor(s / 60), t = s % 60;
+    return (m < 10 ? '0' : '') + m + ':' + (t < 10 ? '0' : '') + t;
+  }
+  var clockTimer = null;
+  function clockTick() {
+    var nodes = document.querySelectorAll('[data-clock]');
+    if (!nodes.length || !timer) { stopClockLoop(); return; }
+    var sec = elapsedSecs();
+    nodes.forEach(function (n) { n.textContent = mmss(sec); });
+    clockTimer = setTimeout(clockTick, 1000);
+  }
+  function stopClockLoop() {
+    if (clockTimer) { clearTimeout(clockTimer); clockTimer = null; }
+  }
+  function startTimer(ctx, bookId) {
+    if (timer) { ctx.UI.toast('已有书籍计时中，先停止上一本吧', 'err'); return; }
+    timer = { bookId: bookId, startTs: Date.now() };
+    ctx.UI.toast('📖 开始阅读计时');
+    var btn = document.querySelector('[data-timerbtn="' + bookId + '"]');
+    if (btn) {
+      btn.textContent = '■ 停止计时';
+      var wrap = btn.parentNode;
+      if (wrap && !wrap.querySelector('[data-clock="' + bookId + '"]')) {
+        var clk = document.createElement('span');
+        clk.className = 'small rd-clock';
+        clk.setAttribute('data-clock', bookId);
+        clk.textContent = '00:00';
+        btn.insertAdjacentElement('afterend', clk);
+      }
+    }
+    clockTick();
+  }
+  function stopTimer(ctx) {
+    if (!timer) { ctx.UI.toast('当前没有进行中的计时', 'err'); return; }
+    var minutes = elapsedSecs() / 60;
+    var bookId = timer.bookId;
+    timer = null;
+    stopClockLoop();
+    var added = ctx.store.addReadingSession(bookId, minutes);
+    ctx.UI.toast(added ? '已累计 ' + added + ' 分钟阅读' : '阅读时长已记录');
+    render(ctx);
+  }
 
   function render(ctx) {
     var container = currentEl, store = ctx.store, UI = ctx.UI;
@@ -68,12 +118,22 @@
 
   function bookCard(container, ctx, b) {
     var UI = ctx.UI, store = ctx.store;
+    var timing = timerOn(b.id);
     var card = UI.el(
       '<div class="list-item" data-id="' + b.id + '">' +
       '<div class="grow">' +
       '<div class="title">' + UI.esc(b.title) + (b.author ? ' <span class="muted small">' + UI.esc(b.author) + '</span>' : '') + '</div>' +
       '<div class="row" style="margin-top:6px"><span class="progress grow" style="max-width:160px"><i style="width:' + b.progress + '%"></i></span>' +
-      '<span class="small muted">' + b.progress + '%</span></div>' +
+      '<span class="small muted">' + b.progress + '%</span>' +
+      (b.status === '已读完' && b.finishedAt ? '<span class="small muted"> · ' + UI.esc(b.finishedAt) + ' 读完</span>' : '') +
+      '</div>' +
+      '<div class="row" style="margin-top:8px;flex-wrap:wrap;gap:6px">' +
+      '<button class="small-btn" data-timerbtn="' + b.id + '" aria-label="' + (timing ? '停止阅读计时' : '开始阅读计时') + '">' +
+      (timing ? '■ 停止计时' : '▶ 开始阅读') + '</button>' +
+      '<span class="small muted">累计 <b data-minutes="' + b.id + '">' + b.readingMinutes + '</b> 分钟</span>' +
+      (timing ? '<span class="small rd-clock" data-clock>00:00</span>' : '') +
+      '<button class="small-btn" data-excerpt="' + b.id + '">摘抄金句</button>' +
+      '</div>' +
       notesArea(b, ctx) +
       '</div>' +
       '<span class="pill ' + (b.status === '在读' ? 'mid' : '') + '">' + UI.esc(b.status || '想读') + '</span>' +
@@ -84,6 +144,11 @@
     );
     card.querySelector('[data-act="edit"]').onclick = function () { openBook(ctx, b); };
     card.querySelector('[data-act="note"]').onclick = function () { openNote(ctx, b.id); };
+    card.querySelector('[data-excerpt]').onclick = function () { openExcerpt(ctx, b); };
+    card.querySelector('[data-timerbtn]').onclick = function () {
+      if (timerOn(b.id)) stopTimer(ctx);
+      else startTimer(ctx, b.id);
+    };
     card.querySelector('[data-act="del"]').onclick = function () {
       UI.confirmBox('删除这本书？').then(function (ok) { if (ok) { store.removeBook(b.id); render(ctx); } });
     };
@@ -129,10 +194,71 @@
       }
     });
   }
+  function openExcerpt(ctx, b) {
+    ctx.UI.formModal({
+      title: '摘抄金句 · ' + b.title, confirmText: '保存摘抄',
+      fields: [
+        { key: 'text', label: '句子', type: 'textarea', required: true, placeholder: '原句摘抄…' },
+        { key: 'page', label: '页码', type: 'number', value: 1 }
+      ],
+      onSubmit: function (v) {
+        var ex = ctx.store.addExcerpt({ bookId: b.id, text: v.text, page: v.page });
+        if (!ex) return '句子不能为空';
+        ctx.UI.toast('已摘抄，可在「我的书摘」查看');
+        render(ctx); return true;
+      }
+    });
+  }
+
+  /* ---------- 我的书摘页（按书籍分组） ---------- */
+  function renderExcerpts(container, ctx) {
+    var UI = ctx.UI, store = ctx.store;
+    container.innerHTML = '';
+    var groups = S.excerptsByBook(store.state.excerpts);
+    if (!groups.length) {
+      container.appendChild(UI.emptyState('还没有摘抄', '去阅读计划摘抄一句', function () { ctx.navigate('reading'); }));
+      return;
+    }
+    var total = store.state.excerpts.length;
+    container.appendChild(UI.el('<div class="section-title" style="margin-top:0">我的书摘 · 共 ' + total + ' 条</div>'));
+    groups.forEach(function (g) {
+      var card = UI.el('<div class="card" style="margin-bottom:14px"></div>');
+      card.appendChild(UI.el('<div class="section-title" style="margin:0 0 8px">📖 ' + UI.esc(g.bookTitle) + ' · ' + g.items.length + '</div>'));
+      g.items.forEach(function (it) {
+        card.appendChild(UI.el(
+          '<div class="list-item" data-exid="' + it.id + '" style="margin-bottom:6px">' +
+          '<div class="grow"><div class="ex-text">「' + UI.esc(it.text) + '」</div>' +
+          '<div class="sub muted">第 ' + UI.esc(it.page) + ' 页 · ' + UI.esc(String(it.time || '').slice(0, 10)) + '</div></div>' +
+          '<button class="small-btn danger" data-exdel="' + it.id + '" aria-label="删除这条书摘">✕</button>' +
+          '</div>'
+        ));
+      });
+      container.appendChild(card);
+    });
+    container.querySelectorAll('[data-exdel]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        store.removeExcerpt(btn.dataset.exdel);
+        UI.toast('已删除该条书摘');
+        renderExcerpts(container, ctx);
+      });
+    });
+  }
+
+  /* 测试/调试钩子（对正常运行无害） */
+  window.__readingDbg = {
+    timerOn: timerOn,
+    elapsedSecs: elapsedSecs,
+    startTimer: function (ctx, bookId) { startTimer(ctx, bookId); },
+    stopTimer: function (ctx) { stopTimer(ctx); }
+  };
 
   Pages.reading = {
     title: '阅读计划',
     render: function (container, ctx) { currentEl = container; currentCtx = ctx; render(ctx); },
     add: function (ctx) { openBook(ctx); }
+  };
+  Pages.excerpts = {
+    title: '我的书摘',
+    render: function (container, ctx) { renderExcerpts(container, ctx); }
   };
 })();

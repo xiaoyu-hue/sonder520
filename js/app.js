@@ -6,11 +6,11 @@
   var UI = window.UI;
 
   /* 导航顺序；可被"数据与设置"开关隐藏的为业务模块 */
-  var TOGGLEABLE = { today: 1, memo: 1, selfmedia: 1, dev: 1, consulting: 1, reading: 1, news: 1, design: 1, game: 1 };
-  var NAV = ['home', 'today', 'memo', 'selfmedia', 'dev', 'consulting', 'reading', 'news', 'design', 'game', 'settings'];
+  var TOGGLEABLE = { today: 1, memo: 1, selfmedia: 1, dev: 1, consulting: 1, reading: 1, news: 1, design: 1, game: 1, excerpts: 1 };
+  var NAV = ['home', 'today', 'memo', 'selfmedia', 'dev', 'consulting', 'reading', 'excerpts', 'news', 'design', 'game', 'settings'];
   var ICONS = {
     home: '🏠', today: '📅', memo: '📝', selfmedia: '📣', dev: '💻',
-    consulting: '🤝', reading: '📚', news: '📰', design: '🎨', game: '🎮', settings: '⚙️'
+    consulting: '🤝', reading: '📚', excerpts: '📖', news: '📰', design: '🎨', game: '🎮', settings: '⚙️'
   };
 
   var ctx = {
@@ -73,7 +73,10 @@
     nav.innerHTML = '';
     var active = currentPageKey();
     NAV.forEach(function (key) {
-      if (key !== 'home' && key !== 'settings' && TOGGLEABLE[key] && !store.state.settings.modules[key]) return;
+      if (key !== 'home' && key !== 'settings') {
+        var modKey = key === 'excerpts' ? 'reading' : key; /* 我的书摘跟随阅读模块开关 */
+        if (TOGGLEABLE[key] && !store.state.settings.modules[modKey]) return;
+      }
       var b = document.createElement('button');
       b.type = 'button';
       b.dataset.route = key;

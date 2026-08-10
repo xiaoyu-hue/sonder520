@@ -123,6 +123,7 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
       devProjects: [],
       clients: [],
       books: [],
+      excerpts: [],
       news: [],
       designs: [],
       gameRecords: []
@@ -157,6 +158,23 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     }
     /* 旧数据优先级迁移（高/中/低 → p1/p2/p4） */
     out.tasks.forEach(function (t) { t.priority = normalizePriority(t.priority); });
+    /* 旧书补默认：阅读统计与会话日志、完成日期、创建时间 */
+    out.books.forEach(function (b) {
+      if (typeof b.title !== 'string') b.title = '未命名书籍';
+      if (typeof b.author !== 'string') b.author = '';
+      if (!Array.isArray(b.notes)) b.notes = [];
+      b.readingMinutes = num0(b.readingMinutes);
+      if (!Array.isArray(b.readingLog)) b.readingLog = [];
+      if (typeof b.finishedAt !== 'string') b.finishedAt = null;
+      if (typeof b.createdAt !== 'string') b.createdAt = nowISO();
+    });
+    /* 旧书摘补默认字段 */
+    out.excerpts.forEach(function (x) {
+      if (typeof x.text !== 'string') x.text = '';
+      if (typeof x.bookTitle !== 'string') x.bookTitle = '';
+      if (typeof x.page !== 'number') x.page = 0;
+      if (typeof x.time !== 'string') x.time = nowISO();
+    });
     return out;
   }
 
@@ -853,14 +871,20 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     var pr = Number(d.progress);
     if (isNaN(pr)) pr = 0;
     pr = Math.max(0, Math.min(100, pr));
-    var b = { id: uid(), title: String(d.title || '').trim() || '未命名书籍', author: String(d.author || ''), status: d.status || '想读', progress: pr, notes: [] };
+    var b = { id: uid(), title: String(d.title || '').trim() || '未命名书籍', author: String(d.author || ''), status: d.status || '想读', progress: pr, notes: [], readingMinutes: 0, readingLog: [], finishedAt: null, createdAt: nowISO() };
+    /* 新建即标记已读完：自动记录完成日期 */
+    if (b.status === '已读完' && !b.finishedAt) b.finishedAt = todayStr();
     this.state.books.unshift(b); this.save(); return b;
   };
   Store.prototype.updateBook = function (id, patch) {
     var b = find(this.state.books, id); if (!b) return null;
     if (typeof patch.title === 'string') b.title = patch.title.trim() || b.title;
     if (typeof patch.author === 'string') b.author = patch.author;
-    if (typeof patch.status === 'string') b.status = patch.status;
+    if (typeof patch.status === 'string' && patch.status !== b.status) {
+      /* 标记已读完：自动记录完成日期；改回其他状态则清除 */
+      b.status = patch.status;
+      b.finishedAt = (patch.status === '已读完') ? (b.finishedAt || todayStr()) : null;
+    }
     if (patch.progress !== undefined) {
       var pr = Number(patch.progress);
       if (!isNaN(pr)) b.progress = Math.max(0, Math.min(100, pr));
@@ -871,6 +895,56 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     this.state.books = this.state.books.filter(function (b) { return b.id !== id; });
     this.save();
   };
+  /* 阅读计时落账：minutes 为分钟数（浮点）。不足 1 分钟按 1 分钟计，写入当日会话日志（供周报）。 */
+  Store.prototype.addReadingSession = function (bookId, minutes) {
+    var b = find(this.state.books, bookId); if (!b) return null;
+    var m = Math.max(1, Math.ceil(Number(minutes) || 0));
+    b.readingMinutes = (b.readingMinutes || 0) + m;
+    b.readingLog.push({ date: todayStr(), minutes: m });
+    this.save(); return m;
+  };
+
+  /* ====== 我的书摘 ====== */
+  Store.prototype.addExcerpt = function (d) {
+    var b = find(this.state.books, d.bookId);
+    var text = String(d.text || '').trim();
+    if (!text) return null;
+    var ex = { id: uid(), bookId: d.bookId, bookTitle: b ? b.title : String(d.bookTitle || '未知书籍'), text: text, page: num0(d.page), time: nowISO() };
+    this.state.excerpts.unshift(ex); this.save(); return ex;
+  };
+  Store.prototype.removeExcerpt = function (id) {
+    this.state.excerpts = this.state.excerpts.filter(function (x) { return x.id !== id; });
+    this.save();
+  };
+  /* 按书籍分组（组内按摘抄时间倒序，组按最新摘抄在前），供「我的书摘」页 */
+  function excerptsByBook(excerpts) {
+    var byTime = function (a, b) { return a.time < b.time ? 1 : (a.time > b.time ? -1 : 0); };
+    var groups = [];
+    excerpts.slice().sort(byTime).forEach(function (x) {
+      var g = null;
+      for (var i = 0; i < groups.length; i++) if (groups[i].bookId === x.bookId) { g = groups[i]; break; }
+      if (!g) {
+        g = { bookId: x.bookId, bookTitle: x.bookTitle || '未知书籍', items: [] };
+        groups.push(g);
+      }
+      g.items.push({ id: x.id, text: x.text, page: x.page, time: x.time });
+    });
+    return groups;
+  }
+  /* 首页「每日金句」位置：有摘抄时按日期种子随机挑一条（当天稳定、隔天换新）；无摘抄返回 null */
+  function hashStr(s) {
+    var h = 5381, i;
+    for (i = 0; i < s.length; i++) h = ((h << 5) + h) + s.charCodeAt(i);
+    return Math.abs(h);
+  }
+  function dailyExcerpt(excerpts, dateStr) {
+    if (!Array.isArray(excerpts) || !excerpts.length) return null;
+    var sorted = excerpts.slice().sort(function (a, b) { return a.time < b.time ? -1 : (a.time > b.time ? 1 : 0); });
+    var d = String(dateStr || todayStr());
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) d = todayStr();
+    var x = sorted[hashStr(d + '|excerpt') % sorted.length];
+    return { text: x.text, bookTitle: x.bookTitle || '未知书籍', page: num0(x.page) };
+  }
   Store.prototype.addBookNote = function (bookId, text) {
     var b = find(this.state.books, bookId); if (!b) return null;
     var n = { id: uid(), time: nowISO(), text: String(text || '').trim() };
@@ -1144,6 +1218,8 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     publishedStats: publishedStats,
     toCSV: toCSV,
     booksByStatus: booksByStatus,
+    excerptsByBook: excerptsByBook,
+    dailyExcerpt: dailyExcerpt,
     readingStats: readingStats,
     devProgress: devProgress,
     normalize: normalize,

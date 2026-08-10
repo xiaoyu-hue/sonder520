@@ -17,9 +17,19 @@
     var UI = ctx.UI, store = ctx.store;
     var sum = store.summarize();
     var day = S.todayStr();
+    /* 每日金句位置：优先展示当天随机一条「我的书摘」（附书名页码），无摘抄则展示金句库 */
+    var ex = S.dailyExcerpt(store.state.excerpts, day);
     var quote = (window.SonderQuotes && typeof window.SonderQuotes.quoteOfDay === 'function')
       ? UI.esc(window.SonderQuotes.quoteOfDay(day))
       : '';
+    var quoteHtml;
+    if (ex) {
+      quoteHtml = '「' + UI.esc(ex.text) + '」' +
+        '<span class="small muted exq-from">—— 来自《' + UI.esc(ex.bookTitle) + '》' +
+        (ex.page ? ' 第' + UI.esc(ex.page) + '页' : '') + '</span>';
+    } else {
+      quoteHtml = quote ? '「' + quote + '」' : '';
+    }
     var g = S.groupTasks(store.state.tasks, day);
     var todayList = g.now.slice(0, 6);
 
@@ -36,7 +46,7 @@
 
     container.innerHTML = [
       '<div class="section-title" style="margin-top:0">' + UI.esc(greeting()) + '</div>',
-      '<div class="quote">' + (quote ? '「' + quote + '」' : '') + '</div>',
+      '<div class="quote">' + quoteHtml + '</div>',
       '<div class="grid cols-2">',
       '  <div class="card">',
       '    <div class="row"><div class="section-title" style="margin:0">今日计划</div>',

@@ -755,3 +755,8 @@ input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border-radius
 .focus-float .ff-title { font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .focus-float .ff-time { font-size: 40px; font-weight: 700; letter-spacing: 2px; color: var(--accent); font-variant-numeric: tabular-nums; }
 [data-theme="dark"] .focus-float { background: rgba(26, 22, 17, 0.94); }
+
+/* ============ v3 · 阅读：计时时钟 / 我的书摘 / 首页书摘出处 ============ */
+.rd-clock { font-variant-numeric: tabular-nums; font-weight: 700; color: var(--accent); }
+.ex-text { line-height: 1.7; }
+.exq-from { display: block; margin-top: 6px; }
