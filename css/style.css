@@ -856,7 +856,7 @@ input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border-radius
   overflow: hidden;
 }
 .ms-cell {
-  aspect-ratio: 1; min-height: 32px; display: flex; align-items: center; justify-content: center;
+  aspect-ratio: 1; min-height: clamp(16px, 6vw, 32px); display: flex; align-items: center; justify-content: center;
   font-size: clamp(12px, 3.4vw, 15px); font-weight: 700; line-height: 1;
   background: var(--ms-unopened); border: none; border-radius: 5px; color: var(--text);
   cursor: pointer; padding: 0; position: relative;

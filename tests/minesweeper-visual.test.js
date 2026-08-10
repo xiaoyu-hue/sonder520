@@ -15,6 +15,7 @@ test('扫雷视觉：css 中格子使用实底色而非未定义变量', () => {
   assert.ok(!/var\(--card\)/.test(cellRule + (CSS.split('.ms-cell')[2] || '')), '.ms-cell 不再引用未定义的 --card');
   assert.ok(/.ms-cell\s*\{[^}]*background:\s*var\(--ms-unopened\)/s.test(CSS), '.ms-cell 使用不透明实底');
   assert.ok(/.ms-board\s*\{[^}]*max-width:\s*min\(100%,\s*540px\)/s.test(CSS), '雷区最大宽度 540px 受控');
+  assert.ok(/\.ms-cell\s*\{[^}]*min-height:\s*clamp\(16px,\s*6vw,\s*32px\)/s.test(CSS), '窄屏下格子自适应缩小不撑破棋盘');
 });
 
 test('扫雷视觉：注入样式后格子 computed 为不透明实底，翻开更浅', () => {

@@ -234,7 +234,6 @@
         }
       });
     });
-    wrap.appendChild(card);
     var diffReal = wrap.querySelector('#msDiff');
     if (diffReal) diffReal.addEventListener('change', function () {
       state.mini.diff = diffReal.value;
