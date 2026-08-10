@@ -376,7 +376,7 @@ input, select, textarea, button { font-size: 16px; }
 .small-btn:hover { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); transform: translateY(-1px); }
 .small-btn:active { transform: scale(.94); }
 .small-btn.danger { color: var(--danger); }
-.row { display: flex; align-items: center; gap: 8px; }
+.row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 
 .hbar { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
 .hbar input, .hbar select, .hbar .tool {

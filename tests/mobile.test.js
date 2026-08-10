@@ -93,3 +93,11 @@ test('五子棋大棋盘手机端：压缩边距保持方正且不溢出', () =>
   assert.ok(mobile.includes('gap: 2px'), '手机大棋盘应压缩格距');
   assert.ok(css.includes('.game-board.small'), '井字棋小棋盘适配仍应保留');
 });
+
+test('窄屏防溢出：.row 允许换行（咨询卡行内容多，320px 下不应横向溢出）', () => {
+  const row = css.split('.row {')[1].split('}')[0];
+  assert.ok(row.includes('flex-wrap: wrap'), '.row 应支持换行');
+  const pill = css.split('.pill {')[1].split('}')[0];
+  assert.ok(pill.includes('white-space: nowrap'), '徽标不应内部换行');
+  assert.ok(css.includes('.hbar { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }'), '工具栏应保留 wrap');
+});
