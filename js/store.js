@@ -731,6 +731,21 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     var sorted = published.slice().sort(function (a, b) { return b.views - a.views; });
     return { count: published.length, sums: sums, max: max, posts: sorted };
   }
+  /* 最近 N 篇已发布选题（按发布日倒序，无发布日按创建时间），供折线图 */
+  function recentPublished(posts, n) {
+    n = (typeof n === 'number' && n > 0) ? n : 5;
+    var pub = posts.filter(function (p) { return p.status === 'published'; })
+      .map(function (p) {
+        return { id: p.id, title: p.title, views: num0(p.views), likes: num0(p.likes), publishDate: p.publishDate || '', createdAt: p.createdAt || '' };
+      });
+    pub.sort(function (a, b) {
+      var ka = a.publishDate || String(a.createdAt || '').slice(0, 10);
+      var kb = b.publishDate || String(b.createdAt || '').slice(0, 10);
+      return ka > kb ? -1 : (ka < kb ? 1 : 0);
+    });
+    return pub.slice(0, n);
+  }
+
   /* 导出 CSV - 含字段转义 */
   function toCSV(posts) {
     var header = ['标题', '平台', '账号', '标签', '状态', '发布日期', '备注'];
@@ -1216,6 +1231,7 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     filterPosts: filterPosts,
     collectTags: collectTags,
     publishedStats: publishedStats,
+    recentPublished: recentPublished,
     toCSV: toCSV,
     booksByStatus: booksByStatus,
     excerptsByBook: excerptsByBook,

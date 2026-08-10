@@ -4,7 +4,20 @@
   var Pages = window.Pages = window.Pages || {};
   var S = window.SonderStore;
   var currentEl = null, currentCtx = null;
-  var state = { status: '', tag: '' };
+  var state = { status: '', tag: '', view: 'list' };
+  var CHANNELS = ['公众号', '小红书', 'B站', '抖音'];
+  var cal = { year: null, month: null };
+  function initCal() {
+    var d = new Date();
+    cal.year = d.getFullYear();
+    cal.month = d.getMonth();
+  }
+  function calLabel() { return { year: cal.year, month: cal.month }; }
+  function shiftCal(delta) {
+    var d = new Date(cal.year, cal.month + delta, 1);
+    cal.year = d.getFullYear();
+    cal.month = d.getMonth();
+  }
 
   function writeTags(tags) {
     return (tags || []).map(function (t) { return '<span class="tag">' + currentCtx.UI.esc(t) + '</span>'; }).join('');
@@ -17,7 +30,7 @@
       confirmText: '保存',
       fields: [
         { key: 'title', label: '标题', type: 'text', required: true, value: target ? target.title : '' },
-        { key: 'platform', label: '平台', type: 'text', value: target ? target.platform : '' },
+        { key: 'platform', label: '发布渠道', type: 'select', value: target ? target.platform : '', options: [{ value: '', label: '未设置' }].concat(CHANNELS.map(function (c) { return { value: c, label: c }; })) },
         { key: 'account', label: '账号', type: 'text', value: target ? target.account : '' },
         { key: 'tags', label: '标签(逗号分隔)', type: 'text', value: target ? (target.tags || []).join(',') : '' },
         { key: 'status', label: '状态', type: 'select', value: target ? target.status : 'draft', options: ['draft', 'queue', 'published'] },
@@ -47,6 +60,10 @@
     container.appendChild(UI.el(
       '<div class="hbar">' +
       '<button class="btn primary" id="smAdd">＋ 新增内容</button>' +
+      '<div class="lg-seg" style="margin-right:10px">' +
+      '<button data-view="list" type="button"' + (state.view === 'list' ? ' class="on"' : '') + '>列表</button>' +
+      '<button data-view="cal" type="button"' + (state.view === 'cal' ? ' class="on"' : '') + '>月历</button>' +
+      '</div>' +
       '<select id="smStatus" class="tool"><option value="">全部状态</option>' +
       '<option value="draft">草稿</option><option value="queue">排队</option><option value="published">已发布</option></select>' +
       '<select id="smTag" class="tool"><option value="">全部标签</option>' +
@@ -60,6 +77,12 @@
     container.appendChild(box);
 
     container.querySelector('#smAdd').addEventListener('click', function () { openAdd(ctx); });
+    container.querySelectorAll('[data-view]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        state.view = b.dataset.view;
+        render(ctx);
+      });
+    });
     var stSel = container.querySelector('#smStatus');
     var tagSel = container.querySelector('#smTag');
     stSel.value = state.status;
@@ -69,14 +92,124 @@
     container.querySelector('#smClear').addEventListener('click', function () { state.status = ''; state.tag = ''; render(ctx); });
     container.querySelector('#smCsv').addEventListener('click', function () { exportCsv(); });
 
-    var list = S.filterPosts(store.state.posts, { tag: state.tag, status: state.status });
-    if (!list.length) {
-      box.appendChild(UI.emptyState('还没有内容', '＋ 新增内容', function () { openAdd(ctx); }));
+    if (state.view === 'cal') {
+      renderCalendar(box, ctx);
+    } else {
+      var list = S.filterPosts(store.state.posts, { tag: state.tag, status: state.status });
+      if (!list.length) {
+        box.appendChild(UI.emptyState('还没有内容', '＋ 新增内容', function () { openAdd(ctx); }));
+      }
+      list.forEach(function (p) { box.appendChild(itemEl(p, ctx)); });
     }
-    list.forEach(function (p) { box.appendChild(itemEl(p, ctx)); });
 
     /* 已发布数据统计可视化 */
     container.appendChild(statsSection(store, ctx));
+  }
+
+  /* ---------- 月历视图：选题可拖拽到具体日期排期 ---------- */
+  var dragId = null;
+  function renderCalendar(box, ctx) {
+    var store = ctx.store, UI = ctx.UI;
+    if (cal.year === null) initCal();
+    var y = cal.year, m = cal.month;
+    var head = UI.el(
+      '<div class="hbar" style="flex-wrap:wrap">' +
+      '<button class="small-btn" data-cal="prev" aria-label="上个月">← 上月</button>' +
+      '<span class="grow" style="text-align:center;font-weight:600">' + y + '年' + (m + 1) + '月</span>' +
+      '<button class="small-btn" data-cal="next" aria-label="下个月">下月 →</button>' +
+      '<button class="small-btn" data-cal="back" aria-label="回到本月">本月</button>' +
+      '</div>'
+    );
+    box.appendChild(head);
+    head.querySelector('[data-cal="prev"]').addEventListener('click', function () { shiftCal(-1); render(ctx); });
+    head.querySelector('[data-cal="next"]').addEventListener('click', function () { shiftCal(1); render(ctx); });
+    head.querySelector('[data-cal="back"]').addEventListener('click', function () { initCal(); render(ctx); });
+
+    var weekStart = new Date(y, m, 1).getDay();
+    var daysInMonth = new Date(y, m + 1, 0).getDate();
+    var today = S.todayStr();
+    var cellHtml = '';
+    var i, n;
+    for (i = 0; i < weekStart; i++) cellHtml += '<div class="cal-day empty"></div>';
+    for (n = 1; n <= daysInMonth; n++) {
+      var dateStr = y + '-' + String(m + 1).padStart(2, '0') + '-' + String(n).padStart(2, '0');
+      var todays = store.state.posts.filter(function (p) { return p.publishDate === dateStr; });
+      cellHtml += '<div class="cal-day' + (dateStr === today ? ' cal-today' : '') + '" data-date="' + dateStr + '">' +
+        '<span class="cal-num">' + n + '</span>' +
+        todays.map(function (p) {
+          return '<span class="cal-chip" draggable="true" data-post="' + p.id + '" title="' + UI.esc(p.title) + '">' + UI.esc(p.title) + '</span>';
+        }).join('') +
+        '</div>';
+    }
+    var grid = UI.el(
+      '<div class="cal-grid" role="grid" aria-label="选题排期月历">' +
+      ['日', '一', '二', '三', '四', '五', '六'].map(function (w) { return '<div class="cal-wd">' + w + '</div>'; }).join('') +
+      cellHtml + '</div>'
+    );
+    box.appendChild(grid);
+    if (!store.state.posts.length) {
+      box.appendChild(UI.el('<div class="muted small" style="padding:10px 4px">还没有选题：把内容排期到具体日期，日历会显示在这里</div>'));
+    }
+    bindCalendarDnd(grid, ctx);
+  }
+
+  function bindCalendarDnd(grid, ctx) {
+    var store = ctx.store, UI = ctx.UI;
+    grid.querySelectorAll('.cal-chip').forEach(function (chip) {
+      chip.addEventListener('dragstart', function (e) {
+        dragId = chip.dataset.post;
+        chip.classList.add('dragging');
+        try { if (e.dataTransfer) e.dataTransfer.setData('text/plain', dragId); } catch (err) { /* 测试环境无 DataTransfer */ }
+      });
+      chip.addEventListener('dragend', function () {
+        chip.classList.remove('dragging');
+        dragId = null;
+      });
+      /* 移动端：长按 380ms 进入拖拽，滑动到目标日期后松手落账 */
+      var lt = null;
+      chip.addEventListener('touchstart', function (e) {
+        lt = { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY, on: false };
+        chip._ltTimer = setTimeout(function () { lt.on = true; chip._origin = chip.parentNode; chip.classList.add('dragging'); }, 380);
+      }, { passive: true });
+      chip.addEventListener('touchmove', function (e) {
+        if (!lt || !lt.on) return;
+        e.preventDefault();
+        var t = e.changedTouches[0];
+        chip.style.position = 'fixed';
+        chip.style.left = (t.clientX - 30) + 'px';
+        chip.style.top = (t.clientY - 18) + 'px';
+        var el = document.elementFromPoint(t.clientX, t.clientY);
+        chip._stayDate = (el && el.closest('.cal-day[data-date]')) ? el.closest('.cal-day[data-date]').dataset.date : null;
+        grid.querySelectorAll('.cal-day.drop-target').forEach(function (d) { d.classList.remove('drop-target'); });
+        if (el && el.closest('.cal-day[data-date]')) el.closest('.cal-day[data-date]').classList.add('drop-target');
+      }, { passive: false });
+      chip.addEventListener('touchend', function () {
+        clearTimeout(chip._ltTimer);
+        chip.style.position = '';
+        chip.classList.remove('dragging');
+        grid.querySelectorAll('.cal-day.drop-target').forEach(function (d) { d.classList.remove('drop-target'); });
+        if (lt && lt.on && chip._stayDate) {
+          store.updatePost(chip.dataset.post, { publishDate: chip._stayDate });
+          UI.toast('已排期到 ' + chip._stayDate);
+          render(ctx);
+        }
+        lt = null;
+      });
+    });
+    grid.querySelectorAll('.cal-day[data-date]').forEach(function (day) {
+      day.addEventListener('dragover', function (e) { e.preventDefault(); });
+      day.addEventListener('drop', function (e) {
+        var id = dragId;
+        if (!id) { try { id = e.dataTransfer && e.dataTransfer.getData('text/plain'); } catch (err) { id = null; } }
+        if (!id) return;
+        var p = store.state.posts.find(function (x) { return x.id === id; });
+        if (!p) return;
+        store.updatePost(id, { publishDate: day.dataset.date });
+        UI.toast('已排期到 ' + day.dataset.date);
+        dragId = null;
+        render(ctx);
+      });
+    });
   }
 
   var METRICS = [
@@ -108,11 +241,38 @@
     }).join('');
     wrap.innerHTML = '<div class="section-title">发布数据统计</div>' +
       '<div class="card">' +
+      miniLine(store.state.posts, UI) +
       '<div class="row" style="margin-bottom:10px">' + pills + '</div>' +
       '<div class="st-legend">' + legend + '</div>' +
       '<div class="st-chart">' + rows + '</div>' +
       '</div>';
     return wrap;
+  }
+
+  /* 最近 5 篇阅读量微型折线图（SVG polyline，新→旧） */
+  function miniLine(posts, UI) {
+    var rec = S.recentPublished(posts, 5);
+    if (!rec.length) return '';
+    var W = 240, H = 64, pad = 8;
+    var max = Math.max.apply(null, rec.map(function (p) { return p.views; }));
+    max = Math.max(1, max);
+    var pts = rec.map(function (p, i) {
+      var x = rec.length === 1 ? W / 2 : pad + (i / (rec.length - 1)) * (W - pad * 2);
+      var y = H - pad - (p.views / max) * (H - pad * 2);
+      return Math.round(x) + ',' + Math.round(y);
+    });
+    var p0 = pts[0].split(','), pl = pts[pts.length - 1].split(',');
+    return '<div class="sm-line">' +
+      '<div class="small muted" style="margin-bottom:4px">最近 ' + rec.length + ' 篇阅读量变化（右→最新）</div>' +
+      '<svg class="mini-line" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="最近5篇阅读量折线图">' +
+      '<polyline points="' + pts.join(' ') + '" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"></polyline>' +
+      '<circle cx="' + p0[0] + '" cy="' + p0[1] + '" r="2.5" fill="var(--accent)"></circle>' +
+      '<circle cx="' + pl[0] + '" cy="' + pl[1] + '" r="2.5" fill="var(--accent)"></circle>' +
+      rec.map(function (p, i) {
+        var c = pts[i].split(',');
+        return '<text x="' + c[0] + '" y="' + (Number(c[1]) - 6) + '" font-size="9" fill="var(--muted)" text-anchor="middle">' + UI.esc(p.views) + '</text>';
+      }).join('') +
+      '</svg></div>';
   }
 
   function tagsOptions(tags) {
@@ -132,7 +292,10 @@
       '<div class="sub">' + UI.esc(p.platform || '未设置平台') + (p.account ? ' · ' + UI.esc(p.account) : '') +
       (p.publishDate ? ' · 发布 ' + UI.esc(p.publishDate) : '') + '</div>' +
       (p.status === 'published'
-        ? '<div class="sub">播放 ' + UI.esc(num0(p.views)) + ' · 点赞 ' + UI.esc(num0(p.likes)) + ' · 评论 ' + UI.esc(num0(p.comments)) + ' · 收藏 ' + UI.esc(num0(p.favorites)) + '</div>'
+        ? '<div class="row" style="margin-top:6px;gap:10px;flex-wrap:wrap">' +
+          '<label class="small muted sm-fb">阅读量<input type="number" min="0" data-fb="views" data-id="' + p.id + '" value="' + num0(p.views) + '" aria-label="阅读量"></label>' +
+          '<label class="small muted sm-fb">点赞<input type="number" min="0" data-fb="likes" data-id="' + p.id + '" value="' + num0(p.likes) + '" aria-label="点赞数"></label>' +
+          '</div>'
         : '') +
       '<div class="row" style="margin-top:6px">' +
       '<span class="small muted" style="white-space:nowrap">制作进度</span>' +
@@ -147,6 +310,14 @@
       '</div>'
     );
     row.querySelector('[data-act="edit"]').onclick = function () { openAdd(ctx, p); };
+    row.querySelectorAll('[data-fb]').forEach(function (inp) {
+      inp.addEventListener('change', function () {
+        var patch = {};
+        patch[inp.dataset.fb] = inp.value;
+        store.updatePost(p.id, patch);
+        UI.toast('已更新' + (inp.dataset.fb === 'views' ? '阅读量' : '点赞'));
+      });
+    });
     var prog = row.querySelector('[data-prog]');
     if (prog) {
       prog.addEventListener('change', function () {

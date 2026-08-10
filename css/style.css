@@ -760,3 +760,38 @@ input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border-radius
 .rd-clock { font-variant-numeric: tabular-nums; font-weight: 700; color: var(--accent); }
 .ex-text { line-height: 1.7; }
 .exq-from { display: block; margin-top: 6px; }
+
+/* ============ v3 · 自媒体：月历排期 / 数据反馈 / 折线图 ============ */
+.cal-grid {
+  display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px;
+  background: var(--glass-2); border: 1px solid var(--border);
+  border-radius: 14px; padding: 8px; box-shadow: var(--shadow);
+  -webkit-backdrop-filter: blur(18px) saturate(1.5) brightness(1.04);
+  backdrop-filter: blur(18px) saturate(1.5) brightness(1.04);
+}
+.cal-wd { text-align: center; font-size: 12px; color: var(--muted); padding: 4px 0; }
+.cal-day {
+  min-height: 72px; border: 1px solid transparent; border-radius: 8px;
+  padding: 4px 6px; position: relative; transition: background .12s var(--ease);
+}
+.cal-day:nth-child(7n+8) { border-left: 1px dashed var(--border); }
+.cal-day:hover { background: var(--accent-soft); }
+.cal-day.empty { pointer-events: none; }
+.cal-day.cal-today { box-shadow: inset 0 0 0 1.5px var(--accent); }
+.cal-day.drop-target { background: var(--accent-soft); box-shadow: inset 0 0 0 1.5px var(--accent); }
+.cal-num { font-size: 12px; color: var(--muted); }
+.cal-day.cal-today .cal-num { color: var(--accent); font-weight: 700; }
+.cal-chip {
+  display: block; margin-top: 4px; padding: 2px 6px; border-radius: 6px;
+  background: var(--accent-soft); color: var(--text); font-size: 12px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  cursor: grab; user-select: none; touch-action: none;
+}
+.cal-chip.dragging { opacity: .5; }
+.sm-fb input {
+  width: 74px; padding: 4px 6px; margin-left: 4px;
+  border: 1px solid var(--border); border-radius: 6px;
+  background: var(--bg); color: var(--text); font-size: 16px; font-family: inherit;
+}
+.sm-line { margin-bottom: 12px; }
+.mini-line { width: 100%; max-width: 320px; height: auto; display: block; }
