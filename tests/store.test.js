@@ -20,7 +20,7 @@ test('默认结构：空列表 + 有效设置 + 模块全开', () => {
   assert.equal(s.state.tasks.length, 0);
   ['today', 'memo', 'selfmedia', 'dev', 'consulting', 'reading', 'news', 'design']
     .forEach(k => assert.equal(s.state.settings.modules[k], true));
-  assert.equal(s.state.settings.theme, 'light');
+  assert.equal(s.state.settings.theme, 'auto');
 });
 
 test('持久化：同一 storage 两个实例数据不丢（模拟刷新/重启）', () => {
@@ -234,7 +234,7 @@ test('normalize：缺失字段用默认补齐', () => {
   assert.equal(n.memos.length, 0);
   assert.equal(n.books.length, 0);
   assert.equal(n.tasks.length, 1);
-  assert.equal(n.settings.theme, 'light');
+  assert.equal(n.settings.theme, 'auto');
   const n2 = S.normalize(null);
   assert.equal(n2.tasks.length, 0);
   assert.equal(n2.settings.modules.design, true);

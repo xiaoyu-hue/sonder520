@@ -93,7 +93,8 @@
 
   /* ---------- 默认数据结构 ---------- */
   var DEFAULT_SETTINGS = {
-    theme: 'light',
+    /* 主题：auto=跟随系统（默认）| light | dark */
+    theme: 'auto',
     wallpaperOpacity: 40,
     gameDifficulty: 'normal',
     frameRate: 120,
@@ -147,7 +148,7 @@
   function mergeSettings(dflt, raw) {
     var s = deepClone(dflt);
     if (isPlainObject(raw)) {
-      if (typeof raw.theme === 'string') s.theme = raw.theme;
+      if (raw.theme === 'light' || raw.theme === 'dark' || raw.theme === 'auto') s.theme = raw.theme;
       if (typeof raw.wallpaperOpacity === 'number') s.wallpaperOpacity = clampOpacity(raw.wallpaperOpacity);
       if (raw.gameDifficulty === 'easy' || raw.gameDifficulty === 'normal' || raw.gameDifficulty === 'hard') s.gameDifficulty = raw.gameDifficulty;
       if (raw.frameRate === 60 || raw.frameRate === 90) s.frameRate = raw.frameRate;
@@ -970,7 +971,7 @@
 
   /* ====== 设置 ====== */
   Store.prototype.setTheme = function (t) {
-    this.state.settings.theme = t === 'dark' ? 'dark' : 'light';
+    this.state.settings.theme = (t === 'auto' || t === 'dark') ? t : 'light';
     this.save();
   };
   Store.prototype.setWallpaperOpacity = function (v) {

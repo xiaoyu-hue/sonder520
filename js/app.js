@@ -23,10 +23,29 @@
 
   function applyTheme() {
     var t = store.state.settings.theme;
+    if (t === 'auto') {
+      var mq = window.matchMedia;
+      var resolved = (mq && mq('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+      setThemeAttr(resolved);
+    } else {
+      setThemeAttr(t);
+    }
+  }
+  function setThemeAttr(t) {
     document.documentElement.setAttribute('data-theme', t);
     var meta = document.querySelector('meta[name="theme-color"]');
     if (meta) meta.setAttribute('content', t === 'dark' ? '#171410' : '#f2efe6');
   }
+  /* 跟随系统：监听系统深浅切换，仅 auto 模式下实时更新 */
+  (function watchSystemTheme() {
+    var mq = window.matchMedia;
+    if (typeof mq !== 'function') return;
+    var q = mq('(prefers-color-scheme: dark)');
+    if (!q || typeof q.addEventListener !== 'function') return;
+    q.addEventListener('change', function () {
+      if (store.state.settings.theme === 'auto') applyTheme();
+    });
+  })();
 
   /* 动画帧率档位：60=极省（关循环动效）、90=折中（循环动效降频）、120=满速原版 */
   function applyFrame() {

@@ -11,17 +11,22 @@
     container.innerHTML = '';
     container.appendChild(UI.el('<div class="section-title" style="margin-top:0">外观</div>'));
     container.appendChild(UI.el(
-      '<div class="card"><div class="row">' +
-      '<label class="toggle"><input type="radio" name="theme" value="light" ' + (store.state.settings.theme === 'light' ? 'checked' : '') + '> 浅色</label>' +
-      '<label class="toggle"><input type="radio" name="theme" value="dark" ' + (store.state.settings.theme === 'dark' ? 'checked' : '') + '> 深色</label>' +
+      '<div class="card">' +
+      '<div class="row" style="align-items:center">' +
+      '<label class="small muted" style="margin-right:12px;white-space:nowrap">主题</label>' +
+      '<label class="toggle"><input type="radio" name="theme" value="auto" ' + (store.state.settings.theme === 'auto' ? 'checked' : '') + '> 跟随系统</label>' +
+      '<label class="toggle"><input type="radio" name="theme" value="light" ' + (store.state.settings.theme === 'light' ? 'checked' : '') + '> 浅色宣纸</label>' +
+      '<label class="toggle"><input type="radio" name="theme" value="dark" ' + (store.state.settings.theme === 'dark' ? 'checked' : '') + '> 深色墨黑</label>' +
+      '<span class="muted small" style="margin-left:auto">跟随系统时随系统深浅自动切换</span>' +
       '</div></div>'
     ));
     container.querySelectorAll('input[name="theme"]').forEach(function (r) {
       r.addEventListener('change', function () {
         if (!r.checked) return;
         store.setTheme(r.value);
-        document.documentElement.setAttribute('data-theme', r.value);
-        UI.toast('主题已切换');
+        hooks.applyTheme();
+        document.documentElement.setAttribute('data-theme', r.value === 'auto' ? (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : r.value);
+        UI.toast(r.value === 'auto' ? '已切换为跟随系统' : (r.value === 'dark' ? '已切换为深色墨黑' : '已切换为浅色宣纸'));
         hooks.render('settings');
       });
     });

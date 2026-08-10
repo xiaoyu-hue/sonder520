@@ -47,6 +47,26 @@ function boot(opts = {}) {
     });
   }
 
+  // 可选注入可编程 matchMedia（opts.matchMedia=true 时启用；systemDark 初始系统深浅）
+  // 暴露 window.__mm：.dark 当前值、_setDark(v) 切换系统深浅并触发 change 监听器
+  if (opts.matchMedia) {
+    const mm = {
+      dark: !!opts.systemDark,
+      listeners: [],
+      get matches() { return this.dark; },
+      addEventListener: function (type, fn) { if (type === 'change') this.listeners.push(fn); },
+      removeEventListener: function (type, fn) {
+        this.listeners = this.listeners.filter(f => f !== fn);
+      },
+      _setDark: function (v) {
+        this.dark = !!v;
+        this.listeners.forEach(fn => { try { fn({ matches: this.dark }); } catch (e) { /* 忽略 */ } });
+      }
+    };
+    window.matchMedia = function () { return mm; };
+    window.__mm = mm;
+  }
+
   // 手工按顺序注入脚本（避免 file:// 下加载外部脚本的约束）
   SCRIPT_ORDER.forEach(f => {
     const code = fs.readFileSync(path.join(root, 'js', f), 'utf8');
