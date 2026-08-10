@@ -7,6 +7,8 @@
 主站1:
 https://sonder520.netlify.app/
 
+备注:主站1因为部署次数的限制，没有更新新版本，请移步主站2和备用站。
+
 主站2:
 https://sonder520.pages.dev/
 
