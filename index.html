@@ -33,6 +33,13 @@
         <button class="btn" id="btnQuickMemo" type="button">＋ 备忘</button>
         <span class="date" id="topDate"></span>
       </header>
+      <div class="quota-bar" id="quotaBar" hidden role="alert">
+        <span class="qb-msg">⚠ 数据已达 <b class="qb-usage"></b>，接近浏览器 5MB 上限。请立即</span>
+        <a href="#" id="qExport" class="qb-link">导出备份</a>
+        <span class="qb-msg">，或</span>
+        <a href="#" id="qMigrate" class="qb-link">迁移至 IndexedDB</a>
+        <button class="small-btn" id="qClose" title="不再提醒" type="button">✕</button>
+      </div>
       <section class="content" id="content"></section>
       <footer class="site-footer">
         <span>Sonder 开源 · <a href="https://github.com/xiaoyu-hue/sonder520" target="_blank" rel="noopener">GitHub 仓库（MIT）</a></span>

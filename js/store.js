@@ -12,6 +12,48 @@
   'use strict';
 
   var STORAGE_KEY = 'sonder_data_v1';
+  var STORAGE_META_KEY = 'sonder_meta_v1';
+
+  /* ---------- IndexedDB 层 ----------
+   * localStorage 上限约 5MB，数据增长后可能写满。Sonder 采用双写双存：
+   * 每次保存同时写 localStorage 与 IndexedDB（容量大），任一被清空时
+   * 另一份兜底恢复。冲突以 savedAt 时间戳取新。 */
+  var IDB_NAME = 'sonder-db';
+  var IDB_STORE = 'state';
+  var IDB_KEY = 'state';
+  var QUOTA_SOFT_LIMIT = Math.round(4.5 * 1024 * 1024);
+
+  function idbAvailable() {
+    return typeof indexedDB !== 'undefined' && typeof IDBKeyRange !== 'undefined';
+  }
+  function openIdb() {
+    return new Promise(function (resolve, reject) {
+      var req = indexedDB.open(IDB_NAME, 1);
+      req.onupgradeneeded = function (e) {
+        var db = /** @type {any} */ (e).target.result;
+        if (!db.objectStoreNames.contains(IDB_STORE)) db.createObjectStore(IDB_STORE);
+      };
+      req.onsuccess = function () { resolve(req.result); };
+      req.onerror = function () { reject(req.error || new Error('idb-open')); };
+    });
+  }
+  /* IDB 只存字符串（JSON），跨环境最稳；put 走完整事务以正确报错 */
+  function idbPut(db, key, json) {
+    return new Promise(function (resolve, reject) {
+      var tx = db.transaction(IDB_STORE, 'readwrite');
+      tx.objectStore(IDB_STORE).put(json, key);
+      tx.oncomplete = function () { resolve(null); };
+      tx.onerror = function () { reject(tx.error || new Error('idb-put')); };
+    });
+  }
+  function idbGet(db, key) {
+    return new Promise(function (resolve, reject) {
+      var tx = db.transaction(IDB_STORE, 'readonly');
+      var req = tx.objectStore(IDB_STORE).get(key);
+      req.onsuccess = function () { resolve(req.result || null); };
+      req.onerror = function () { reject(req.error || new Error('idb-get')); };
+    });
+  }
 
   /* ---------- 工具 ---------- */
   function uid() {
@@ -46,7 +88,8 @@
       today: true, memo: true, selfmedia: true, dev: true,
       consulting: true, reading: true, news: true, design: true,
       game: true
-    }
+    },
+    quotaNoticeDismissed: false
   };
 
   function moduleKeys() {
@@ -95,6 +138,7 @@
       if (raw.gameDifficulty === 'easy' || raw.gameDifficulty === 'normal' || raw.gameDifficulty === 'hard') s.gameDifficulty = raw.gameDifficulty;
       if (raw.frameRate === 60 || raw.frameRate === 90) s.frameRate = raw.frameRate;
       else if (raw.frameRate === 120) s.frameRate = 120;
+      if (typeof raw.quotaNoticeDismissed === 'boolean') s.quotaNoticeDismissed = raw.quotaNoticeDismissed;
       if (isPlainObject(raw.modules)) {
         for (var k in s.modules) {
           if (typeof raw.modules[k] === 'boolean') s.modules[k] = raw.modules[k];
@@ -111,7 +155,7 @@
   }
 
   /* ---------- Store ---------- */
-  /** @constructor @this {{ _storage: any, state: any }} */
+  /** @constructor @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _idbWrite: any }} */
   function Store(storage) {
     this._storage = storage || (typeof localStorage !== 'undefined' ? localStorage : null);
     var persisted = null;
@@ -120,16 +164,103 @@
       catch (e) { persisted = null; }
     }
     this.state = normalize(persisted);
+    this._meta = null;
+    this._idbPromise = null;
   }
 
   function clone(o) { return deepClone(o); }
 
-  /** @this {{ _storage: any, state: any }} */
-  Store.prototype.save = function () {
+  /* 同步写 localStorage（权威快照，永不阻塞正常流程；写满时忽略错误，IDB 兜底） */
+  /** @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _idbWrite: any }} */
+  Store.prototype._persistLocal = function () {
     if (!this._storage) return;
+    this._meta = nowISO();
     try {
       this._storage.setItem(STORAGE_KEY, JSON.stringify(this.state));
-    } catch (e) { /* 存储满等错误在此忽略，测试用内存存储不会触发 */ }
+      this._storage.setItem(STORAGE_META_KEY, this._meta);
+    } catch (e) { /* 存储满等错误在此忽略，IDB 副本兜底 */ }
+  };
+
+  /* 异步写 IndexedDB。串行队列避免事务竞争；失败静默（localStorage 仍兜底） */
+  /** @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _idbWrite: any }} */
+  Store.prototype._idbWrite = function () {
+    if (!idbAvailable()) return;
+    var json = JSON.stringify(this.state);
+    var meta = this._meta || nowISO();
+    var prev = this._idbPromise || Promise.resolve();
+    this._idbPromise = prev.then(function () {
+      return openIdb().then(function (db) {
+        return idbPut(db, IDB_KEY, { savedAt: meta, data: json });
+      });
+    }).catch(function () {});
+  };
+
+  /** @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _idbWrite: any }} */
+  Store.prototype.save = function () {
+    this._persistLocal();
+    this._idbWrite();
+  };
+
+  /* 启动时调用：优先从 IndexedDB 恢复（若更新）。返回 Promise<是否采用 IDB 数据> */
+  /** @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _idbWrite: any }} */
+  Store.prototype.loadIdb = function () {
+    var self = this;
+    if (!idbAvailable()) return Promise.resolve(false);
+    return openIdb().then(function (db) {
+      return idbGet(db, IDB_KEY).then(function (entry) {
+        if (!entry) {
+          self._idbWrite();
+          return false;
+        }
+        var idbSavedAt = (entry && (typeof entry === 'string' ? '' : entry.savedAt)) || '';
+        var idbData = entry && (typeof entry === 'string' ? entry : entry.data);
+        var localMeta = null;
+        if (self._storage) {
+          try { localMeta = self._storage.getItem(STORAGE_META_KEY); } catch (e) { localMeta = null; }
+        }
+        /* localStorage 数据更新时以它为准并把 IDB 追平，否则采用 IDB */
+        if (localMeta && localMeta > idbSavedAt) {
+          self._idbWrite();
+          return false;
+        }
+        var parsed = null;
+        try { parsed = JSON.parse(idbData); } catch (e) { parsed = null; }
+        if (!parsed) return false;
+        self.state = normalize(parsed);
+        self._persistLocal();
+        self._idbWrite();
+        return true;
+      });
+    }).catch(function () { return false; });
+  };
+
+  /* 手动迁移：立即把当前全部数据写入 IndexedDB（只复制不删旧数据） */
+  /** @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _idbWrite: any }} */
+  Store.prototype.migrateToIdb = function () {
+    var self = this;
+    if (!idbAvailable()) return Promise.resolve(false);
+    this._meta = nowISO();
+    var json = JSON.stringify(this.state);
+    return openIdb().then(function (db) {
+      return idbPut(db, IDB_KEY, { savedAt: self._meta, data: json }).then(function () { return true; });
+    }).catch(function () { return false; });
+  };
+
+  /* 当前数据体积（字节）。接近 5MB 上限时前端显示警示条 */
+  /** @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _idbWrite: any }} */
+  Store.prototype.storageUsage = function () {
+    try { return JSON.stringify(this.state).length; } catch (e) { return 0; }
+  };
+  Store.prototype.isNearQuota = function () {
+    return this.storageUsage() > QUOTA_SOFT_LIMIT;
+  };
+  Store.prototype.dismissQuotaNotice = function () {
+    this.state.settings.quotaNoticeDismissed = true;
+    this.save();
+  };
+  Store.prototype.setQuotaNoticeDismissed = function (v) {
+    this.state.settings.quotaNoticeDismissed = !!v;
+    this.save();
   };
 
   function find(arr, id) {
@@ -659,6 +790,8 @@
     Store: Store,
     createStore: function (storage) { return new Store(storage); },
     STORAGE_KEY: STORAGE_KEY,
+    STORAGE_META_KEY: STORAGE_META_KEY,
+    QUOTA_SOFT_LIMIT: QUOTA_SOFT_LIMIT,
     defaultState: defaultState,
     fmtDate: fmtDate,
     todayStr: todayStr,

@@ -73,6 +73,47 @@
     applyWallpaper();
     applyFrame();
     page.render(container, ctx);
+    quotaCheck();
+  }
+
+  /* 存储接近上限（约 5MB）时顶部显示警示条：导出备份 / 迁移至 IndexedDB */
+  function quotaCheck() {
+    var bar = document.getElementById('quotaBar');
+    if (!bar) return;
+    if (!store.state.settings.quotaNoticeDismissed) {
+      var usage = store.storageUsage();
+      if (usage > 4.5 * 1024 * 1024) {
+        bar.querySelector('.qb-usage').textContent = (usage / 1048576).toFixed(1) + 'MB';
+        bar.hidden = false;
+        return;
+      }
+    }
+    bar.hidden = true;
+  }
+
+  function bindQuotaBar() {
+    var bar = document.getElementById('quotaBar');
+    if (!bar) return;
+    bar.querySelector('#qExport').addEventListener('click', function (e) {
+      e.preventDefault();
+      ctx.navigate('settings');
+    });
+    bar.querySelector('#qMigrate').addEventListener('click', function (e) {
+      e.preventDefault();
+      store.migrateToIdb().then(function (ok) {
+        if (ok) {
+          store.setQuotaNoticeDismissed(true);
+          UI.toast('已迁移至 IndexedDB');
+        } else {
+          UI.toast('当前环境不支持 IndexedDB，请导出备份', 'err');
+        }
+        render();
+      });
+    });
+    bar.querySelector('#qClose').addEventListener('click', function () {
+      store.dismissQuotaNotice();
+      render();
+    });
   }
 
   function onHash() { render(); }
@@ -86,7 +127,12 @@
     applyTheme: applyTheme,
     applyWallpaper: applyWallpaper,
     applyFrame: applyFrame,
-    todayLine: todayLine
+    todayLine: todayLine,
+    /* 启动时尝试从 IndexedDB 恢复（数据更大、更稳）；若采用则重绘当前页 */
+    idbReady: store.loadIdb().then(function (applied) {
+      if (applied) onHash();
+      return applied;
+    })
   };
 
   /* 顶栏全局“＋”新建：调用当前页面的 openAdd() */
@@ -123,6 +169,7 @@
   applyFrame();
   buildNav();
   todayLine();
+  bindQuotaBar();
   window.addEventListener('hashchange', onHash);
   window.addEventListener('load', render);
 })();

@@ -113,6 +113,21 @@
         reader.readAsText(file);
       });
     });
+
+    container.appendChild(UI.el('<div class="section-title">数据迁移</div>'));
+    var migCard = UI.el(
+      '<div class="card">' +
+      '<div class="row">' +
+      '<button class="btn" id="btnMigrateIdb">迁移至 IndexedDB</button>' +
+      '<span class="muted small">IndexedDB 容量远大于 localStorage（约 5MB 上限）。Sonder 始终双写双存，迁移后数据更保险。</span>' +
+      '</div></div>'
+    );
+    container.appendChild(migCard);
+    container.querySelector('#btnMigrateIdb').addEventListener('click', function () {
+      store.migrateToIdb().then(function (ok) {
+        UI.toast(ok ? '已迁移至 IndexedDB' : '当前环境不支持 IndexedDB', ok ? '' : 'err');
+      });
+    });
   }
 
   function statsCard(store, UI) {

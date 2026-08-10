@@ -19,6 +19,13 @@ function boot(opts = {}) {
   const { window } = dom;
   const storeFile = path.join(root, 'js', 'store.js');
 
+  // 可选注入 IndexedDB（测试用 fake-indexeddb），store.js 在 window 作用域内探测
+  if (opts.idb) {
+    window.indexedDB = opts.idb;
+    const kr = opts.idbKeyRange || (typeof globalThis.IDBKeyRange !== 'undefined' ? globalThis.IDBKeyRange : null);
+    if (kr) window.IDBKeyRange = kr;
+  }
+
   // 手工按顺序注入脚本（避免 file:// 下加载外部脚本的约束）
   SCRIPT_ORDER.forEach(f => {
     const code = fs.readFileSync(path.join(root, 'js', f), 'utf8');

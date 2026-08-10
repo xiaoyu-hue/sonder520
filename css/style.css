@@ -168,6 +168,21 @@ body::after {
   box-shadow: inset 0 1px 0 var(--border-hi);
   position: sticky; top: 0; z-index: 5;
 }
+/* 存储接近上限警示条 */
+.quota-bar {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin: -8px 0 0; padding: 8px 22px;
+  background: #f9e7b8; color: #6b4d13; border-bottom: 1px solid #e6cf8c;
+  font-size: 13px; position: sticky; top: 58px; z-index: 4;
+}
+.quota-bar[hidden] { display: none; }
+.quota-bar b { font-weight: 700; }
+.quota-bar .qb-link { color: #b3622a; font-weight: 700; text-decoration: underline; }
+.quota-bar .small-btn { margin-left: auto; background: rgba(107, 77, 19, .12); border-color: rgba(107, 77, 19, .35); color: #6b4d13; }
+.data-theme-dark .quota-bar,
+[data-theme="dark"] .quota-bar { background: #4a3c1c; color: #f0d9a8; border-bottom-color: #6b5a2a; }
+[data-theme="dark"] .quota-bar .qb-link { color: #ffd98a; }
+[data-theme="dark"] .quota-bar .small-btn { background: rgba(240, 217, 168, .12); color: #f0d9a8; }
 .topbar .title {
   font-family: "STKaiti", "KaiTi", "楷体", serif;
   font-size: 17px; font-weight: 700; letter-spacing: 1px;
