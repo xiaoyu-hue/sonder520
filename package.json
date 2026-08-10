@@ -4,7 +4,7 @@
   "private": true,
   "description": "个人工作生活 App - 纯本地浏览器运行",
   "scripts": {
-    "test": "node --test tests/store.test.js tests/shell.test.js tests/ui.test.js tests/m3.test.js tests/m4.test.js tests/m5.test.js tests/acceptance.test.js tests/issue1.test.js tests/issue2.test.js tests/issue3.test.js tests/style.test.js tests/motion.test.js tests/wallpaper.test.js tests/mobile.test.js tests/perf.test.js tests/game-engine.test.js tests/games.test.js tests/qa.test.js tests/frame.test.js tests/pwa.test.js tests/search.test.js tests/sanitize.test.js tests/idb.test.js tests/smoke.test.js",
+    "test": "node --test tests/store.test.js tests/shell.test.js tests/ui.test.js tests/m3.test.js tests/m4.test.js tests/m5.test.js tests/acceptance.test.js tests/issue1.test.js tests/issue2.test.js tests/issue3.test.js tests/style.test.js tests/motion.test.js tests/wallpaper.test.js tests/mobile.test.js tests/perf.test.js tests/game-engine.test.js tests/games.test.js tests/qa.test.js tests/frame.test.js tests/pwa.test.js tests/search.test.js tests/sanitize.test.js tests/idb.test.js tests/smoke.test.js tests/encryption.test.js",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {

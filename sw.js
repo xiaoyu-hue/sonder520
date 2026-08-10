@@ -2,7 +2,7 @@
  * 部署新版本时请递增 CACHE 版本号；sw 更新后会自动清理旧缓存。 */
 'use strict';
 
-var CACHE = 'sonder-v8';
+var CACHE = 'sonder-v9';
 
 var ASSETS = [
   './',
@@ -25,6 +25,7 @@ var ASSETS = [
   './js/design.js',
   './js/games-logic.js',
   './js/games.js',
+  './js/encryption.js',
   './js/settings.js',
   './js/app.js'
 ];
