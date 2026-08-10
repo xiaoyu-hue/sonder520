@@ -134,6 +134,81 @@
       return applied;
     })
   };
+  window.__sonderHooks.idbReady.then(function () {
+    if (store.needsUnlock()) { autoUnlockOnce(); }
+  });
+
+  /* ---------- 加密锁屏 ---------- */
+  var lockScreenEl = null, lockPwdEl = null, lockErrEl = null, lockRememberEl = null;
+
+  function showLockScreen() {
+    if (lockScreenEl) { lockScreenEl.hidden = false; lockPwdEl.focus(); return; }
+    lockScreenEl = UI.el(
+      '<div id="lockScreen" style="position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;background:var(--bg);backdrop-filter:blur(6px)">' +
+      '<div style="width:min(92vw,360px);text-align:center;padding:28px 24px;border:1px solid var(--border);border-radius:16px;background:var(--glass-2)">' +
+      '<div style="font-size:34px;line-height:1">🔒</div>' +
+      '<h2 style="margin:10px 0 2px;color:var(--text)">Sonder 已锁定</h2>' +
+      '<p class="muted small" style="margin:0 0 16px">数据已加密存储于本机</p>' +
+      '<input type="password" id="lockPwd" placeholder="输入密码解锁" autocomplete="off" style="width:100%;padding:11px 14px;border:1px solid var(--border);border-radius:10px;background:var(--bg);color:var(--text);font-size:16px;box-sizing:border-box">' +
+      '<div class="small" id="lockErr" style="color:var(--danger, #e5484d);min-height:20px;margin-top:8px"></div>' +
+      '<button class="btn primary" id="lockBtn" style="width:100%;margin-top:2px">解锁</button>' +
+      '<label class="toggle small" style="margin-top:14px;display:flex;align-items:center;justify-content:center;gap:6px">' +
+      '<input type="checkbox" id="lockRemember"> 本浏览器标签页会话内免密（关闭标签页即失效）</label>' +
+      '<p class="muted small" style="margin:14px 0 0">请牢记密码；遗忘后将无法恢复任何数据。</p>' +
+      '</div></div>'
+    );
+    document.body.appendChild(lockScreenEl);
+    lockPwdEl = lockScreenEl.querySelector('#lockPwd');
+    lockErrEl = lockScreenEl.querySelector('#lockErr');
+    lockRememberEl = lockScreenEl.querySelector('#lockRemember');
+    var btn = lockScreenEl.querySelector('#lockBtn');
+    var busy = false;
+    function tryUnlock() {
+      if (busy) return;
+      var pwd = lockPwdEl.value;
+      if (!pwd) { lockErrEl.textContent = '请输入密码'; return; }
+      busy = true;
+      btn.disabled = true;
+      store.unlock(pwd).then(function (ok) {
+        busy = false;
+        btn.disabled = false;
+        if (!ok) {
+          lockErrEl.textContent = '密码不正确，请重试';
+          lockPwdEl.value = '';
+          lockPwdEl.focus();
+          return;
+        }
+        if (lockRememberEl.checked) {
+          try { sessionStorage.setItem('sonder_session_pwd', pwd); } catch (e) { /* 隐私模式忽略 */ }
+        }
+        lockScreenEl.hidden = true;
+        lockErrEl.textContent = '';
+        lockPwdEl.value = '';
+        onHash();
+      });
+    }
+    btn.onclick = tryUnlock;
+    lockPwdEl.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); tryUnlock(); }
+    });
+    lockPwdEl.focus();
+  }
+
+  function autoUnlockOnce() {
+    var pwd = null;
+    try { pwd = sessionStorage.getItem('sonder_session_pwd'); } catch (e) { pwd = null; }
+    if (!pwd) { showLockScreen(); return; }
+    store.unlock(pwd).then(function (ok) {
+      if (ok) { onHash(); }
+      else {
+        try { sessionStorage.removeItem('sonder_session_pwd'); } catch (e) { /* ignore */ }
+        showLockScreen();
+      }
+    });
+  }
+
+  window.__sonderHooks.lockNow = function () { showLockScreen(); };
+  window.__sonderHooks.unlockNow = function () { if (lockScreenEl) lockScreenEl.hidden = true; };
 
   /* 顶栏全局“＋”新建：调用当前页面的 openAdd() */
   document.getElementById('btnQuickMemo').addEventListener('click', function () {

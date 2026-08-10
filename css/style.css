@@ -471,6 +471,7 @@ input, select, textarea, button { font-size: 16px; }
 .toggle { display: flex; align-items: center; gap: 8px; }
 .details { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--border); }
 .notes-area { font-size: 13px; color: var(--text); white-space: pre-wrap; word-break: break-word; }
+.enc-on { color: var(--ok); font-weight: 600; }
 
 /* ---------- 自媒体统计图表（水墨配色） ---------- */
 .st-legend { display: flex; gap: 16px; padding: 6px 0 10px; border-bottom: 1px solid var(--border); margin-bottom: 10px; }

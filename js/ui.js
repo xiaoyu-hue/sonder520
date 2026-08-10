@@ -148,6 +148,16 @@
         return;
       }
       var res = opts.onSubmit(r.v);
+      if (res && typeof res.then === 'function') {
+        /* 异步提交：成功后调用方自行关闭或返回 true；失败返回错误字符串 */
+        res.then(function (ok) {
+          if (ok === true) ov.remove();
+          else if (typeof ok === 'string' && ok.length) { showErr(ov.querySelector('[data-k]'), ok); }
+        }, function (err) {
+          showErr(ov.querySelector('[data-k]'), (err && err.message) || '操作失败，请重试');
+        });
+        return;
+      }
       if (res === true) { ov.remove(); }
       else if (typeof res === 'string' && res.length) {
         var first = ov.querySelector('.hint');

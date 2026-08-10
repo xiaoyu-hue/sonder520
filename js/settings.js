@@ -87,11 +87,42 @@
     container.appendChild(UI.el('<div class="section-title">数据统计</div>'));
     container.appendChild(statsCard(store, UI));
 
+    container.appendChild(UI.el('<div class="section-title">加密存储</div>'));
+    var encMode = store.encryptionMode();
+    var encCard = UI.el(
+      '<div class="card">' +
+      '<div class="row">' +
+      '<span class="small' + (encMode !== 'off' ? ' enc-on' : '') + '">' +
+      (encMode === 'off' ? '未启用 — 数据明文存于本机' : (encMode === 'locked' ? '已启用 · 当前锁定' : '已启用 · 已解锁')) +
+      '</span>' +
+      (encMode === 'off'
+        ? '<button class="btn primary" id="encEnable">启用加密</button>'
+        : '<button class="btn" id="encLock">锁定</button><button class="btn danger" id="encDisable">停用加密</button>') +
+      '</div>' +
+      '<div class="sub muted" style="margin-top:8px;line-height:1.7">' +
+      (encMode === 'off'
+        ? '启用后全部数据将以 AES-256 加密存于本机，每次打开应用需要密码解锁，导出备份也将加密。请务必牢记密码：<b>忘记密码将无法恢复任何数据</b>，建议启用前先导出一份明文备份。'
+        : (encMode === 'locked' ? '应用已锁定，解锁后即可使用。' : '本标签页会话已解锁，关闭标签页后再次打开需要输入密码。') + '停用加密需要验证密码，且会把数据转为明文存储。') +
+      '</div></div>'
+    );
+    container.appendChild(encCard);
+    if (encMode === 'off') {
+      container.querySelector('#encEnable').addEventListener('click', function () { openEnableEnc(ctx); });
+    } else {
+      if (encMode === 'unlocked') {
+        container.querySelector('#encLock').addEventListener('click', function () {
+          store.lock();
+          hooks.lockNow();
+        });
+      }
+      container.querySelector('#encDisable').addEventListener('click', function () { openDisableEnc(ctx); });
+    }
+
     container.appendChild(UI.el('<div class="section-title">备份与恢复</div>'));
     container.appendChild(UI.el(
       '<div class="card">' +
       '<div class="row">' +
-      '<button class="btn primary" id="bkExport">导出备份</button>' +
+      '<button class="btn primary" id="bkExport">' + (encMode !== 'off' ? '导出加密备份' : '导出备份') + '</button>' +
       '<button class="btn" id="bkImport">导入恢复…</button>' +
       '<input type="file" id="bkFile" accept=".json,application/json" style="display:none">' +
       '<span class="muted small">备份保存在本地 JSON 文件，可随时导入恢复</span>' +
@@ -106,9 +137,29 @@
         if (!ok) { e.target.value = ''; return; }
         var reader = new FileReader();
         reader.onload = function () {
-          var res = store.importBackup(String(reader.result));
-          if (res.ok) { UI.toast('备份已恢复'); hooks.render('settings'); }
-          else { UI.toast(res.error, 'err'); e.target.value = ''; }
+          var text = String(reader.result);
+          var pkg = null;
+          try { pkg = JSON.parse(text); } catch (err) { pkg = null; }
+          if (pkg && pkg.format === 'sonder-enc-backup-v1') {
+            UI.formModal({
+              title: '导入加密备份',
+              confirmText: '解密导入',
+              fields: [{ key: 'pwd', label: '备份密码', type: 'password', required: true, placeholder: '导出加密备份时设置的密码' }],
+              onSubmit: function (v) {
+                return store.importBackup(text, v.pwd).then(function (r) {
+                  if (!r.ok) { throw new Error(r.error); }
+                  UI.toast('加密备份已恢复');
+                  hooks.render('settings');
+                  return true;
+                });
+              }
+            });
+            return;
+          }
+          store.importBackup(text).then(function (res) {
+            if (res.ok) { UI.toast('备份已恢复'); hooks.render('settings'); }
+            else { UI.toast(res.error, 'err'); e.target.value = ''; }
+          });
         };
         reader.readAsText(file);
       });
@@ -152,6 +203,42 @@
   function statBox(label, num, sub) {
     return '<div class="rank-card"><div class="num">' + window.UI.esc(num) + '</div>' +
       '<div class="lab">' + window.UI.esc(label) + '</div><div class="sub">' + window.UI.esc(sub) + '</div></div>';
+  }
+
+  function openEnableEnc(ctx) {
+    var store = ctx.store, UI = window.UI, hooks = window.__sonderHooks;
+    UI.formModal({
+      title: '启用加密',
+      confirmText: '启用加密',
+      fields: [
+        { key: 'pwd', label: '设置密码（至少 4 位，请牢记）', type: 'password', required: true, placeholder: '用于解锁本应用与加密备份导入' },
+        { key: 'pwd2', label: '确认密码', type: 'password', required: true }
+      ],
+      onSubmit: function (v) {
+        if (v.pwd.length < 4) return '密码至少 4 位';
+        if (v.pwd !== v.pwd2) return '两次输入的密码不一致';
+        return store.enableEncryption(v.pwd).then(function () {
+          UI.toast('已启用加密，全部数据已加密存储');
+          hooks.render('settings');
+          return true;
+        });
+      }
+    });
+  }
+  function openDisableEnc(ctx) {
+    var store = ctx.store, UI = window.UI, hooks = window.__sonderHooks;
+    UI.formModal({
+      title: '停用加密',
+      confirmText: '停用加密',
+      fields: [{ key: 'pwd', label: '输入当前密码', type: 'password', required: true }],
+      onSubmit: function (v) {
+        return store.disableEncryption(v.pwd).then(function () {
+          UI.toast('已停用加密，数据已转为明文存储');
+          hooks.render('settings');
+          return true;
+        });
+      }
+    });
   }
 
   function exportBackup(ctx) {

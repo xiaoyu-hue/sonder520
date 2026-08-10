@@ -19,6 +19,20 @@ function boot(opts = {}) {
   const { window } = dom;
   const storeFile = path.join(root, 'js', 'store.js');
 
+  // 注入真实 WebCrypto + TextEncoder/TextDecoder（jsdom 原生缺失）
+  try {
+    Object.defineProperty(window, 'crypto', {
+      value: require('node:crypto').webcrypto,
+      configurable: true,
+      writable: true
+    });
+  } catch (e) { /* 忽略 */ }
+  try {
+    const { TextEncoder, TextDecoder } = require('node:util');
+    Object.defineProperty(window, 'TextEncoder', { value: TextEncoder, configurable: true, writable: true });
+    Object.defineProperty(window, 'TextDecoder', { value: TextDecoder, configurable: true, writable: true });
+  } catch (e) { /* 忽略 */ }
+
   // 可选注入 IndexedDB（测试用 fake-indexeddb），store.js 在 window 作用域内探测
   if (opts.idb) {
     window.indexedDB = opts.idb;
@@ -26,10 +40,20 @@ function boot(opts = {}) {
     if (kr) window.IDBKeyRange = kr;
   }
 
+  // 可选注入 sessionStorage（加密免密会话）
+  if (opts.session) {
+    Object.keys(opts.session).forEach(k => {
+      try { window.sessionStorage.setItem(k, opts.session[k]); } catch (e) { /* 忽略 */ }
+    });
+  }
+
   // 手工按顺序注入脚本（避免 file:// 下加载外部脚本的约束）
   SCRIPT_ORDER.forEach(f => {
     const code = fs.readFileSync(path.join(root, 'js', f), 'utf8');
-    if (opts.seed !== undefined && f === 'store.js') {
+    if (opts.rawLS) {
+      /* rawLS: 精确注入 localStorage 快照（如密文 + 盐） */
+      Object.keys(opts.rawLS).forEach(k => window.localStorage.setItem(k, opts.rawLS[k]));
+    } else if (opts.seed !== undefined && f === 'store.js') {
       /* seed: 提供初始 localStorage 内容 */
       window.localStorage.setItem('sonder_data_v1', JSON.stringify(opts.seed));
     }
