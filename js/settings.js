@@ -206,6 +206,7 @@
 
     container.appendChild(UI.el('<div class="section-title">数据统计</div>'));
     container.appendChild(statsCard(store, UI));
+    container.appendChild(weeklyCard(store, UI));
 
     container.appendChild(UI.el('<div class="section-title">加密存储</div>'));
     var encMode = store.encryptionMode();
@@ -323,6 +324,53 @@
   function statBox(label, num, sub) {
     return '<div class="rank-card"><div class="num">' + window.UI.esc(num) + '</div>' +
       '<div class="lab">' + window.UI.esc(label) + '</div><div class="sub">' + window.UI.esc(sub) + '</div></div>';
+  }
+
+  function weeklyCard(store, UI) {
+    var card = UI.el(
+      '<div class="card" style="margin-top:10px">' +
+      '<div class="row" style="align-items:center">' +
+      '<button class="btn primary" id="btnWeekly" type="button">📊 生成本周报告</button>' +
+      '<span class="muted small" style="margin-left:auto">统计本周（周一~周日）计划任务、阅读、随手记与选题数据</span>' +
+      '</div>' +
+      '<div id="weeklyOut" style="display:none;margin-top:10px">' +
+      '<pre class="md-code weekly-text" style="margin:0;max-width:100%"></pre>' +
+      '<div class="row" style="margin-top:8px">' +
+      '<button class="small-btn primary-copy" id="weeklyCopy" type="button">📋 一键复制报告</button>' +
+      '<span class="muted small" style="margin-left:10px">可直接粘贴到周报/周会文档</span>' +
+      '</div>' +
+      '</div></div>'
+    );
+    card.querySelector('#btnWeekly').addEventListener('click', function () {
+      var rep = store.buildWeeklyReport();
+      card.querySelector('.weekly-text').textContent = rep.text;
+      card.querySelector('#weeklyOut').style.display = '';
+      UI.toast('本周报告已生成');
+    });
+    card.querySelector('#weeklyCopy').addEventListener('click', function () {
+      var text = card.querySelector('.weekly-text').textContent || '';
+      copyText(text);
+    });
+    return card;
+  }
+
+  function copyText(text) {
+    var UI = window.UI;
+    function fb() {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.cssText = 'position:fixed;opacity:0;top:0';
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand('copy'); UI.toast('已复制'); } catch (e) { UI.toast('复制失败，请手动选择', 'err'); }
+      document.body.removeChild(ta);
+    }
+    if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+      navigator.clipboard.writeText(text).then(function () { UI.toast('已复制'); }).catch(fb);
+      return;
+    }
+    fb();
   }
 
   function openEnableEnc(ctx) {
