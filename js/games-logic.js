@@ -462,6 +462,48 @@
     return { ok: true, flagged: cell.flagged, left: s.mines - s.flagged };
   }
 
+  /* ================================================================
+   * 猜成语：根据谜面猜成语，3 次机会，答错给提示字
+   * ================================================================ */
+  var IDIOM_POOL = [
+    { q: '最贵的字', hint: '字', a: '一字千金' },
+    { q: '最长的腿', hint: '步', a: '一步登天' },
+    { q: '最吝啬的人', hint: '毛', a: '一毛不拔' },
+    { q: '最反常的天气', hint: '晴', a: '晴天霹雳' },
+    { q: '最绝望的前途', hint: '山', a: '山穷水尽' },
+    { q: '最长的寿命', hint: '万', a: '万寿无疆' },
+    { q: '最宽阔的嘴巴', hint: '口', a: '口若悬河' },
+    { q: '最高大的人', hint: '顶', a: '顶天立地' },
+    { q: '最快的看书方法', hint: '目', a: '一目十行' },
+    { q: '最短的季节', hint: '日', a: '一日三秋' }
+  ];
+  function idiomStart() {
+    var item = IDIOM_POOL[Math.floor(Math.random() * IDIOM_POOL.length)];
+    return {
+      q: item.q, hint: item.hint, answer: item.a,
+      tries: 0, max: 3, over: false, correct: false
+    };
+  }
+  function idiomTry(s, input) {
+    if (!s || s.over) return { ok: false, error: '本局已结束，再来一题吧' };
+    var text = String(input == null ? '' : input).trim().replace(/\s+/g, '');
+    if (!text) return { ok: false, error: '请输入一个成语' };
+    if (text === s.answer) {
+      s.over = true;
+      s.correct = true;
+      return { ok: true, correct: true, answer: s.answer, tries: s.tries + 1 };
+    }
+    s.tries++;
+    var res = { ok: true, correct: false, tries: s.tries };
+    if (s.tries >= s.max) {
+      s.over = true;
+      res.answer = s.answer;
+    } else {
+      res.hint = s.hint;
+    }
+    return res;
+  }
+
   return {
     createGame: createGame,
     cloneGame: cloneGame,
@@ -475,6 +517,9 @@
     mineStart: mineStart,
     mineLay: mineLay,
     mineReveal: mineReveal,
-    mineToggleFlag: mineToggleFlag
+    mineToggleFlag: mineToggleFlag,
+    idiomStart: idiomStart,
+    idiomTry: idiomTry,
+    IDIOM_POOL: IDIOM_POOL
   };
 });

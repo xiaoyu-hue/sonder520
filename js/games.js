@@ -66,6 +66,8 @@
       var d = MS_DIFFS[diff] || MS_DIFFS[MS_DEFAULT_DIFF];
       state.mini = { kind: 'minesweeper', g: G.mineStart(d.rows, d.cols, d.mines), diff: diff };
       msFlagMode = false;
+    } else if (kind === 'idiom') {
+      state.mini = { kind: 'idiom', g: G.idiomStart() };
     } else {
       state.mini = { kind: kind, g: null };
     }
@@ -75,6 +77,7 @@
   function miniView(ctx) {
     if (state.mini.kind === 'guessnum') return guessNumView(ctx);
     if (state.mini.kind === 'minesweeper') return mineView(ctx);
+    if (state.mini.kind === 'idiom') return idiomView(ctx);
     return pickView(ctx);
   }
 
@@ -340,6 +343,72 @@ function histHtml(g) {
     render(ctx);
   }
 
+  /* -------- 猜成语 -------- */
+  function idiomView(ctx) {
+    var UI = ctx.UI, g = state.mini.g;
+    var rec = miniRec('idiom');
+    var tips = g.tries > 0 ? ' · 提示：<b>' + UI.esc(g.hint) + '</b>' : '';
+    var wrap = UI.el('<div></div>');
+    wrap.appendChild(UI.el(
+      '<div class="hbar">' +
+      '<div class="lab" style="font-size:15px">📖 猜成语</div>' +
+      '<span class="muted small">谜面猜成语 · 3 次机会</span>' +
+      '<span class="sp"></span>' +
+      '<button class="btn" data-mact="back" type="button">← 选游戏</button>' +
+      '</div>'
+    ));
+    var card = UI.el(
+      '<div class="card">' +
+      '<div class="row" style="align-items:center;gap:10px">' +
+      '<span class="small muted">答对 ' + (rec.right || 0) + ' · 答错 ' + (rec.wrong || 0) + '</span>' +
+      '<span class="small muted" style="margin-left:auto">机会 ' + Math.max(0, g.max - g.tries) + '/' + g.max + '</span>' +
+      '</div>' +
+      '<div class="idm-q" role="status" aria-live="polite">「' + UI.esc(g.q) + '」</div>' +
+      (g.over ? '' :
+        '<div class="row" style="gap:10px;margin-top:12px">' +
+        '<input type="text" id="idmInput" maxlength="4" placeholder="输入四字成语" ' +
+        'aria-label="输入猜出的成语" style="min-height:44px;flex:1">' +
+        '<button class="btn primary" id="idmGo" type="button" style="min-height:44px">提交</button>' +
+        '</div>') +
+      '<div class="idm-tip">' + tips + '</div>' +
+      (g.over ? '<div class="mg-result" id="idmResult">' + idiomResult(g) + '</div>' : '') +
+      '<div class="row" style="margin-top:12px">' +
+      '<button class="btn" data-mact="again" type="button" style="min-height:44px">🔄 换一题</button>' +
+      '</div>' +
+      '</div>'
+    );
+    var go = function () {
+      var input = card.querySelector('#idmInput');
+      var res = G.idiomTry(g, input ? input.value : '');
+      if (!res.ok) { UI.toast(res.error, 'err'); return; }
+      if (res.correct) saveMiniRec('idiom', { right: (miniRec('idiom').right || 0) + 1 });
+      else if (res.tries === g.max) saveMiniRec('idiom', { wrong: (miniRec('idiom').wrong || 0) + 1 });
+      render(ctx);
+    };
+    var goBtn = card.querySelector('#idmGo');
+    if (goBtn) goBtn.addEventListener('click', go);
+    var input = card.querySelector('#idmInput');
+    if (input) input.addEventListener('keydown', function (e) { if (e.key === 'Enter') go(); });
+    wrap.appendChild(card);
+    wrap.querySelectorAll('[data-mact]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        if (b.dataset.mact === 'back') {
+          state.mini = null;
+          render(ctx);
+        } else {
+          state.mini = { kind: 'idiom', g: G.idiomStart() };
+          render(ctx);
+        }
+      });
+    });
+    return wrap;
+  }
+
+  function idiomResult(g) {
+    if (g.correct) return '🎉 答对了！就是「' + window.UI.esc(g.answer) + '」';
+    return '答案是「<b>' + window.UI.esc(g.answer) + '</b>」，下次再战！';
+  }
+
   /* ---------- 游戏选择 ---------- */
   function pickView(ctx) {
     var UI = ctx.UI;
@@ -375,6 +444,11 @@ function histHtml(g) {
       '<div class="lab">💣 扫雷</div>' +
       '<div class="sub">经典扫雷 · 三档难度</div>' +
       '<div class="sub">⚑ 标记模式 · 右键插旗</div>' +
+      '</div>' +
+      '<div class="card lg-pick" data-pick="idiom">' +
+      '<div class="lab">📖 猜成语</div>' +
+      '<div class="sub">谜面猜成语 · 3 次机会</div>' +
+      '<div class="sub">答错提示字 · 战绩统计</div>' +
       '</div>' +
       '</div>' +
       '</div>'
@@ -755,5 +829,9 @@ function histHtml(g) {
     s.revealed = 0;
     s.flagged = 0;
     render(currentCtx);
+  };
+/* 测试钩子：注入确定的猜成语答案（仅测试用） */
+  window.__gamesDbg.setIdiomAnswer = function (a) {
+    if (state.mini && state.mini.kind === 'idiom') state.mini.g.answer = a;
   };
 })();

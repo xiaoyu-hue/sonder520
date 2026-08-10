@@ -856,3 +856,12 @@ input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border-radius
 .ms-cell.n3 { color: var(--accent); }
 .ms-cell.n4, .ms-cell.n5, .ms-cell.n6, .ms-cell.n7, .ms-cell.n8 { color: var(--warn); }
 @keyframes ms-boom { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.18); } }
+
+/* ============ v3 · 猜成语 ============ */
+.idm-q {
+  margin-top: 14px; font-size: 20px; font-weight: 700; letter-spacing: 2px;
+  padding: 14px; border-radius: 10px;
+  background: linear-gradient(120deg, var(--accent-soft), rgba(194, 59, 46, 0.04));
+  border: 1px solid var(--border); text-align: center;
+}
+.idm-tip { margin-top: 10px; min-height: 20px; color: var(--warn); font-size: 14px; }
