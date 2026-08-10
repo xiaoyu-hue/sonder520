@@ -111,6 +111,7 @@
   }
 
   /* ---------- Store ---------- */
+  /** @constructor @this {{ _storage: any, state: any }} */
   function Store(storage) {
     this._storage = storage || (typeof localStorage !== 'undefined' ? localStorage : null);
     var persisted = null;
@@ -123,6 +124,7 @@
 
   function clone(o) { return deepClone(o); }
 
+  /** @this {{ _storage: any, state: any }} */
   Store.prototype.save = function () {
     if (!this._storage) return;
     try {

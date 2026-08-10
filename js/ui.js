@@ -18,10 +18,11 @@
       .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
 
+  /** @param {string} html @returns {HTMLElement} */
   function el(html) {
     var t = document.createElement('template');
     t.innerHTML = html.trim();
-    return t.content.firstChild;
+    return /** @type {HTMLElement} */ (t.content.firstChild);
   }
 
   function toast(msg, type) {
@@ -142,10 +143,10 @@
     };
     var firstInput = ov.querySelector('input,select,textarea');
     if (firstInput) { firstInput.focus(); }
-    ov.querySelector('.modal').addEventListener('keydown', function (e) {
-      if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') {
+    ov.querySelector('.modal').addEventListener('keydown', /** @param {KeyboardEvent} e */ function (e) {
+      if (e.key === 'Enter' && /** @type {HTMLElement} */ (e.target).tagName !== 'TEXTAREA') {
         e.preventDefault();
-        ov.querySelector('[data-act="ok"]').click();
+        /** @type {HTMLElement} */ (ov.querySelector('[data-act="ok"]')).click();
       }
     });
     return ov;

@@ -7,7 +7,7 @@
 
   function fmt(t) {
     var d = new Date(t);
-    if (isNaN(d)) return '';
+    if (isNaN(d.getTime())) return '';
     function p(n) { return String(n).padStart(2, '0'); }
     return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
   }
