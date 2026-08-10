@@ -171,7 +171,8 @@
     var g = state.game;
     if (!g || g.over) return;
     busy = true;
-    render(ctx);
+    var st = document.querySelector('#gStatus');
+    if (st) st.textContent = statusText();
     var delay = g.moves.length === 0 ? 320 : 220;
     aiTimer = setTimeout(function () {
       aiTimer = null;

@@ -150,3 +150,69 @@ test('游戏：回上一页后重进保留进行中的对局', async () => {
   assert.ok(h.window.document.querySelector('#gBoard'), '应保留对局界面');
   assert.equal(h.window.document.querySelectorAll('#gBoard .cell').length, 9);
 });
+
+/* ---------- 第 1 轮：棋盘不震动 + 重新开局必须彻底清盘 ---------- */
+
+const fs = require('node:fs');
+const path = require('node:path');
+
+function emptyBoardHelper(h) {
+  const cells = h.window.document.querySelectorAll('#gBoard .cell');
+  const filled = Array.from(cells).filter(c => (c.querySelector('.mk') || c.querySelector('.stone')));
+  return {
+    filled, done: !!h.window.document.querySelector('#gBoard.done'),
+    last: h.window.document.querySelectorAll('#gBoard .cell.last').length,
+    win: h.window.document.querySelectorAll('#gBoard .cell.win').length
+  };
+}
+
+test('游戏：落子动画零位移（棋盘不震动）', () => {
+  const css = fs.readFileSync(path.join(__dirname, '..', 'css', 'style.css'), 'utf8');
+  const m = css.match(/\.cell\.last \{ animation: ([^;]+);/);
+  assert.ok(m && m[1].trim(), '应有 .cell.last 落子动画');
+  const name = m[1].split(/\s+/)[0];
+  assert.equal(name, 'fadeIn', '落子动画应为零位移淡入');
+  const kf = css.slice(css.indexOf('@keyframes ' + name), css.indexOf('}', css.indexOf('@keyframes ' + name)));
+  assert.ok(!/translate|transform/.test(kf), '关键帧不得包含任何位移 transform');
+});
+
+test('游戏：终局后点新开局必须彻底重置棋盘', async () => {
+  const h = boot();
+  h.goto('game');
+  h.window.document.querySelector('[data-pick="tictactoe"]').click();
+  h.window.document.querySelector('[data-mode="pvp"]').click();
+  cell(h, 0, 0).click(); cell(h, 1, 0).click();
+  cell(h, 0, 1).click(); cell(h, 1, 1).click();
+  cell(h, 0, 2).click();
+  assert.ok(h.window.document.querySelector('#gBoard.done'), '先手横线应终局');
+  assert.ok(h.window.document.querySelectorAll('#gBoard .cell.win').length > 0, '应有胜线高亮');
+  h.window.document.querySelector('[data-act="new"]').click();
+  await wait(20);
+  h.window.document.querySelector('[data-act="yes"]').click();
+  await wait(20);
+  const s = emptyBoardHelper(h);
+  assert.equal(s.filled.length, 0, '新棋盘不得残留任何棋子');
+  assert.equal(s.done, false, '终局态应清除');
+  assert.equal(s.last, 0, '末手标记应清除');
+  assert.equal(s.win, 0, '胜线高亮应清除');
+  const stTxt = h.window.document.querySelector('#gStatus').textContent;
+  assert.ok(!stTxt.includes('获胜') && !stTxt.includes('平局'), '状态栏应恢复进行中，实际为: ' + stTxt);
+  assert.equal(h.window.__gamesDbg().game.moves, 0, '内部棋谱必须归零');
+});
+
+test('游戏：任意时刻点新开局必须清空棋盘', async () => {
+  const h = boot();
+  h.goto('game');
+  h.window.document.querySelector('[data-pick="gomoku"]').click();
+  h.window.document.querySelector('[data-mode="pvp"]').click();
+  cell(h, 7, 7).click();
+  cell(h, 7, 8).click();
+  cell(h, 8, 8).click();
+  assert.equal(emptyBoardHelper(h).filled.length, 3, '落子前置条件');
+  h.window.document.querySelector('[data-act="new"]').click();
+  await wait(20);
+  h.window.document.querySelector('[data-act="yes"]').click();
+  await wait(20);
+  assert.equal(emptyBoardHelper(h).filled.length, 0, '五子棋新开局棋盘必须全空');
+  assert.equal(h.window.__gamesDbg().game.moves, 0);
+});

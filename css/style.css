@@ -633,8 +633,9 @@ input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border-radius
 .cell.win { background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent), 0 0 10px var(--accent-soft); }
 .game-board.done .cell.win:hover { background: var(--accent-soft); }
 
-/* 落子 / 胜利的墨染反馈：仅对最后落子格与胜利格播放动画，避免整盘重排 */
-.cell.last { animation: fadeUp .25s var(--ease) both; }
+/* 落子 / 胜利的墨染反馈：仅对最后落子格与胜利格播放动画，避免整盘重排。
+   落子动画零位移（纯淡入），防止棋盘视觉跳动 */
+.cell.last { animation: fadeIn .22s var(--ease) both; }
 .game-board.done .cell.win { animation: cellPulse 1.1s var(--ease) infinite; }
 @keyframes cellPulse {
   0%, 100% { background: var(--accent-soft); }
