@@ -16,7 +16,9 @@ test('性能：壁纸预加载 + 站点图标内联（首次绘制提速，无 4
 
 test('性能：不再使用 background-attachment: fixed（滚动重绘开销）', () => {
   assert.ok(!/background-attachment:\s*fixed/.test(css), 'body 不应再 fixed 背景');
-  assert.ok(css.includes('url("../img/wallpaper.jpg")') && css.includes('position: fixed'), '壁纸仍由固定层承载');
+  assert.ok(css.includes('#wallpaperLayer') && css.includes('position: fixed'), '壁纸仍由固定层承载');
+  const app = require('node:fs').readFileSync(require('node:path').join(require('node:path').dirname(require('node:path').dirname(__filename)), 'js', 'app.js'), 'utf8');
+  assert.ok(app.includes('img/wallpaper.jpg'), '默认壁纸由 JS 注入 img 元素');
 });
 
 test('性能：玻璃磨砂降档（移动端低端机不卡），双侧前缀一致', () => {

@@ -52,13 +52,15 @@ test('UI：设置页有透明度滑块，拖动更新存储与 CSS 变量', () =
   assert.equal(doc.querySelector('#wallOpacityVal').textContent, '70%', '标签应同步');
 });
 
-test('CSS：壁纸层使用 url 且透明度走 var(--wallpaper-opacity) 默认 0.4', () => {
+test('CSS：壁纸层覆盖视口且透明度走 var(--wallpaper-opacity) 默认 0.4', () => {
   const css = fs.readFileSync(path.join(root, 'css', 'style.css'), 'utf8');
-  assert.ok(css.includes('url("../img/wallpaper.jpg")'), '应引用 img/wallpaper.jpg');
-  const layer = css.split('#wallpaperLayer')[1].split('}')[0];
-  assert.ok(layer.includes('background-size: cover'), '应 cover 铺满');
-  assert.ok(layer.includes('background-position: center'), '应居中（移动端适配）');
-  assert.ok(layer.includes('opacity: var(--wallpaper-opacity, 0.4)'), '应使用透明度变量');
+  const app = fs.readFileSync(path.join(root, 'js', 'app.js'), 'utf8');
+  assert.ok(app.includes("'img/wallpaper.jpg'") || app.includes('"img/wallpaper.jpg"'), '默认壁纸应引用 img/wallpaper.jpg');
+  const layer = css.split('#wallpaperLayer img')[1].split('}')[0];
+  assert.ok(layer.includes('object-fit: cover'), '应 cover 铺满');
+  assert.ok(layer.includes('object-position: center'), '应居中（所有机型）');
+  const layerBox = css.split('#wallpaperLayer')[1].split('}')[0];
+  assert.ok(layerBox.includes('opacity: var(--wallpaper-opacity, 0.4)'), '应使用透明度变量');
   assert.ok(css.includes('--wallpaper-opacity: 0.4'), '默认透明度 0.4');
 });
 

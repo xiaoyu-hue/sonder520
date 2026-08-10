@@ -79,11 +79,11 @@ function poll(fn, stepMs, timeoutMs) {
   });
 }
 
-/* 背景层是否在使用自定义壁纸（#wallpaperLayer 内联 backgroundImage 含 data:image） */
+/* 壁纸层 img 是否在使用自定义壁纸（src 为 data:image） */
 function bLayer(window) {
-  const layer = window.document.getElementById('wallpaperLayer');
-  if (!layer) return false;
-  return /url\("data:image\//.test(layer.style.backgroundImage || '');
+  const img = window.document.getElementById('wallpaperImg');
+  if (!img) return false;
+  return /^data:image\//.test(img.getAttribute('src') || '');
 }
 
 test('上传成功：立即预览、背景实时更换、base64 存入 localStorage', async () => {
@@ -177,17 +177,19 @@ test('同一文件可重复上传（输入框已重置，change 再次触发）'
   assert.equal(hooks.store.getCustomWallpaper(), v1, '两次上传后内容一致且仍生效');
 });
 
-test('CSS：壁纸层为独立元素，默认图 + cover/居中（移动端适配）', () => {
+test('CSS：壁纸层元素化适配所有机型——cover 铺满 / 居中 / 不拉伸变形', () => {
   const { root } = require('./harness.js');
   const fs = require('node:fs');
   const path = require('node:path');
   const css = fs.readFileSync(path.join(root, 'css', 'style.css'), 'utf8');
   assert.ok(css.includes('#wallpaperLayer'), '应有独立壁纸层元素样式');
-  const blk = css.split('#wallpaperLayer')[1].split('}')[0];
-  assert.ok(/background-image:\s*url\("\.\.\/img\/wallpaper\.jpg"\)/.test(blk), '默认应使用项目山水图');
-  assert.ok(/background-size:\s*cover/.test(blk), '应 cover 铺满不拉伸');
-  assert.ok(/background-position:\s*center/.test(blk), '应居中显示（移动端适配）');
-  assert.ok(/opacity:\s*var\(--wallpaper-opacity/.test(blk), '透明度应继续由滑块控制');
+  const blk = css.split('#wallpaperLayer img')[1].split('}')[0];
+  assert.ok(/object-fit:\s*cover/.test(blk), 'img 应以 cover 铺满不拉伸');
+  assert.ok(/object-position:\s*center/.test(blk), '应居中显示（横竖屏/手机/桌面统一）');
+  assert.ok(/width:\s*100%/.test(blk) && /height:\s*100%/.test(blk), '应铺满整个视口');
+  const layerBlk = css.split('#wallpaperLayer')[1].split('img')[0];
+  assert.ok(/opacity:\s*var\(--wallpaper-opacity/.test(layerBlk), '透明度应继续由滑块控制');
+  assert.ok(/position:\s*fixed/.test(layerBlk), '层应固定定位覆盖视口');
   const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
-  assert.ok(html.includes('id="wallpaperLayer"'), '页面应包含壁纸层元素');
+  assert.ok(html.includes('id="wallpaperImg"'), '页面应包含壁纸 img 元素');
 });
