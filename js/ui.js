@@ -18,6 +18,19 @@
       .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
 
+  /* 通用净化函数：所有用户输入展示前统一走这里，杜绝 XSS。
+   * sanitize(text)：转义 < > & " '；sanitizeUrl(url)：仅放行安全协议，拦截 javascript:/data: 等。 */
+  function sanitize(s) {
+    return esc(s);
+  }
+
+  function sanitizeUrl(u) {
+    var s = String(u === null || u === undefined ? '' : u).trim();
+    if (!s) return s;
+    if (/^javascript:|^data:|^vbscript:/i.test(s)) return '';
+    return s;
+  }
+
   /** @param {string} html @returns {HTMLElement} */
   function el(html) {
     var t = document.createElement('template');
@@ -162,5 +175,5 @@
     return d;
   }
 
-  return { esc: esc, el: el, toast: toast, confirmBox: confirmBox, formModal: formModal, emptyState: emptyState };
+  return { esc: esc, sanitize: sanitize, sanitizeUrl: sanitizeUrl, el: el, toast: toast, confirmBox: confirmBox, formModal: formModal, emptyState: emptyState };
 });

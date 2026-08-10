@@ -41,8 +41,9 @@
   function designCard(x, ctx) {
     var UI = ctx.UI, store = ctx.store;
     var isProj = x.type === 'project';
-    var link = x.link
-      ? '<a href="' + UI.esc(x.link) + '" target="_blank" rel="noopener" class="small" style="color:var(--accent)">链接 →</a>'
+    var safeLink = UI.sanitizeUrl(x.link);
+    var link = x.link && safeLink
+      ? '<a href="' + safeLink + '" target="_blank" rel="noopener" class="small" style="color:var(--accent)">链接 →</a>'
       : '';
     var card = UI.el(
       '<div class="list-item" data-id="' + x.id + '">' +

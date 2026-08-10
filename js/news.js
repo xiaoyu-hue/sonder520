@@ -51,8 +51,9 @@
     var pill = n.status === 'favorite' ? '<span class="pill hi">收藏</span>'
       : n.status === 'read' ? '<span class="pill lo">已读</span>'
       : '<span class="pill">待读</span>';
-    var titleHtml = n.url
-      ? '<a href="' + UI.esc(n.url) + '" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none">' + UI.esc(n.title) + '</a>'
+    var safeUrl = UI.sanitizeUrl(n.url);
+    var titleHtml = n.url && safeUrl
+      ? '<a href="' + safeUrl + '" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none">' + UI.esc(n.title) + '</a>'
       : UI.esc(n.title);
     var row = UI.el(
       '<div class="list-item" data-id="' + n.id + '">' +
