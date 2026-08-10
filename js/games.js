@@ -10,7 +10,8 @@
   var aiTimer = null;
   var confirmOpen = false;
 
-  var DIFF_LABEL = { easy: '简单', normal: '普通', hard: '困难' };
+  var DIFF_LABEL = { easy: '简单', normal: '普通', hard: '困难', mid: '中等' };
+  var KIND_NAME = { tictactoe: '井字棋', gomoku: '五子棋', guessnum: '🎯 猜数字', minesweeper: '💣 扫雷', idiom: '📖 猜成语', brainteaser: '🧠 脑筋急转弯' };
   function diffOptions(sel) {
     var s = '';
     ['easy', 'normal', 'hard'].forEach(function (d) {
@@ -39,7 +40,7 @@
     return stone === 'X' ? '玩家1' : '玩家2';
   }
   function sym(stone) { return stone === 'X' ? '✕' : '◯'; }
-  function kindName(g) { return g.kind === 'gomoku' ? '五子棋' : '井字棋'; }
+  function kindName(g) { return KIND_NAME[g.kind] || g.kind; }
 
   function render(ctx) {
     var container = currentEl, UI = ctx.UI;
@@ -148,6 +149,13 @@
       var v = input ? input.value : '';
       var res = G.guessNumTry(g, v);
       if (!res.ok) { UI.toast(res.error, 'err'); return; }
+      if (res.win || res.lose) {
+        ctx.store.addGameRecord({
+          kind: 'guessnum', mode: 'solo', player: 'player',
+          winner: res.win ? 'player' : 'opponent',
+          note: res.win ? ('第 ' + g.attempts.length + ' 次猜中，目标 ' + g.target) : ('七次未中，目标 ' + g.target)
+        });
+      }
       render(ctx);
     };
     var btn = card.querySelector('#mgGo');
@@ -324,10 +332,17 @@ function histHtml(g) {
     if (!res.ok) { ctx.UI.toast(res.error, 'err'); return; }
     if (res.over) {
       var rec = miniRec('minesweeper');
-      rec.wins = (rec.wins || 0) + (res.won ? 1 : 0);
-      rec.losses = (rec.losses || 0) + (res.won ? 0 : 1);
+      var won = res.won;
+      rec.wins = (rec.wins || 0) + (won ? 1 : 0);
+      rec.losses = (rec.losses || 0) + (won ? 0 : 1);
       rec.diff = state.mini.diff;
       saveMiniRec('minesweeper', rec);
+      ctx.store.addGameRecord({
+        kind: 'minesweeper', mode: 'solo', player: 'player',
+        winner: won ? 'player' : 'opponent',
+        difficulty: state.mini.diff,
+        note: won ? '扫清全部地雷' : ('踩中地雷，雷数 ' + g.mineCount)
+      });
       render(ctx);
       return;
     }
@@ -387,8 +402,13 @@ function histHtml(g) {
       var input = card.querySelector('#idmInput');
       var res = G.idiomTry(g, input ? input.value : '');
       if (!res.ok) { UI.toast(res.error, 'err'); return; }
-      if (res.correct) saveMiniRec('idiom', { right: (miniRec('idiom').right || 0) + 1 });
-      else if (res.tries === g.max) saveMiniRec('idiom', { wrong: (miniRec('idiom').wrong || 0) + 1 });
+      if (res.correct) {
+        saveMiniRec('idiom', { right: (miniRec('idiom').right || 0) + 1 });
+        ctx.store.addGameRecord({ kind: 'idiom', mode: 'solo', player: 'player', winner: 'player', note: '答对「' + g.answer + '」' });
+      } else if (res.tries === g.max) {
+        saveMiniRec('idiom', { wrong: (miniRec('idiom').wrong || 0) + 1 });
+        ctx.store.addGameRecord({ kind: 'idiom', mode: 'solo', player: 'player', winner: 'opponent', note: '三次未中，答案是「' + g.answer + '」' });
+      }
       render(ctx);
     };
     var goBtn = card.querySelector('#idmGo');
@@ -455,6 +475,7 @@ function histHtml(g) {
       if (!res.ok) { UI.toast(res.error, 'err'); return; }
       if (res.correct) {
         saveMiniRec('brainteaser', { right: (miniRec('brainteaser').right || 0) + 1 });
+        ctx.store.addGameRecord({ kind: 'brainteaser', mode: 'solo', player: 'player', winner: 'player' });
         render(ctx);
       } else {
         UI.toast('再想想，脑筋转个弯～');
@@ -471,6 +492,7 @@ function histHtml(g) {
       g.over = true;
       g.correct = false;
       saveMiniRec('brainteaser', { wrong: (miniRec('brainteaser').wrong || 0) + 1 });
+      ctx.store.addGameRecord({ kind: 'brainteaser', mode: 'solo', player: 'player', winner: 'opponent', note: '直接看了答案' });
       render(ctx);
     });
     wrap.appendChild(card);
@@ -810,7 +832,8 @@ function histHtml(g) {
 
   function resultText(r) {
     if (r.winner === 'draw') return '平局';
-    if (r.mode === 'pvp') return r.winner === 'X' ? '玩家1胜' : '玩家2胜';
+    if (r.mode === 'pvp') return r.winner === r.player ? '玩家1胜' : '玩家2胜';
+    if (r.mode === 'solo') return r.winner === r.player ? '你胜' : '你负';
     return r.winner === r.player ? '你胜' : 'AI胜';
   }
   function resultPill(r) {
@@ -821,7 +844,7 @@ function histHtml(g) {
     return String(d || '').slice(5);
   }
   function diffBadge(r) {
-    if (r.mode !== 'ai' || !r.difficulty) return '';
+    if (r.mode === 'pvp' || !r.difficulty) return '';
     var label = DIFF_LABEL[r.difficulty] || r.difficulty;
     return '<span class="small muted" style="margin-left:8px;white-space:nowrap">' + window.UI.esc(label) + '</span>';
   }
@@ -838,8 +861,8 @@ function histHtml(g) {
         card.appendChild(UI.el(
           '<div class="list-item">' +
           '<div class="grow">' +
-          '<div class="title">' + UI.esc(kindName({ kind: r.kind })) + ' · ' + (r.mode === 'ai' ? 'AI 对决' : '双人对弈') + diffBadge(r) + '</div>' +
-          '<div class="sub">' + UI.esc(shortDate(r.date)) + (r.byResign ? ' · 认输' : '') + '</div>' +
+          '<div class="title">' + UI.esc(kindName({ kind: r.kind })) + ' · ' + (r.mode === 'ai' ? 'AI 对决' : (r.mode === 'solo' ? '单人挑战' : '双人对弈')) + diffBadge(r) + '</div>' +
+          '<div class="sub">' + UI.esc(shortDate(r.date)) + (r.byResign ? ' · 认输' : '') + (r.note ? ' · ' + UI.esc(r.note) : '') + '</div>' +
           '</div>' +
           '<span class="pill ' + resultPill(r) + '">' + resultText(r) + '</span>' +
           '</div>'

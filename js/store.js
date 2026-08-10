@@ -1103,16 +1103,25 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
   };
 
   /* ====== 娱乐游戏 ====== */
+  /* 单人休闲游戏 kind（战绩并入对局记录，mode 记为 solo，难度按自身档位保存） */
+  var SOLO_KINDS = { guessnum: 1, minesweeper: 1, idiom: 1, brainteaser: 1 };
   Store.prototype.addGameRecord = function (d) {
+    var solo = SOLO_KINDS[d.kind] ? true : false;
+    var kind = d.kind === 'gomoku' || d.kind === 'tictactoe' || solo ? d.kind : 'tictactoe';
+    var mode = d.mode === 'pvp' ? 'pvp' : (solo ? 'solo' : 'ai');
+    var winner = d.winner === 'draw' ? 'draw' : d.winner;
     var r = {
       id: uid(),
-      kind: d.kind === 'gomoku' ? 'gomoku' : 'tictactoe',
-      mode: d.mode === 'pvp' ? 'pvp' : 'ai',
-      player: d.player === 'O' ? 'O' : 'X',
-      winner: d.winner === 'draw' ? 'draw' : (d.winner === 'O' ? 'O' : 'X'),
+      kind: kind,
+      mode: mode,
+      player: d.player || (mode === 'pvp' ? 'X' : 'player'),
+      winner: winner,
       byResign: !!d.byResign,
-      /* 仅 AI 对决记录难度档位；双人对弈与旧记录为 null */
-      difficulty: d.mode === 'pvp' ? null : (d.difficulty === 'easy' || d.difficulty === 'hard' ? d.difficulty : 'normal'),
+      /* 棋类难度映射为 easy/normal/hard；单人休闲游戏保留自身档位 */
+      difficulty: mode === 'pvp' ? null : (solo
+        ? (d.difficulty || null)
+        : (d.difficulty === 'easy' || d.difficulty === 'hard' ? d.difficulty : 'normal')),
+      note: d.note || null,
       date: todayStr(),
       time: nowISO()
     };
