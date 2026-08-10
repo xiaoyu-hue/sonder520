@@ -11,10 +11,10 @@
 ## 在线访问
 
 - 主站 1：https://sonder520.netlify.app/
-
+备注:主站1因为部署次数的限制 没有更新新版本 请移步主站2和备用站
 - 主站 2：https://sonder520.pages.dev/
 
-- 备用：https://xiaoyu-hue.github.io/sonder520/
+- 备用站：https://xiaoyu-hue.github.io/sonder520/
 
 三个站点内容同步更新，任选一个打开即可。
 
