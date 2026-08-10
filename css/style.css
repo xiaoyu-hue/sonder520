@@ -207,6 +207,9 @@ body::after {
 
 .content { flex: 1; overflow-y: auto; padding: 24px; }
 
+/* 超宽屏桌面（≥1280 或更大显示器）：内容限宽居中，避免卡片无限拉伸 */
+.content > * { max-width: 1240px; margin-left: auto; margin-right: auto; }
+
 /* ---------- 网格 ---------- */
 .grid { display: grid; gap: 16px; }
 .grid.cols-7 { grid-template-columns: repeat(7, 1fr); }
