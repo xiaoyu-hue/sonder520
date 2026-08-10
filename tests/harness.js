@@ -4,7 +4,7 @@ const path = require('node:path');
 const { JSDOM } = require('jsdom');
 
 const root = path.join(__dirname, '..');
-const SCRIPT_ORDER = ['store.js', 'ui.js', 'quotes.js', 'home.js', 'today.js', 'memo.js', 'selfmedia.js',
+const SCRIPT_ORDER = ['store.js', 'ui.js', 'search.js', 'quotes.js', 'home.js', 'today.js', 'memo.js', 'selfmedia.js',
   'dev.js', 'consulting.js', 'reading.js', 'news.js', 'design.js', 'games-logic.js', 'games.js',
   'settings.js', 'app.js'];
 

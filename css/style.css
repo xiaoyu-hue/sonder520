@@ -658,3 +658,39 @@ input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border-radius
 
 /* 战绩 */
 .btn:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+
+/* =============================================================
+   全局搜索：置顶搜索框 + 分组结果浮层 + 条目跳转高亮
+   ============================================================= */
+.gsearch { position: relative; flex: 1; min-width: 0; max-width: 420px; margin-left: 14px; }
+.gsearch-ico { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); font-size: 13px; opacity: .6; pointer-events: none; }
+#globalSearch {
+  width: 100%; height: 36px; padding: 0 12px 0 30px; border: 1px solid var(--border);
+  border-radius: 12px; background: var(--glass-2); color: var(--text); font-size: 13px; outline: none;
+}
+#globalSearch:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+#globalSearch::placeholder { color: var(--muted); }
+.gsearch-panel {
+  position: absolute; top: calc(100% + 8px); left: 0; right: 0; max-height: 62vh; overflow-y: auto;
+  background: var(--glass-2);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4); backdrop-filter: blur(20px) saturate(1.4);
+  border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow);
+  padding: 6px 0; z-index: 100;
+}
+.gsearch-group + .gsearch-group { border-top: 1px dashed var(--border); margin-top: 6px; padding-top: 6px; }
+.gsearch-group .ghead { padding: 4px 14px; font-size: 12px; color: var(--muted); }
+.gsearch-item {
+  display: block; width: 100%; text-align: left; padding: 8px 14px; cursor: pointer;
+  font-size: 13px; background: transparent; border: 0; font-family: inherit;
+}
+.gsearch-item + .gsearch-item { border-top: 1px solid var(--border-hi); }
+.gsearch-item:hover { background: var(--accent-soft); }
+.gsearch-item .t { display: block; color: var(--text); }
+.gsearch-item .s { display: block; color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gsearch-empty { padding: 16px 14px; text-align: center; color: var(--muted); font-family: "STKaiti", "KaiTi", serif; font-size: 14px; }
+.search-flash { box-shadow: 0 0 0 2px var(--accent), 0 0 18px var(--accent-soft) !important; }
+@media (max-width: 720px) {
+  .gsearch { max-width: none; margin-left: 8px; }
+  .gsearch-panel { position: fixed; top: 62px; left: 12px; right: 12px; }
+  .topbar .title { font-size: 14px; }
+}

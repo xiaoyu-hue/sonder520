@@ -25,6 +25,11 @@
     <div class="main">
       <header class="topbar">
         <span class="title" id="pageTitle">首页总览</span>
+        <div class="gsearch" id="gsearch">
+          <span class="gsearch-ico" aria-hidden="true">🔍</span>
+          <input id="globalSearch" type="search" autocomplete="off" placeholder="全局搜索…" aria-label="全局搜索">
+          <div class="gsearch-panel" id="gsearchPanel" hidden></div>
+        </div>
         <button class="btn" id="btnQuickMemo" type="button">＋ 备忘</button>
         <span class="date" id="topDate"></span>
       </header>
@@ -43,6 +48,7 @@
 
   <script src="js/store.js"></script>
   <script src="js/ui.js"></script>
+  <script src="js/search.js"></script>
   <script src="js/quotes.js"></script>
   <script src="js/home.js"></script>
   <script src="js/today.js"></script>
