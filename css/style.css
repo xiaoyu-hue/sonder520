@@ -816,3 +816,21 @@ input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border-radius
 }
 [data-theme="light"] .md-code { background: rgba(43, 38, 32, 0.9); color: #f2efe6; }
 .primary-copy { color: var(--accent); border-color: var(--accent); }
+
+/* ============ v3 · 休闲小游戏（通用） ============ */
+.mg-hist { margin-top: 4px; }
+.mg-line {
+  display: flex; align-items: center; gap: 10px;
+  padding: 7px 10px; margin-top: 6px;
+  background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+}
+.mg-num { min-width: 44px; text-align: center; font-size: 16px; }
+.mg-hint { margin-left: auto; font-size: 13px; padding: 2px 10px; border-radius: 999px; white-space: nowrap; }
+.mg-hint.hi { color: var(--accent); background: var(--accent-soft); }
+.mg-hint.lo { color: var(--ok); background: var(--ok-soft); }
+.mg-hint.mid { color: var(--warn); background: var(--warn-soft); }
+.mg-hint.got { color: #fff; background: var(--ok); }
+.mg-result {
+  margin-top: 14px; padding: 12px 14px; border-radius: 10px;
+  background: var(--accent-soft); color: var(--text); font-size: 15px; line-height: 1.8;
+}

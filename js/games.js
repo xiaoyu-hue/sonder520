@@ -5,7 +5,7 @@
   var G = window.SonderGames;
 
   var currentEl = null, currentCtx = null;
-  var state = { game: null, mode: 'ai', playerStone: 'X', difficulty: 'normal' };
+  var state = { game: null, mode: 'ai', playerStone: 'X', difficulty: 'normal', mini: null };
   var busy = false;
   var aiTimer = null;
   var confirmOpen = false;
@@ -44,8 +44,119 @@
   function render(ctx) {
     var container = currentEl, UI = ctx.UI;
     container.innerHTML = '';
-    container.appendChild(state.game ? gameView(ctx) : pickView(ctx));
+    container.appendChild(state.game ? gameView(ctx) : (state.mini ? miniView(ctx) : pickView(ctx)));
     container.appendChild(recordsArea(ctx));
+  }
+
+  /* ---------- 休闲小游戏 ---------- */
+  function startMini(ctx, kind) {
+    state.game = null;
+    state.mini = { kind: kind, g: kind === 'guessnum' ? G.guessNumStart() : null };
+    render(ctx);
+  }
+
+  function miniView(ctx) {
+    if (state.mini.kind === 'guessnum') return guessNumView(ctx);
+    return pickView(ctx);
+  }
+
+  function miniBest(kind) {
+    try {
+      var raw = window.localStorage.getItem('sonder_games_' + kind);
+      if (!raw) return null;
+      var o = JSON.parse(raw);
+      return o && typeof o.best === 'number' ? o.best : null;
+    } catch (e) { return null; }
+  }
+  function saveMiniBest(kind, best) {
+    try { window.localStorage.setItem('sonder_games_' + kind, JSON.stringify({ best: best })); } catch (e) { /* 存储不可用则忽略 */ }
+  }
+
+  /* -------- 猜数字 -------- */
+  function guessNumView(ctx) {
+    var UI = ctx.UI, m = state.mini, g = m.g;
+    var used = g.attempts.length, left = g.max - used;
+    var best = miniBest('guessnum');
+    var wrap = UI.el('<div></div>');
+    wrap.appendChild(UI.el(
+      '<div class="hbar">' +
+      '<div class="lab" style="font-size:15px">🎯 猜数字</div>' +
+      '<span class="muted small">心里想好 1~100，7 次机会猜中</span>' +
+      '<span class="sp"></span>' +
+      '<button class="btn" data-mact="back" type="button">← 选游戏</button>' +
+      '</div>'
+    ));
+    var card = UI.el(
+      '<div class="card">' +
+      '<div class="row" style="align-items:center;gap:8px">' +
+      '<span class="small muted">剩余机会</span><b id="mgLeft" aria-live="polite">' + left + '</b>' +
+      '<span class="small muted" style="margin-left:auto">' + (best ? '最佳纪录 ' + best + ' 次' : '还没有纪录，打破它！') + '</span>' +
+      '</div>' +
+      '<div class="row" style="gap:10px;margin-top:12px">' +
+      '<input type="number" id="mgGuess" min="1" max="100" step="1" inputmode="numeric" placeholder="输入 1~100" ' +
+      'aria-label="输入要猜的数字（1 到 100）" style="min-height:44px;flex:1">' +
+      '<button class="btn primary" id="mgGo" type="button" style="min-height:44px">猜！</button>' +
+      '</div>' +
+      '<div class="mg-hist" id="mgHist" role="status" aria-live="polite">' + histHtml(g) + '</div>' +
+      (g.over ? '<div class="mg-result" id="mgResult">' + resultHtml(g, best) + '</div>' : '') +
+      '<div class="row" style="margin-top:12px">' +
+      '<button class="btn" data-mact="again" type="button" style="min-height:44px">🔄 再来一局</button>' +
+      '</div>' +
+      '</div>'
+    );
+    var go = function () {
+      var input = card.querySelector('#mgGuess');
+      var v = input ? input.value : '';
+      var res = G.guessNumTry(g, v);
+      if (!res.ok) { UI.toast(res.error, 'err'); return; }
+      render(ctx);
+    };
+    var btn = card.querySelector('#mgGo');
+    if (btn) btn.addEventListener('click', go);
+    var input = card.querySelector('#mgGuess');
+    if (input) input.addEventListener('keydown', function (e) { if (e.key === 'Enter') go(); });
+    wrap.appendChild(card);
+    wrap.querySelectorAll('[data-mact]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        if (b.dataset.mact === 'back') {
+          state.mini = null;
+          render(ctx);
+        } else if (b.dataset.mact === 'again') {
+          state.mini = { kind: 'guessnum', g: G.guessNumStart() };
+          render(ctx);
+        }
+      });
+    });
+    return wrap;
+  }
+
+  function histHtml(g) {
+    if (!g.attempts.length) return '<div class="muted small" style="margin-top:10px">还没开始，输入数字点击「猜！」</div>';
+    var rows = '';
+    g.attempts.forEach(function (n, i) {
+      var cls = 'mid';
+      var label = '平';
+      if (n === g.target) { cls = 'got'; label = '中了！'; }
+      else if (n > g.target) { cls = 'hi'; label = '大了'; }
+      else { cls = 'lo'; label = '小了'; }
+      rows += '<div class="mg-line"><span class="muted small">第' + (i + 1) + '次</span>' +
+        '<b class="mg-num">' + n + '</b>' +
+        '<span class="mg-hint ' + cls + '">' + label + '</span></div>';
+    });
+    return '<div style="margin-top:10px">' + rows + '</div>';
+  }
+
+  function resultHtml(g, best) {
+    var html;
+    if (g.won) {
+      var nb = best === null || g.attempts.length < best ? g.attempts.length : best;
+      saveMiniBest('guessnum', nb);
+      html = '🎉 猜中了！用了 <b>' + g.attempts.length + '</b> 次' +
+        (nb === g.attempts.length ? '，新纪录！' : '');
+    } else {
+      html = '机会用完了，答案是 <b>' + g.target + '</b>，下次加油！';
+    }
+    return html;
   }
 
   /* ---------- 游戏选择 ---------- */
@@ -72,10 +183,22 @@
       '<div class="sub">AI 对决 / 双人对弈 · 悔棋 · 认输</div>' +
       '</div>' +
       '</div>' +
+      '<div class="section-title" style="margin-top:18px">休闲小游戏</div>' +
+      '<div class="grid cols-2">' +
+      '<div class="card lg-pick" data-pick="guessnum">' +
+      '<div class="lab">🎯 猜数字</div>' +
+      '<div class="sub">1~100 心里数 · 7 次机会</div>' +
+      '<div class="sub">大小提示 · 最佳纪录</div>' +
+      '</div>' +
+      '</div>' +
       '</div>'
     );
     box.querySelectorAll('[data-pick]').forEach(function (c) {
-      c.addEventListener('click', function () { startGame(ctx, c.dataset.pick); });
+      c.addEventListener('click', function () {
+        var kind = c.dataset.pick;
+        if (kind === 'guessnum' || kind === 'minesweeper' || kind === 'idiom' || kind === 'brainteaser') startMini(ctx, kind);
+        else startGame(ctx, kind);
+      });
     });
     var diffSel = box.querySelector('#gDiffPick');
     diffSel.addEventListener('change', function (e) { switchDiff(ctx, e.target.value); });
@@ -407,7 +530,12 @@
       playerStone: state.playerStone,
       difficulty: state.difficulty,
       busy: busy,
-      game: g && { kind: g.kind, turn: g.turn, moves: g.moves.length, over: g.over, winner: g.winner }
+      game: g && { kind: g.kind, turn: g.turn, moves: g.moves.length, over: g.over, winner: g.winner },
+      mini: state.mini && { kind: state.mini.kind, target: state.mini.g.target, attempts: state.mini.g.attempts.length, over: state.mini.g.over, won: state.mini.g.won }
     };
+  };
+  /* 测试钩子：注入确定的猜数字答案（仅测试用） */
+  window.__gamesDbg.setMiniTarget = function (n) {
+    if (state.mini && state.mini.kind === 'guessnum') state.mini.g.target = n;
   };
 })();

@@ -313,6 +313,41 @@
     return best || { r: Math.floor(size / 2), c: Math.floor(size / 2) };
   }
 
+  /* ================================================================
+   * 猜数字：1~100 随机数，最多 7 次机会（纯逻辑，无 DOM）
+   * ================================================================ */
+  function guessNumStart() {
+    return {
+      target: 1 + Math.floor(Math.random() * 100),
+      max: 7,
+      attempts: [],
+      over: false,
+      won: false
+    };
+  }
+  /* input: 用户输入（字符串或数字）。返回 { ok:false, error } 或 { ok:true, n, hint, win?, lose?, used?, target? } */
+  function guessNumTry(g, input) {
+    if (!g) return { ok: false, error: '请先开始一局' };
+    if (g.over) return { ok: false, error: '本局已结束，重新开始吧' };
+    var s = String(input == null ? '' : input).trim();
+    if (!/^\d+$/.test(s)) return { ok: false, error: '请输入 1~100 之间的整数' };
+    var n = Number(s);
+    if (n < 1 || n > 100) return { ok: false, error: '数字要在 1~100 之间' };
+    g.attempts.push(n);
+    if (n === g.target) {
+      g.over = true;
+      g.won = true;
+      return { ok: true, n: n, win: true, used: g.attempts.length };
+    }
+    var res = { ok: true, n: n, hint: n > g.target ? 'high' : 'low' };
+    if (g.attempts.length >= g.max) {
+      g.over = true;
+      res.lose = true;
+      res.target = g.target;
+    }
+    return res;
+  }
+
   return {
     createGame: createGame,
     cloneGame: cloneGame,
@@ -320,6 +355,8 @@
     undo: undo,
     resign: resign,
     tttAiMove: tttAiMove,
-    gomokuAiMove: gomokuAiMove
+    gomokuAiMove: gomokuAiMove,
+    guessNumStart: guessNumStart,
+    guessNumTry: guessNumTry
   };
 });
