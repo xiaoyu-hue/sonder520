@@ -129,6 +129,17 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     };
   }
 
+  /* 优先级四档：p1 紧急重要 / p2 重要不紧急 / p3 紧急不重要 / p4 不紧急不重要。
+   * 旧版 高/中/低 在此自动迁移：高→p1、中→p2、低→p4；未知值回落 p2。 */
+  var PRIORITY_MAP = { '高': 'p1', '中': 'p2', '低': 'p4' };
+  function normalizePriority(v) {
+    var p = String(v === null || v === undefined ? '' : v);
+    if (PRIORITY_MAP[p]) p = PRIORITY_MAP[p];
+    if (p === 'p1' || p === 'p2' || p === 'p3' || p === 'p4') return p;
+    return 'p2';
+  }
+  var PRIORITY_LIST = ['p1', 'p2', 'p3', 'p4'];
+
   /* 把已持久化的数据与默认结构合并，保证缺字段时也有默认值 */
   function normalize(raw) {
     var base = defaultState();
@@ -144,6 +155,8 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
         out[key] = deepClone(raw[key]);
       }
     }
+    /* 旧数据优先级迁移（高/中/低 → p1/p2/p4） */
+    out.tasks.forEach(function (t) { t.priority = normalizePriority(t.priority); });
     return out;
   }
 
@@ -569,7 +582,7 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
       title: String(data.title || '').trim() || '未命名任务',
       note: String(data.note || ''),
       date: data.date || todayStr(),
-      priority: data.priority || '中',
+      priority: normalizePriority(data.priority || 'p2'),
       done: !!data.done,
       doneAt: data.doneAt || null,
       order: this.state.tasks.length
@@ -584,7 +597,7 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     if (typeof patch.title === 'string') t.title = patch.title.trim() || t.title;
     if (typeof patch.note === 'string') t.note = patch.note;
     if (typeof patch.date === 'string') t.date = patch.date;
-    if (typeof patch.priority === 'string') t.priority = patch.priority;
+    if (typeof patch.priority === 'string') t.priority = normalizePriority(patch.priority);
     if (typeof patch.done === 'boolean') {
       t.done = patch.done;
       t.doneAt = patch.done ? nowISO() : null;
@@ -623,6 +636,14 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     upcoming.sort(function (a, b) { return a.date < b.date ? -1 : 1; });
     done.sort(function (a, b) { return (a.doneAt || '') > (b.doneAt || '') ? -1 : 1; });
     return { now: nowList, overdue: overdue, upcoming: upcoming, done: done };
+  }
+
+  /* 今日完成率：统计日期为 today 的任务完成占比（供今日计划环形进度条） */
+  function todayProgress(tasks, today) {
+    today = today || todayStr();
+    var list = tasks.filter(function (t) { return String(t.date || today) === today; });
+    var done = list.filter(function (t) { return t.done; }).length;
+    return { done: done, total: list.length, pct: list.length ? Math.round((done / list.length) * 100) : 0 };
   }
 
   /* ====== 自媒体 ====== */
@@ -1115,6 +1136,9 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     uid: uid,
     nowISO: nowISO,
     groupTasks: groupTasks,
+    todayProgress: todayProgress,
+    normalizePriority: normalizePriority,
+    PRIORITY_LIST: PRIORITY_LIST,
     filterPosts: filterPosts,
     collectTags: collectTags,
     publishedStats: publishedStats,

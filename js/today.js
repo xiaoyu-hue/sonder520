@@ -15,7 +15,10 @@
         { key: 'title', label: '任务', type: 'text', required: true, value: target ? target.title : '', placeholder: '要做什么？' },
         { key: 'note', label: '备注', type: 'textarea', value: target ? target.note : '' },
         { key: 'date', label: '计划日期', type: 'date', value: target ? target.date : S.todayStr() },
-        { key: 'priority', label: '优先级', type: 'select', value: target ? target.priority : '中', options: ['高', '中', '低'] }
+        { key: 'priority', label: '优先级', type: 'select', value: target ? target.priority : 'p2', options: [
+          { value: 'p1', label: '紧急重要' }, { value: 'p2', label: '重要不紧急' },
+          { value: 'p3', label: '紧急不重要' }, { value: 'p4', label: '不紧急不重要' }
+        ] }
       ],
       onSubmit: function (v) {
         if (target) ctx.store.updateTask(target.id, v);
@@ -27,11 +30,28 @@
     });
   }
 
+  /* 优先级四档：文字标签 + 四色圆点（朱砂红=紧急重要、花青=重要不紧急、赭石=紧急不重要、淡墨=不紧急不重要） */
+  var PRI = {
+    p1: { label: '紧急重要' }, p2: { label: '重要不紧急' },
+    p3: { label: '紧急不重要' }, p4: { label: '不紧急不重要' }
+  };
+
   function render(container, ctx) {
     var UI = ctx.UI, store = ctx.store;
     currentCtx = ctx;
     currentEl = container;
     container.innerHTML = '';
+    var tp = S.todayProgress(store.state.tasks, S.todayStr());
+    container.appendChild(UI.el(
+      '<div class="card tp-card">' +
+      '<div class="tp-donut" style="background:conic-gradient(var(--accent) 0% ' + tp.pct + '%, var(--ink-mount) ' + tp.pct + '% 100%)">' +
+      '<div class="tp-hole"><b>' + tp.pct + '%</b><span>今日完成</span></div></div>' +
+      '<div class="grow">' +
+      '<div class="section-title" style="margin:0">今日完成率</div>' +
+      '<div class="sub muted" style="margin-top:4px">已完成 ' + tp.done + ' / ' + tp.total + ' 项' +
+      (tp.total - tp.done > 0 ? ' · 待完成 ' + (tp.total - tp.done) + ' 项' : (tp.total ? ' 🎉' : '')) +
+      '</div></div></div>'
+    ));
     container.appendChild(UI.el(
       '<div class="hbar">' +
       '  <input type="date" id="tplDate" value="' + UI.esc(S.todayStr()) + '" class="tool">' +
@@ -68,21 +88,20 @@
   function section(title, items, day) {
     if (!items.length) return '';
     var inner = items.map(function (t) {
-      var prio = PRI_CLASS[t.priority] || 'mid';
+      var pr = PRI[t.priority] || PRI.p2;
       return '<div class="list-item" data-id="' + t.id + '">' +
         '<input type="checkbox" class="tpl-done" ' + (t.done ? 'checked' : '') + '>' +
         (t.done ? delOnly(t.id) : buttonsUpDown(t.id)) +
         '<div class="grow"><div class="title ' + (t.done ? 'done' : '') + '">' + esc(t.title) + '</div>' +
         (t.note ? '<div class="sub">' + esc(t.note) + '</div>' : '') +
         '</div>' +
-        '<span class="pill ' + prio + '">' + esc(t.priority || '中') + '</span>' +
+        '<span class="prio-tag"><i class="prio-dot" data-p="' + esc(t.priority) + '"></i>' + esc(pr.label) + '</span>' +
+        (t.done ? '' : '<button class="small-btn focus-btn" data-focus="' + t.id + '" title="🍅 开始 25 分钟专注" aria-label="开始专注">🍅</button>') +
         '<button class="small-btn" data-act="edit" data-id="' + t.id + '" title="编辑">✎</button>' +
         '</div>';
     }).join('');
     return '<div class="section-title">' + esc(title) + '</div>' + inner + (items.length ? '' : '');
   }
-  var PRI_CLASS = { '高': 'hi', '中': 'mid', '低': 'lo' };
-
   var esc = window.UI.esc;
   function delOnly(id) {
     return '<span class="row">' +
@@ -121,7 +140,83 @@
         renderGroups(container, store, day);
       });
     });
+    container.querySelectorAll('[data-focus]').forEach(function (b) {
+      b.addEventListener('click', function () { startFocus(currentCtx, b.dataset.focus); });
+    });
   }
+
+  /* ---------- 🍅 专注倒计时（25 分钟，悬浮窗 + 到时浏览器通知） ---------- */
+  var FOCUS_DEFAULT = 25 * 60;
+  var focusEl = null, focusTimer = null, focusLeft = 0, focusTotal = 0, focusTitle = '';
+  function mmss(s) {
+    var m = Math.floor(Math.max(0, s) / 60), t = Math.max(0, s) % 60;
+    return (m < 10 ? '0' : '') + m + ':' + (t < 10 ? '0' : '') + t;
+  }
+  function startFocus(ctx, taskId, seconds) {
+    if (focusEl) { ctx.UI.toast('已有专注在进行中，先结束它吧', 'err'); return; }
+    var t = ctx.store.state.tasks.find(function (x) { return x.id === taskId; });
+    focusTotal = (typeof seconds === 'number' && seconds > 0) ? Math.round(seconds) : FOCUS_DEFAULT;
+    focusLeft = focusTotal;
+    focusTitle = t ? t.title : '';
+    focusEl = ctx.UI.el(
+      '<div id="focusFloat" class="focus-float" role="status" aria-live="polite">' +
+      '<div class="ff-head"><span>🍅 专注中</span>' +
+      '<button class="small-btn" id="ffClose" title="关闭" aria-label="关闭专注">✕</button></div>' +
+      '<div class="ff-title">' + ctx.UI.esc(focusTitle || '无任务专注') + '</div>' +
+      '<div class="ff-time" id="ffTime">' + mmss(focusLeft) + '</div>' +
+      '<button class="btn primary" id="ffStop" type="button">结束专注</button>' +
+      '</div>'
+    );
+    document.body.appendChild(focusEl);
+    focusEl.querySelector('#ffClose').addEventListener('click', function () { stopFocus(ctx, true); });
+    focusEl.querySelector('#ffStop').addEventListener('click', function () { stopFocus(ctx, true); });
+    focusTick(ctx);
+  }
+  function focusTick(ctx) {
+    if (!focusEl) return;
+    if (focusLeft <= 0) { finishFocus(ctx); return; }
+    focusLeft -= 1;
+    var t = focusEl.querySelector('#ffTime');
+    if (t) t.textContent = mmss(focusLeft);
+    focusTimer = setTimeout(function () { focusTick(ctx); }, 1000);
+  }
+  function finishFocus(ctx) {
+    if (focusTimer) { clearTimeout(focusTimer); focusTimer = null; }
+    if (!focusEl) return;
+    focusEl.remove();
+    focusEl = null;
+    ctx.UI.toast('🍅 专注完成！');
+    notifyFocus(ctx, focusTitle, focusTotal);
+  }
+  function stopFocus(ctx, manual) {
+    if (focusTimer) { clearTimeout(focusTimer); focusTimer = null; }
+    if (!focusEl) return;
+    focusEl.remove();
+    focusEl = null;
+    if (manual) ctx.UI.toast('已结束专注');
+  }
+  /* 浏览器通知：已授权直接发；未决定先请求授权（用户可拒绝）；拒绝则静默 */
+  function notifyFocus(ctx, title, totalSeconds) {
+    var N = window.Notification;
+    var minutes = Math.round(totalSeconds / 60);
+    function show() {
+      try { new N('🍅 专注完成', { body: '你完成了 ' + minutes + ' 分钟专注' + (title ? ' · ' + title : ''), tag: 'sonder-focus' }); } catch (e) { /* 忽略构造失败 */ }
+    }
+    if (!N || typeof N !== 'function') return;
+    if (N.permission === 'granted') { show(); return; }
+    if (N.permission === 'denied') return;
+    if (typeof N.requestPermission === 'function') {
+      try { N.requestPermission(function (p) { if (p === 'granted') show(); }); } catch (e) { /* 忽略 */ }
+    }
+  }
+
+  /* 测试/调试钩子：只读快照 + 可控起停，对正常运行无害 */
+  window.__todayDbg = {
+    startFocus: function (ctx, taskId, seconds) { startFocus(ctx, taskId, seconds); },
+    stopFocus: function () { stopFocus(currentCtx || { UI: window.UI }, true); },
+    focusLeft: function () { return focusLeft; },
+    focusOpen: function () { return !!focusEl; }
+  };
 
   Pages.today = { title: '今日计划', render: render, add: function (ctx) { openAdd(ctx); } };
 })();

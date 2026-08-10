@@ -63,7 +63,7 @@ test('今日计划：CRUD 与勾选、完成时间、越界排序不报错', () 
   const s = newStore();
   const t = s.addTask({ title: '写周报', priority: '高', note: 'n' });
   assert.equal(s.state.tasks[0].title, '写周报');
-  assert.equal(s.state.tasks[0].priority, '高');
+  assert.equal(s.state.tasks[0].priority, 'p1', '旧版 高 应迁移为 p1（紧急重要）');
   const before = s.state.tasks[0].doneAt;
   s.updateTask(t.id, { done: true });
   assert.equal(s.state.tasks[0].done, true);

@@ -29,6 +29,7 @@
   --ok: #2e7d63;              /* 石绿 */
   --warn: #b0723f;            /* 赭石 */
   --huaqing: #3b4a6b;         /* 花青 */
+  --prio-soft: #a8a297;       /* 淡墨（低优先级圆点） */
 
   --shadow: 0 14px 44px rgba(40, 30, 20, 0.22), inset 0 1px 0 var(--border-hi);
   --radius: 20px;
@@ -716,4 +717,41 @@ input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border-radius
   .gsearch { max-width: none; margin-left: 8px; }
   .gsearch-panel { position: fixed; top: 62px; left: 12px; right: 12px; }
   .topbar .title { font-size: 14px; }
+  .tp-card { flex-wrap: wrap; }
 }
+
+/* ============ v3 · 今日计划：优先级四色圆点 / 完成率环形 / 🍅 专注悬浮 ============ */
+.prio-tag {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 12px; color: var(--muted); white-space: nowrap;
+}
+.prio-dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; flex: none; }
+.prio-dot[data-p="p1"] { background: var(--accent); }   /* 紧急重要 · 朱砂红 */
+.prio-dot[data-p="p2"] { background: var(--huaqing); }  /* 重要不紧急 · 花青 */
+.prio-dot[data-p="p3"] { background: var(--warn); }     /* 紧急不重要 · 赭石 */
+.prio-dot[data-p="p4"] { background: var(--prio-soft); }/* 不紧急不重要 · 淡墨 */
+
+.tp-card { display: flex; align-items: center; gap: 18px; margin-bottom: 14px; padding: 18px 20px; }
+.tp-donut {
+  width: 86px; height: 86px; border-radius: 50%; flex: none;
+  display: flex; align-items: center; justify-content: center;
+}
+.tp-hole {
+  width: 64px; height: 64px; border-radius: 50%; background: var(--glass-sober);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+}
+[data-theme="dark"] .tp-hole { background: rgba(26, 22, 17, 0.9); }
+.tp-hole b { font-size: 18px; line-height: 1.1; color: var(--text); }
+.tp-hole span { font-size: 10px; color: var(--muted); margin-top: 3px; }
+
+.focus-float {
+  position: fixed; right: 18px; bottom: 18px; z-index: 120;
+  width: min(300px, calc(100vw - 36px)); padding: 16px 18px;
+  background: var(--glass-sober); border: 1px solid var(--border);
+  border-radius: var(--radius); box-shadow: var(--shadow);
+  display: flex; flex-direction: column; gap: 8px;
+}
+.focus-float .ff-head { display: flex; align-items: center; justify-content: space-between; font-weight: 600; color: var(--text); }
+.focus-float .ff-title { font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.focus-float .ff-time { font-size: 40px; font-weight: 700; letter-spacing: 2px; color: var(--accent); font-variant-numeric: tabular-nums; }
+[data-theme="dark"] .focus-float { background: rgba(26, 22, 17, 0.94); }
