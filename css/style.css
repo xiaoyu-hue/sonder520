@@ -71,13 +71,13 @@ body {
   color: var(--text);
   font-size: 14px;
 }
-/* 壁纸背景层：透明度由设置控制（默认 var(--wallpaper-opacity)=0.4） */
-body::before {
-  content: "";
+/* 壁纸背景层：默认项目山水图，透明度由设置控制（默认 var(--wallpaper-opacity)=0.4）
+ * 自定义壁纸时由 JS 直接写入层元素的 background-image（避免伪元素/CSS 变量兼容问题） */
+#wallpaperLayer {
   position: fixed;
   inset: 0;
   z-index: -1;
-  background-image: var(--wallpaper-url, url("../img/wallpaper.jpg"));
+  background-image: url("../img/wallpaper.jpg");
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;

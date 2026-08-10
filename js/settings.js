@@ -80,7 +80,7 @@
       container.querySelector('#wallReset').addEventListener('click', function () {
         store.clearCustomWallpaper();
         wallThumb.src = 'img/wallpaper.jpg';
-        document.documentElement.style.removeProperty('--wallpaper-url');
+        hooks.applyWallpaper();
         UI.toast('已恢复默认壁纸');
         hooks.render('settings');
       });
@@ -88,11 +88,6 @@
     container.querySelector('#wallFile').addEventListener('change', function (e) {
       var file = e.target.files && e.target.files[0];
       if (!file) return;
-      if (file.size > 2 * 1024 * 1024) {
-        UI.alertBox('图片过大，请压缩后上传（不超过 2MB）');
-        e.target.value = '';
-        return;
-      }
       if (!/^image\/(jpeg|png|webp|gif)$/.test(String(file.type))) {
         UI.alertBox('仅支持 jpg / png / webp / gif 图片');
         e.target.value = '';
@@ -101,17 +96,62 @@
       var reader = new FileReader();
       reader.onload = function () {
         var dataUrl = String(reader.result);
-        if (!store.setCustomWallpaper(dataUrl)) {
-          UI.alertBox('存储空间不足，图片过大，请压缩后上传');
-          e.target.value = '';
+        if (file.size > 2 * 1024 * 1024) {
+          /* 超大图：先用 canvas 自动压缩，压不动再报错 */
+          compressWallpaper(dataUrl, function (smallUrl) {
+            if (!smallUrl) {
+              UI.alertBox('图片过大，请压缩后上传（不超过 2MB）');
+              e.target.value = '';
+              return;
+            }
+            applyWallpaperDataUrl(smallUrl);
+            UI.toast('图片已自动压缩并套用');
+            e.target.value = '';
+          });
           return;
         }
-        wallThumb.src = dataUrl;
-        document.documentElement.style.setProperty('--wallpaper-url', 'url("' + dataUrl + '")');
-        UI.toast('壁纸已更新');
-        hooks.render('settings');
+        applyWallpaperDataUrl(dataUrl);
+        e.target.value = '';
       };
       reader.readAsDataURL(file);
+      function applyWallpaperDataUrl(d) {
+        if (!store.setCustomWallpaper(d)) {
+          UI.alertBox('存储空间不足，图片过大，请压缩后上传');
+          return;
+        }
+        wallThumb.src = d;
+        hooks.applyWallpaper();
+        UI.toast('壁纸已更新');
+        hooks.render('settings');
+      }
+      /* canvas 压缩图片至 2MB 内（质量逐档下降）；无 canvas/解码失败返回 null */
+      function compressWallpaper(dataUrl, done) {
+        var canvas = document.createElement('canvas');
+        var ctx = canvas.getContext && canvas.getContext('2d');
+        if (!ctx) { done(null); return; }
+        var img = new Image();
+        img.onload = function () {
+          var w = img.naturalWidth, h = img.naturalHeight;
+          if (!w || !h) { done(null); return; }
+          canvas.width = w;
+          canvas.height = h;
+          ctx.drawImage(img, 0, 0);
+          var q = 0.8, out = null;
+          var t0 = 0;
+          (function step() {
+            if (t0++ > 8) { done(out || null); return; }
+            out = canvas.toDataURL('image/jpeg', q);
+            if (out.length * 3 / 4 > 2 * 1024 * 1024 && q > 0.25) {
+              q -= 0.12;
+              step();
+            } else {
+              done(out);
+            }
+          })();
+        };
+        img.onerror = function () { done(null); };
+        img.src = dataUrl;
+      }
     });
 
     var wpCard = UI.el(

@@ -56,12 +56,10 @@
   function applyWallpaper() {
     var v = store.state.settings.wallpaperOpacity;
     document.documentElement.style.setProperty('--wallpaper-opacity', String(Number(v) / 100));
+    var layer = document.getElementById('wallpaperLayer');
+    if (!layer) return;
     var custom = store.getCustomWallpaper();
-    if (custom) {
-      document.documentElement.style.setProperty('--wallpaper-url', 'url("' + custom + '")');
-    } else {
-      document.documentElement.style.removeProperty('--wallpaper-url');
-    }
+    layer.style.backgroundImage = custom ? 'url("' + custom + '")' : '';
   }
 
   function currentPageKey() {
