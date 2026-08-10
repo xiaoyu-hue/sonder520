@@ -68,6 +68,8 @@
       msFlagMode = false;
     } else if (kind === 'idiom') {
       state.mini = { kind: 'idiom', g: G.idiomStart() };
+    } else if (kind === 'brainteaser') {
+      state.mini = { kind: 'brainteaser', g: G.brainStart() };
     } else {
       state.mini = { kind: kind, g: null };
     }
@@ -78,6 +80,7 @@
     if (state.mini.kind === 'guessnum') return guessNumView(ctx);
     if (state.mini.kind === 'minesweeper') return mineView(ctx);
     if (state.mini.kind === 'idiom') return idiomView(ctx);
+    if (state.mini.kind === 'brainteaser') return brainView(ctx);
     return pickView(ctx);
   }
 
@@ -409,6 +412,84 @@ function histHtml(g) {
     return '答案是「<b>' + window.UI.esc(g.answer) + '</b>」，下次再战！';
   }
 
+  /* -------- 脑筋急转弯 -------- */
+  function brainView(ctx) {
+    var UI = ctx.UI, g = state.mini.g;
+    var rec = miniRec('brainteaser');
+    var shown = g.over && !g.correct;
+    var wrap = UI.el('<div></div>');
+    wrap.appendChild(UI.el(
+      '<div class="hbar">' +
+      '<div class="lab" style="font-size:15px">🧠 脑筋急转弯</div>' +
+      '<span class="muted small">猜猜看，想不出来可看答案</span>' +
+      '<span class="sp"></span>' +
+      '<button class="btn" data-mact="back" type="button">← 选游戏</button>' +
+      '</div>'
+    ));
+    var card = UI.el(
+      '<div class="card">' +
+      '<div class="row" style="align-items:center;gap:10px">' +
+      '<span class="small muted">答对 ' + (rec.right || 0) + ' · 放弃 ' + (rec.wrong || 0) + '</span>' +
+      '<span class="sp"></span>' +
+      '</div>' +
+      '<div class="idm-q" role="status" aria-live="polite">' + UI.esc(g.q) + '</div>' +
+      (g.over ? '' :
+        '<div class="row" style="gap:10px;margin-top:12px">' +
+        '<input type="text" id="brainInput" placeholder="输入你的答案" ' +
+        'aria-label="输入脑筋急转弯的答案" style="min-height:44px;flex:1">' +
+        '<button class="btn primary" id="brainGo" type="button" style="min-height:44px">提交</button>' +
+        '<button class="btn" id="brainGiveup" type="button" style="min-height:44px">看答案</button>' +
+        '</div>') +
+      (g.over ? '<div class="mg-result" id="brainResult">' + brainResult(g) + '</div>' : '') +
+      '<div class="row" style="margin-top:12px">' +
+      '<button class="btn" data-mact="again" type="button" style="min-height:44px">🔄 换一题</button>' +
+      '</div>' +
+      '</div>'
+    );
+    var go = function () {
+      var input = card.querySelector('#brainInput');
+      var res = G.brainTry(g, input ? input.value : '');
+      if (!res.ok) { UI.toast(res.error, 'err'); return; }
+      if (res.correct) {
+        saveMiniRec('brainteaser', { right: (miniRec('brainteaser').right || 0) + 1 });
+        render(ctx);
+      } else {
+        UI.toast('再想想，脑筋转个弯～');
+        input.value = '';
+        input.focus();
+      }
+    };
+    var goBtn = card.querySelector('#brainGo');
+    if (goBtn) goBtn.addEventListener('click', go);
+    var input = card.querySelector('#brainInput');
+    if (input) input.addEventListener('keydown', function (e) { if (e.key === 'Enter') go(); });
+    var giveup = card.querySelector('#brainGiveup');
+    if (giveup) giveup.addEventListener('click', function () {
+      g.over = true;
+      g.correct = false;
+      saveMiniRec('brainteaser', { wrong: (miniRec('brainteaser').wrong || 0) + 1 });
+      render(ctx);
+    });
+    wrap.appendChild(card);
+    wrap.querySelectorAll('[data-mact]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        if (b.dataset.mact === 'back') {
+          state.mini = null;
+          render(ctx);
+        } else {
+          state.mini = { kind: 'brainteaser', g: G.brainStart() };
+          render(ctx);
+        }
+      });
+    });
+    return wrap;
+  }
+
+  function brainResult(g) {
+    if (g.correct) return '🎉 答对了！就是「' + window.UI.esc(g.accepted[0]) + '」';
+    return '答案：「<b>' + window.UI.esc(g.accepted[0]) + '</b>」——脑筋急转弯嘛，别想太复杂～';
+  }
+
   /* ---------- 游戏选择 ---------- */
   function pickView(ctx) {
     var UI = ctx.UI;
@@ -449,6 +530,11 @@ function histHtml(g) {
       '<div class="lab">📖 猜成语</div>' +
       '<div class="sub">谜面猜成语 · 3 次机会</div>' +
       '<div class="sub">答错提示字 · 战绩统计</div>' +
+      '</div>' +
+      '<div class="card lg-pick" data-pick="brainteaser">' +
+      '<div class="lab">🧠 脑筋急转弯</div>' +
+      '<div class="sub">奇趣问答 · 开动脑洞</div>' +
+      '<div class="sub">可提示看答案 · 战绩统计</div>' +
       '</div>' +
       '</div>' +
       '</div>'
@@ -833,5 +919,12 @@ function histHtml(g) {
 /* 测试钩子：注入确定的猜成语答案（仅测试用） */
   window.__gamesDbg.setIdiomAnswer = function (a) {
     if (state.mini && state.mini.kind === 'idiom') state.mini.g.answer = a;
+  };
+  /* 测试钩子：注入确定的脑筋急转弯题目与答案（仅测试用） */
+  window.__gamesDbg.setBrainQ = function (q, accepted) {
+    if (state.mini && state.mini.kind === 'brainteaser') {
+      state.mini.g.q = q;
+      state.mini.g.accepted = (accepted || []).slice();
+    }
   };
 })();

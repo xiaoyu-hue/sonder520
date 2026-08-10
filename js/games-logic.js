@@ -504,6 +504,39 @@
     return res;
   }
 
+  /* ================================================================
+   * 脑筋急转弯：奇趣问答，可多次作答，支持「看答案」揭示
+   * ================================================================ */
+  var BRAIN_POOL = [
+    { q: '什么事天不知地知，你不知我知？', a: ['鞋底破了个洞', '鞋底破洞'] },
+    { q: '什么东西天气越热，它爬得越高？', a: ['温度计'] },
+    { q: '什么数字倒立以后会增加一半？', a: ['6'] },
+    { q: '什么车开不了？', a: ['风车'] },
+    { q: '什么门永远关不上？', a: ['球门'] },
+    { q: '什么人一下子就会变老？', a: ['新娘'] },
+    { q: '什么布剪不断？', a: ['瀑布'] },
+    { q: '什么书从来没人见过？', a: ['天书'] },
+    { q: '什么牛不吃草？', a: ['蜗牛'] },
+    { q: '什么碗不能盛饭？', a: ['铁饭碗'] }
+  ];
+  function brainStart() {
+    var item = BRAIN_POOL[Math.floor(Math.random() * BRAIN_POOL.length)];
+    return { q: item.q, accepted: item.a.slice(), over: false, correct: false };
+  }
+  function brainTry(s, input) {
+    if (!s || s.over) return { ok: false, error: '本题已结束，换个问题吧' };
+    var text = String(input == null ? '' : input).trim().replace(/\s+/g, '');
+    if (!text) return { ok: false, error: '请输入你的答案' };
+    for (var i = 0; i < s.accepted.length; i++) {
+      if (text === s.accepted[i]) {
+        s.over = true;
+        s.correct = true;
+        return { ok: true, correct: true, answer: s.accepted[0] };
+      }
+    }
+    return { ok: true, correct: false };
+  }
+
   return {
     createGame: createGame,
     cloneGame: cloneGame,
@@ -520,6 +553,9 @@
     mineToggleFlag: mineToggleFlag,
     idiomStart: idiomStart,
     idiomTry: idiomTry,
-    IDIOM_POOL: IDIOM_POOL
+    IDIOM_POOL: IDIOM_POOL,
+    brainStart: brainStart,
+    brainTry: brainTry,
+    BRAIN_POOL: BRAIN_POOL
   };
 });
