@@ -1,5 +1,7 @@
 # Sonder · 个人工作生活 App
 
+> **English**: This is a privacy-first personal productivity web app (pure HTML/CSS/vanilla JS, no build tools, no backend). All data stays in your browser. Live sites and full English docs: [README.en.md](README.en.md)
+
 个人工作/生活管理工具，纯 HTML/CSS/原生 JS，零构建、零依赖。
 
 「水墨 × 液态玻璃」视觉风格，支持自定义壁纸上传与透明度调节。
