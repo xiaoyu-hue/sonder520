@@ -121,6 +121,8 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
       tasks: [],
       posts: [],
       devProjects: [],
+      devNotes: [],
+      devSnippets: [],
       clients: [],
       books: [],
       excerpts: [],
@@ -808,6 +810,48 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     return { total: total, done: done, percent: total ? Math.round((done / total) * 100) : 0 };
   }
 
+  /* ====== 技术笔记 / 代码片段 ====== */
+  Store.prototype.addDevNote = function (d) {
+    var now = nowISO();
+    var n = { id: uid(), title: String(d.title || '').trim() || '未命名笔记', content: String(d.content || ''), createdAt: now, updatedAt: now };
+    this.state.devNotes.unshift(n); this.save(); return n;
+  };
+  Store.prototype.updateDevNote = function (id, patch) {
+    var n = find(this.state.devNotes, id); if (!n) return null;
+    if (typeof patch.title === 'string') n.title = patch.title.trim() || n.title;
+    if (typeof patch.content === 'string') n.content = patch.content;
+    n.updatedAt = nowISO();
+    this.save(); return n;
+  };
+  Store.prototype.removeDevNote = function (id) {
+    this.state.devNotes = this.state.devNotes.filter(function (n) { return n.id !== id; });
+    this.save();
+  };
+  Store.prototype.addDevSnippet = function (d) {
+    var now = nowISO();
+    var s = { id: uid(), title: String(d.title || '').trim() || '未命名片段', code: String(d.code || ''), createdAt: now, updatedAt: now };
+    this.state.devSnippets.unshift(s); this.save(); return s;
+  };
+  Store.prototype.updateDevSnippet = function (id, patch) {
+    var s = find(this.state.devSnippets, id); if (!s) return null;
+    if (typeof patch.title === 'string') s.title = patch.title.trim() || s.title;
+    if (typeof patch.code === 'string') s.code = patch.code;
+    s.updatedAt = nowISO();
+    this.save(); return s;
+  };
+  Store.prototype.removeDevSnippet = function (id) {
+    this.state.devSnippets = this.state.devSnippets.filter(function (s) { return s.id !== id; });
+    this.save();
+  };
+  /* 按更新时间倒序（无 updatedAt 兜底 createdAt），供笔记/片段列表 */
+  function sortNotesByUpdate(items) {
+    return items.slice().sort(function (a, b) {
+      var ka = a.updatedAt || a.createdAt || '';
+      var kb = b.updatedAt || b.createdAt || '';
+      return ka > kb ? -1 : (ka < kb ? 1 : 0);
+    });
+  }
+
   /* ====== 咨询工作 ====== */
   Store.prototype.addClient = function (d) {
     var c = { id: uid(), name: String(d.name || '').trim() || '未命名客户', contact: String(d.contact || ''), note: String(d.note || ''), projects: [], followups: [], income: [], createdAt: nowISO() };
@@ -1238,6 +1282,7 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     dailyExcerpt: dailyExcerpt,
     readingStats: readingStats,
     devProgress: devProgress,
+    sortNotesByUpdate: sortNotesByUpdate,
     normalize: normalize,
     moduleList: moduleKeysList
   };

@@ -795,3 +795,24 @@ input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border-radius
 }
 .sm-line { margin-bottom: 12px; }
 .mini-line { width: 100%; max-width: 320px; height: auto; display: block; }
+
+/* ============ v3 · 开发：Markdown 笔记 / 代码片段 ============ */
+.md-body { margin-top: 10px; line-height: 1.75; color: var(--text); word-break: break-word; }
+.md-body p { margin: 6px 0; }
+.md-h { margin: 10px 0 6px; font-weight: 700; line-height: 1.4; }
+.md-h {
+  font-size: 1.12em;
+}
+.md-body h2 { font-size: 1.06em; }
+.md-body h3, .md-body h4, .md-body h5, .md-body h6 { font-size: 1em; }
+.md-body strong { color: var(--accent); }
+.md-code {
+  margin: 8px 0; padding: 12px 14px; overflow-x: auto;
+  background: rgba(20, 20, 26, 0.92); color: #e8e2d8;
+  border: 1px solid var(--border); border-left: 3px solid var(--accent);
+  border-radius: 8px;
+  font-family: "Consolas", "Courier New", monospace; font-size: 13px;
+  line-height: 1.6; white-space: pre;
+}
+[data-theme="light"] .md-code { background: rgba(43, 38, 32, 0.9); color: #f2efe6; }
+.primary-copy { color: var(--accent); border-color: var(--accent); }
