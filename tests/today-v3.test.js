@@ -86,6 +86,37 @@ test('今日页：无任务时环形 0%', () => {
   assert.equal(h.window.document.querySelector('.tp-hole b').textContent, '0%');
 });
 
+test('今日页：切换日期后进度卡与列表同步（状态提升），切页再回保留所选日期', () => {
+  const h = boot();
+  const today = S.todayStr();
+  const other = '2026-08-05';
+  h.store.addTask({ title: '今天任务', date: today, priority: 'p1' });
+  h.store.addTask({ title: '今天完成', date: today, priority: 'p2', done: true });
+  h.store.addTask({ title: '别日任务', date: other, priority: 'p3' });
+  h.goto('today');
+  assert.equal(h.window.document.querySelector('.tp-hole b').textContent, '50%', '默认显示今天完成率');
+  const dateInput = h.window.document.querySelector('#tplDate');
+  dateInput.value = other;
+  dateInput.dispatchEvent(new h.window.Event('change'));
+  assert.equal(h.window.document.querySelector('.tp-hole b').textContent, '0%', '进度卡应随所选日期更新');
+  assert.ok(h.window.document.querySelector('.tp-card').textContent.includes('已完成 0 / 1'), '总数按所选日期统计');
+  const groups = [];
+  let cur = null;
+  Array.from(h.window.document.querySelector('#tplList').children).forEach(el => {
+    if (el.classList.contains('section-title')) { cur = el.textContent; groups.push([cur, []]); }
+    else if (cur) groups[groups.length - 1][1].push(el.textContent);
+  });
+  const nowGroup = groups.find(g => g[0].includes('待办'));
+  const laterGroup = groups.find(g => g[0].includes('之后安排'));
+  assert.ok(nowGroup[1].some(t => t.includes('别日任务')), '所选日期任务在待办组');
+  assert.ok(!nowGroup[1].some(t => t.includes('今天任务')), '今天任务不在待办组');
+  assert.ok(laterGroup[1].some(t => t.includes('今天任务')), '今天任务归入之后安排组');
+  h.goto('home');
+  h.goto('today');
+  assert.equal(h.window.document.querySelector('#tplDate').value, other, '切页后保留所选日期');
+  assert.ok(h.window.document.querySelector('#tplList').textContent.includes('别日任务'), '切页后仍按所选日期展示');
+});
+
 test('今日页：四档优先级任务各渲染对应颜色圆点与中文标签', () => {
   const h = boot();
   addSeedTask(h, 'A', 'p1');

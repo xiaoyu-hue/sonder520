@@ -6,6 +6,7 @@
   var esc = window.UI.esc;
   var currentCtx = null;
   var currentEl = null;
+  var viewDay = null; /* 日期筛选状态：null = 跟随今天（状态提升，切页/刷新后保留） */
 
   function openAdd(ctx, target) {
     ctx.UI.formModal({
@@ -41,7 +42,8 @@
     currentCtx = ctx;
     currentEl = container;
     container.innerHTML = '';
-    var tp = S.todayProgress(store.state.tasks, S.todayStr());
+    var day = viewDay || S.todayStr(); /* 日期筛选状态提升：切页/刷新后保留所选日期 */
+    var tp = S.todayProgress(store.state.tasks, day);
     container.appendChild(UI.el(
       '<div class="card tp-card">' +
       '<div class="tp-donut" style="background:conic-gradient(var(--accent) 0% ' + tp.pct + '%, var(--ink-mount) ' + tp.pct + '% 100%)">' +
@@ -54,7 +56,7 @@
     ));
     container.appendChild(UI.el(
       '<div class="hbar">' +
-      '  <input type="date" id="tplDate" value="' + UI.esc(S.todayStr()) + '" class="tool">' +
+      '  <input type="date" id="tplDate" value="' + UI.esc(day) + '" class="tool">' +
       '  <button class="btn primary" id="tplAdd">＋ 新建任务</button>' +
       '  <span class="sp"></span>' +
       '  <button class="btn" id="tplRefresh">刷新排序</button>' +
@@ -65,12 +67,13 @@
     container.appendChild(box);
 
     container.querySelector('#tplDate').addEventListener('change', function (e) {
-      renderGroups(box, store, e.target.value);
+      viewDay = e.target.value || null;
+      render(currentEl, currentCtx); /* 整页重渲染：进度卡与列表保持一致日期 */
     });
     container.querySelector('#tplAdd').addEventListener('click', function () { openAdd(ctx); });
     container.querySelector('#tplRefresh').addEventListener('click', function () { render(currentEl, currentCtx); });
 
-    renderGroups(box, store, S.todayStr());
+    renderGroups(box, store, day);
   }
 
   function renderGroups(listEl, store, day) {
