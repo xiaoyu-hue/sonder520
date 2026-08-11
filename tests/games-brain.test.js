@@ -52,6 +52,8 @@ test('脑筋急转弯 UI：进入视图、答对答错与看答案流程、战�
   function rec() {
     return JSON.parse(h.window.localStorage.getItem('sonder_games_brainteaser') || '{}');
   }
+  /* 先固定一道答案不含「风车」的题，避免随机题库抽中导致「风车」成正确答案 */
+  h.window.__gamesDbg.setBrainQ('什么东西越洗越脏？', ['水']);
   answer('风车');
   assert.equal(rec().right, undefined, '错误答案不计胜');
   doc.querySelector('#brainGiveup').click();
