@@ -99,6 +99,33 @@ test('QA：确认框 Esc/点背景关闭会回执 false（不挂死）', async (
   assert.equal(doc.querySelectorAll('.overlay').length, 0, '弹窗应已关闭');
 });
 
+test('QA：overlay 关闭后 document keydown 监听器全部移除（无泄漏）', async () => {
+  const h = boot();
+  const doc = h.window.document;
+  const added = new Set();
+  const origAdd = doc.addEventListener.bind(doc);
+  const origRemove = doc.removeEventListener.bind(doc);
+  doc.addEventListener = (t, fn, ...a) => { if (t === 'keydown') added.add(fn); origAdd(t, fn, ...a); };
+  doc.removeEventListener = (t, fn, ...a) => { if (t === 'keydown') added.delete(fn); origRemove(t, fn, ...a); };
+  for (let i = 0; i < 3; i++) {
+    h.window.UI.confirmBox('第' + i + '个').then(() => {});
+    doc.querySelector('.overlay [data-act="yes"]').click();
+    assert.equal(doc.querySelectorAll('.overlay').length, 0, '按钮关闭后无残留节点');
+  }
+  assert.equal(added.size, 0, '按钮路径关闭后 keydown 监听器应全部移除');
+  h.window.UI.alertBox('提示');
+  doc.querySelector('.overlay [data-act="ok"]').click();
+  h.window.UI.formModal({ title: '表单', fields: [{ key: 'a', label: 'A' }], onSubmit: () => true });
+  doc.querySelector('.overlay [data-act="ok"]').click();
+  h.window.UI.formModal({ title: '表单2', fields: [{ key: 'b', label: 'B' }], onSubmit: () => true });
+  doc.querySelector('.overlay [data-act="cancel"]').click();
+  assert.equal(added.size, 0, 'alertBox/formModal 关闭路径同样清理监听器');
+  h.window.UI.confirmBox('Esc 路径').then(() => {});
+  doc.body.dispatchEvent(new h.window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  assert.equal(added.size, 0, 'Esc 关闭路径清理监听器');
+  assert.equal(doc.querySelectorAll('.overlay').length, 0, 'Esc 关闭无残留');
+});
+
 test('QA：游戏中快速切换模式，对局状态保持合法（不重复落子）', async () => {
   const h = boot();
   const doc = h.window.document;

@@ -46,27 +46,26 @@
     setTimeout(function () { if (node.parentNode) node.parentNode.removeChild(node); }, 2600);
   }
 
-  function closeTopOverlay() {
-    var root = overlayRoot();
-    if (root.lastChild) root.removeChild(root.lastChild);
-  }
-
+  /** @returns {HTMLElement & { _sonderClose(): void }} */
   function overlay(innerHtml, onClose) {
     var root = overlayRoot();
-    var ov = el('<div class="overlay"></div>');
+    var ov = /** @type {HTMLElement & { _sonderClose(): void }} */ (el('<div class="overlay"></div>'));
     ov.appendChild(el(innerHtml));
     root.appendChild(ov);
-    ov.addEventListener('mousedown', function (e) {
-      if (e.target === ov) { closeTopOverlay(); if (onClose) onClose(); }
-    });
     var onKey = function (e) {
-      if (e.key === 'Escape') {
-        closeTopOverlay();
-        document.removeEventListener('keydown', onKey);
-        if (onClose) onClose();
-      }
+      if (e.key === 'Escape') closeOverlay(onClose);
     };
+    /* 统一关闭：移除节点 + 移除 document keydown 监听（防泄漏），可选回调 */
+    function closeOverlay(cb) {
+      if (ov.parentNode) ov.parentNode.removeChild(ov);
+      document.removeEventListener('keydown', onKey);
+      if (cb) cb();
+    }
+    ov.addEventListener('mousedown', function (e) {
+      if (e.target === ov) closeOverlay(onClose);
+    });
     document.addEventListener('keydown', onKey);
+    ov._sonderClose = function () { closeOverlay(null); };
     return ov;
   }
 
@@ -82,8 +81,8 @@
         '</div></div>',
         function () { resolve(false); }
       );
-      /** @type {HTMLButtonElement} */ (ov.querySelector('[data-act="no"]')).onclick = function () { ov.remove(); resolve(false); };
-      /** @type {HTMLButtonElement} */ (ov.querySelector('[data-act="yes"]')).onclick = function () { ov.remove(); resolve(true); };
+      /** @type {HTMLButtonElement} */ (ov.querySelector('[data-act="no"]')).onclick = function () { ov._sonderClose(); resolve(false); };
+      /** @type {HTMLButtonElement} */ (ov.querySelector('[data-act="yes"]')).onclick = function () { ov._sonderClose(); resolve(true); };
     });
   }
 
@@ -94,7 +93,7 @@
       '<div class="body"><p style="margin:0">' + esc(message) + '</p></div>' +
       '<div class="foot"><button class="btn primary" data-act="ok">' + esc(confirmText || '知道了') + '</button></div></div>'
     );
-    /** @type {HTMLButtonElement} */ (ov.querySelector('[data-act="ok"]')).onclick = function () { ov.remove(); };
+    /** @type {HTMLButtonElement} */ (ov.querySelector('[data-act="ok"]')).onclick = function () { ov._sonderClose(); };
   }
 
   /* 表单弹窗
@@ -151,7 +150,7 @@
       hint.style.display = 'block';
     }
 
-    /** @type {HTMLButtonElement} */ (ov.querySelector('[data-act="cancel"]')).onclick = function () { ov.remove(); };
+    /** @type {HTMLButtonElement} */ (ov.querySelector('[data-act="cancel"]')).onclick = function () { ov._sonderClose(); };
     /** @type {HTMLButtonElement} */ (ov.querySelector('[data-act="ok"]')).onclick = function () {
       var r = collect();
       if (r.badNodes.length) {
@@ -162,14 +161,14 @@
       if (res && typeof res.then === 'function') {
         /* 异步提交：成功后调用方自行关闭或返回 true；失败返回错误字符串 */
         res.then(function (ok) {
-          if (ok === true) ov.remove();
+          if (ok === true) ov._sonderClose();
           else if (typeof ok === 'string' && ok.length) { showErr(ov.querySelector('[data-k]'), ok); }
         }, function (err) {
           showErr(ov.querySelector('[data-k]'), (err && err.message) || '操作失败，请重试');
         });
         return;
       }
-      if (res === true) { ov.remove(); }
+      if (res === true) { ov._sonderClose(); }
       else if (typeof res === 'string' && res.length) {
         var first = /** @type {HTMLElement|null} */ (ov.querySelector('.hint'));
         if (first) { first.textContent = res; first.style.display = 'block'; }
