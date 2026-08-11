@@ -27,7 +27,9 @@
   --accent-soft: rgba(194, 59, 46, 0.10);
   --danger: #a83225;
   --ok: #2e7d63;              /* 石绿 */
+  --ok-soft: rgba(46, 125, 99, 0.10);
   --warn: #b0723f;            /* 赭石 */
+  --warn-soft: rgba(176, 114, 63, 0.12);
   --huaqing: #3b4a6b;         /* 花青 */
   --prio-soft: #a8a297;       /* 淡墨（低优先级圆点） */
 
