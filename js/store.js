@@ -1,10 +1,24 @@
 /* SonderStore - 纯数据层，不依赖 DOM。
  * 兼容浏览器(<script> 暴露 window.SonderStore)与 Node(module.exports)。
  * 测试通过在 Node 中注入内存 storage 来验证全部数据逻辑。
+ *
+ * 文件结构（核心 + 领域扩展）：
+ *   store.js          核心：构造/持久化/加密/导入导出/汇总 + 共享 helper（api 导出）
+ *   store-tasks.js    快速备忘 + 今日计划
+ *   store-media.js    自媒体 + 开发工作 + 技术笔记/代码片段
+ *   store-content.js  咨询 + 阅读/书摘 + 新闻 + 设计 + 游戏记录
+ *   store-settings.js 主题/壁纸/提醒/模块开关/难度/帧率
+ * 领域文件通过 SonderStore.Store 与 _h（core helper 白名单）注入；新增领域方法
+ * 请写入对应领域文件而非本文件，并同步在 globals.d.ts 中声明签名。
  */
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) {
-    module.exports = factory();
+    var api = factory();
+    require('./store-tasks.js')(api.Store, api._h);
+    require('./store-media.js')(api.Store, api._h);
+    require('./store-content.js')(api.Store, api._h);
+    require('./store-settings.js')(api.Store, api._h);
+    module.exports = api;
   } else {
     root.SonderStore = factory();
   }
@@ -574,71 +588,6 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     this.save();
   };
 
-  /* ====== 快速备忘 ====== */
-  Store.prototype.addMemo = function (text) {
-    var m = { id: uid(), text: String(text || '').trim(), time: nowISO(), archived: false };
-    this.state.memos.unshift(m);
-    this.save();
-    return m;
-  };
-  Store.prototype.updateMemo = function (id, patch) {
-    var m = find(this.state.memos, id);
-    if (!m) return null;
-    if (typeof patch.text === 'string') m.text = patch.text.trim();
-    if (patch.archived === true) m.archived = true;
-    if (patch.archived === false) m.archived = false;
-    this.save();
-    return m;
-  };
-  Store.prototype.removeMemo = function (id) {
-    this.state.memos = this.state.memos.filter(function (m) { return m.id !== id; });
-    this.save();
-  };
-
-  /* ====== 今日计划 ====== */
-  Store.prototype.addTask = function (data) {
-    var t = {
-      id: uid(),
-      title: String(data.title || '').trim() || '未命名任务',
-      note: String(data.note || ''),
-      date: data.date || todayStr(),
-      priority: normalizePriority(data.priority || 'p2'),
-      done: !!data.done,
-      doneAt: data.doneAt || null,
-      order: this.state.tasks.length
-    };
-    this.state.tasks.push(t);
-    this.save();
-    return t;
-  };
-  Store.prototype.updateTask = function (id, patch) {
-    var t = find(this.state.tasks, id);
-    if (!t) return null;
-    if (typeof patch.title === 'string') t.title = patch.title.trim() || t.title;
-    if (typeof patch.note === 'string') t.note = patch.note;
-    if (typeof patch.date === 'string') t.date = patch.date;
-    if (typeof patch.priority === 'string') t.priority = normalizePriority(patch.priority);
-    if (typeof patch.done === 'boolean') {
-      t.done = patch.done;
-      t.doneAt = patch.done ? nowISO() : null;
-    }
-    this.save();
-    return t;
-  };
-  Store.prototype.removeTask = function (id) {
-    this.state.tasks = this.state.tasks.filter(function (t) { return t.id !== id; });
-    this.save();
-  };
-  Store.prototype.reorderTask = function (id, dir) {
-    var idx = idxOf(this.state.tasks, id);
-    var swap = dir === 'up' ? idx - 1 : idx + 1;
-    if (idx < 0 || swap < 0 || swap >= this.state.tasks.length) return false;
-    var arr = this.state.tasks;
-    var tmp = arr[idx]; arr[idx] = arr[swap]; arr[swap] = tmp;
-    for (var i = 0; i < arr.length; i++) arr[i].order = i;
-    this.save();
-    return true;
-  };
 
   /* 纯函数：对任务先按今天日期分组。today 形如 'YYYY-MM-DD' */
   function groupTasks(tasks, today) {
@@ -682,26 +631,6 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     if (p.progress > 100) p.progress = 100;
     return p;
   }
-  Store.prototype.addPost = function (d) { var p = postFactory(d); this.state.posts.unshift(p); this.save(); return p; };
-  Store.prototype.updatePost = function (id, patch) {
-    var p = find(this.state.posts, id); if (!p) return null;
-    ['title', 'platform', 'account', 'note', 'status', 'publishDate'].forEach(function (k) {
-      if (typeof patch[k] === 'string') p[k] = patch[k];
-    });
-    STAT_FIELDS.forEach(function (f) {
-      if (patch[f] !== undefined && patch[f] !== null && patch[f] !== '') p[f] = num0(patch[f]);
-    });
-    if (patch.progress !== undefined && patch.progress !== null && patch.progress !== '') {
-      var pr = num0(patch.progress);
-      p.progress = pr > 100 ? 100 : pr;
-    }
-    if (Array.isArray(patch.tags)) p.tags = patch.tags.slice();
-    this.save(); return p;
-  };
-  Store.prototype.removePost = function (id) {
-    this.state.posts = this.state.posts.filter(function (p) { return p.id !== id; });
-    this.save();
-  };
   function filterPosts(posts, opts) {
     opts = opts || {};
     var tag = opts.tag, status = opts.status;
@@ -769,81 +698,12 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
   }
 
   /* ====== 开发工作 ====== */
-  Store.prototype.addDevProject = function (d) {
-    var p = {
-      id: uid(), name: String(d.name || '').trim() || '未命名项目',
-      note: String(d.note || ''), tasks: [], createdAt: nowISO()
-    };
-    this.state.devProjects.unshift(p); this.save(); return p;
-  };
-  Store.prototype.updateDevProject = function (id, patch) {
-    var p = find(this.state.devProjects, id); if (!p) return null;
-    if (typeof patch.name === 'string') p.name = patch.name.trim() || p.name;
-    if (typeof patch.note === 'string') p.note = patch.note;
-    this.save(); return p;
-  };
-  Store.prototype.removeDevProject = function (id) {
-    this.state.devProjects = this.state.devProjects.filter(function (p) { return p.id !== id; });
-    this.save();
-  };
-  function devTask(d) { return { id: uid(), title: String(d.title || ''), note: String(d.note || ''), done: !!d.done }; }
-  Store.prototype.addDevTask = function (projId, d) {
-    var p = find(this.state.devProjects, projId); if (!p) return null;
-    var t = devTask(d); p.tasks.push(t); this.save(); return t;
-  };
-  Store.prototype.updateDevTask = function (projId, taskId, patch) {
-    var p = find(this.state.devProjects, projId); if (!p) return null;
-    var t = find(p.tasks, taskId); if (!t) return null;
-    if (typeof patch.title === 'string') t.title = patch.title;
-    if (typeof patch.note === 'string') t.note = patch.note;
-    if (typeof patch.done === 'boolean') t.done = patch.done;
-    this.save(); return t;
-  };
-  Store.prototype.removeDevTask = function (projId, taskId) {
-    var p = find(this.state.devProjects, projId); if (!p) return;
-    p.tasks = p.tasks.filter(function (t) { return t.id !== taskId; });
-    this.save();
-  };
   function devProgress(p) {
     var total = p.tasks.length;
     var done = p.tasks.filter(function (t) { return t.done; }).length;
     return { total: total, done: done, percent: total ? Math.round((done / total) * 100) : 0 };
   }
 
-  /* ====== 技术笔记 / 代码片段 ====== */
-  Store.prototype.addDevNote = function (d) {
-    var now = nowISO();
-    var n = { id: uid(), title: String(d.title || '').trim() || '未命名笔记', content: String(d.content || ''), createdAt: now, updatedAt: now };
-    this.state.devNotes.unshift(n); this.save(); return n;
-  };
-  Store.prototype.updateDevNote = function (id, patch) {
-    var n = find(this.state.devNotes, id); if (!n) return null;
-    if (typeof patch.title === 'string') n.title = patch.title.trim() || n.title;
-    if (typeof patch.content === 'string') n.content = patch.content;
-    n.updatedAt = nowISO();
-    this.save(); return n;
-  };
-  Store.prototype.removeDevNote = function (id) {
-    this.state.devNotes = this.state.devNotes.filter(function (n) { return n.id !== id; });
-    this.save();
-  };
-  Store.prototype.addDevSnippet = function (d) {
-    var now = nowISO();
-    var s = { id: uid(), title: String(d.title || '').trim() || '未命名片段', code: String(d.code || ''), createdAt: now, updatedAt: now };
-    this.state.devSnippets.unshift(s); this.save(); return s;
-  };
-  Store.prototype.updateDevSnippet = function (id, patch) {
-    var s = find(this.state.devSnippets, id); if (!s) return null;
-    if (typeof patch.title === 'string') s.title = patch.title.trim() || s.title;
-    if (typeof patch.code === 'string') s.code = patch.code;
-    s.updatedAt = nowISO();
-    this.save(); return s;
-  };
-  Store.prototype.removeDevSnippet = function (id) {
-    this.state.devSnippets = this.state.devSnippets.filter(function (s) { return s.id !== id; });
-    this.save();
-  };
-  /* 按更新时间倒序（无 updatedAt 兜底 createdAt），供笔记/片段列表 */
   function sortNotesByUpdate(items) {
     return items.slice().sort(function (a, b) {
       var ka = a.updatedAt || a.createdAt || '';
@@ -852,130 +712,6 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     });
   }
 
-  /* ====== 咨询工作 ====== */
-  Store.prototype.addClient = function (d) {
-    var c = { id: uid(), name: String(d.name || '').trim() || '未命名客户', contact: String(d.contact || ''), note: String(d.note || ''), projects: [], followups: [], income: [], createdAt: nowISO() };
-    this.state.clients.unshift(c); this.save(); return c;
-  };
-  Store.prototype.updateClient = function (id, patch) {
-    var c = find(this.state.clients, id); if (!c) return null;
-    if (typeof patch.name === 'string') c.name = patch.name.trim() || c.name;
-    if (typeof patch.contact === 'string') c.contact = patch.contact;
-    if (typeof patch.note === 'string') c.note = patch.note;
-    this.save(); return c;
-  };
-  Store.prototype.removeClient = function (id) {
-    this.state.clients = this.state.clients.filter(function (c) { return c.id !== id; });
-    this.save();
-  };
-  Store.prototype.addClientProject = function (clientId, d) {
-    var c = find(this.state.clients, clientId); if (!c) return null;
-    var pr = { id: uid(), name: String(d.name || '').trim() || '未命名项目', stage: d.stage || '进行中', note: String(d.note || '') };
-    c.projects.push(pr); this.save(); return pr;
-  };
-  Store.prototype.updateClientProject = function (clientId, projId, patch) {
-    var c = find(this.state.clients, clientId); if (!c) return null;
-    var pr = find(c.projects, projId); if (!pr) return null;
-    if (typeof patch.name === 'string') pr.name = patch.name.trim() || pr.name;
-    if (typeof patch.stage === 'string') pr.stage = patch.stage;
-    if (typeof patch.note === 'string') pr.note = patch.note;
-    this.save(); return pr;
-  };
-  Store.prototype.removeClientProject = function (clientId, projId) {
-    var c = find(this.state.clients, clientId); if (!c) return;
-    c.projects = c.projects.filter(function (p) { return p.id !== projId; });
-    this.save();
-  };
-  Store.prototype.addClientFollowup = function (clientId, d) {
-    var c = find(this.state.clients, clientId); if (!c) return null;
-    var f = { id: uid(), date: d.date || todayStr(), note: String(d.note || ''), done: !!d.done };
-    c.followups.push(f); this.save(); return f;
-  };
-  Store.prototype.updateClientFollowup = function (clientId, fuId, patch) {
-    var c = find(this.state.clients, clientId); if (!c) return null;
-    var f = find(c.followups, fuId); if (!f) return null;
-    if (typeof patch.date === 'string') f.date = patch.date;
-    if (typeof patch.note === 'string') f.note = patch.note;
-    if (typeof patch.done === 'boolean') f.done = patch.done;
-    this.save(); return f;
-  };
-  Store.prototype.removeClientFollowup = function (clientId, fuId) {
-    var c = find(this.state.clients, clientId); if (!c) return;
-    c.followups = c.followups.filter(function (f) { return f.id !== fuId; });
-    this.save();
-  };
-  Store.prototype.addClientIncome = function (clientId, d) {
-    var c = find(this.state.clients, clientId); if (!c) return null;
-    var amt = Number(d.amount);
-    if (isNaN(amt)) amt = 0;
-    var inc = { id: uid(), date: d.date || todayStr(), amount: amt, note: String(d.note || '') };
-    c.income.push(inc); this.save(); return inc;
-  };
-  Store.prototype.updateClientIncome = function (clientId, incId, patch) {
-    var c = find(this.state.clients, clientId); if (!c) return null;
-    var inc = find(c.income, incId); if (!inc) return null;
-    if (typeof patch.date === 'string') inc.date = patch.date;
-    if (patch.amount !== undefined) { var a = Number(patch.amount); if (!isNaN(a)) inc.amount = a; }
-    if (typeof patch.note === 'string') inc.note = patch.note;
-    this.save(); return inc;
-  };
-  Store.prototype.removeClientIncome = function (clientId, incId) {
-    var c = find(this.state.clients, clientId); if (!c) return;
-    c.income = c.income.filter(function (i) { return i.id !== incId; });
-    this.save();
-  };
-
-  /* ====== 阅读计划 ====== */
-  Store.prototype.addBook = function (d) {
-    var pr = Number(d.progress);
-    if (isNaN(pr)) pr = 0;
-    pr = Math.max(0, Math.min(100, pr));
-    var b = { id: uid(), title: String(d.title || '').trim() || '未命名书籍', author: String(d.author || ''), status: d.status || '想读', progress: pr, notes: [], readingMinutes: 0, readingLog: [], finishedAt: null, createdAt: nowISO() };
-    /* 新建即标记已读完：自动记录完成日期 */
-    if (b.status === '已读完' && !b.finishedAt) b.finishedAt = todayStr();
-    this.state.books.unshift(b); this.save(); return b;
-  };
-  Store.prototype.updateBook = function (id, patch) {
-    var b = find(this.state.books, id); if (!b) return null;
-    if (typeof patch.title === 'string') b.title = patch.title.trim() || b.title;
-    if (typeof patch.author === 'string') b.author = patch.author;
-    if (typeof patch.status === 'string' && patch.status !== b.status) {
-      /* 标记已读完：自动记录完成日期；改回其他状态则清除 */
-      b.status = patch.status;
-      b.finishedAt = (patch.status === '已读完') ? (b.finishedAt || todayStr()) : null;
-    }
-    if (patch.progress !== undefined) {
-      var pr = Number(patch.progress);
-      if (!isNaN(pr)) b.progress = Math.max(0, Math.min(100, pr));
-    }
-    this.save(); return b;
-  };
-  Store.prototype.removeBook = function (id) {
-    this.state.books = this.state.books.filter(function (b) { return b.id !== id; });
-    this.save();
-  };
-  /* 阅读计时落账：minutes 为分钟数（浮点）。不足 1 分钟按 1 分钟计，写入当日会话日志（供周报）。 */
-  Store.prototype.addReadingSession = function (bookId, minutes) {
-    var b = find(this.state.books, bookId); if (!b) return null;
-    var m = Math.max(1, Math.ceil(Number(minutes) || 0));
-    b.readingMinutes = (b.readingMinutes || 0) + m;
-    b.readingLog.push({ date: todayStr(), minutes: m });
-    this.save(); return m;
-  };
-
-  /* ====== 我的书摘 ====== */
-  Store.prototype.addExcerpt = function (d) {
-    var b = find(this.state.books, d.bookId);
-    var text = String(d.text || '').trim();
-    if (!text) return null;
-    var ex = { id: uid(), bookId: d.bookId, bookTitle: b ? b.title : String(d.bookTitle || '未知书籍'), text: text, page: num0(d.page), time: nowISO() };
-    this.state.excerpts.unshift(ex); this.save(); return ex;
-  };
-  Store.prototype.removeExcerpt = function (id) {
-    this.state.excerpts = this.state.excerpts.filter(function (x) { return x.id !== id; });
-    this.save();
-  };
-  /* 按书籍分组（组内按摘抄时间倒序，组按最新摘抄在前），供「我的书摘」页 */
   function excerptsByBook(excerpts) {
     var byTime = function (a, b) { return a.time < b.time ? 1 : (a.time > b.time ? -1 : 0); };
     var groups = [];
@@ -1004,16 +740,6 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     var x = sorted[hashStr(d + '|excerpt') % sorted.length];
     return { text: x.text, bookTitle: x.bookTitle || '未知书籍', page: num0(x.page) };
   }
-  Store.prototype.addBookNote = function (bookId, text) {
-    var b = find(this.state.books, bookId); if (!b) return null;
-    var n = { id: uid(), time: nowISO(), text: String(text || '').trim() };
-    b.notes.push(n); this.save(); return n;
-  };
-  Store.prototype.removeBookNote = function (bookId, noteId) {
-    var b = find(this.state.books, bookId); if (!b) return;
-    b.notes = b.notes.filter(function (n) { return n.id !== noteId; });
-    this.save();
-  };
   function booksByStatus(books) {
     var out = { '想读': [], '在读': [], '已读完': [] };
     books.forEach(function (b) {
@@ -1062,124 +788,6 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     };
   }
 
-  /* ====== 看新闻计划 ====== */
-  Store.prototype.addNews = function (d) {
-    var n = { id: uid(), title: String(d.title || '').trim() || '未命名资讯', url: String(d.url || ''), source: String(d.source || ''), tags: (Array.isArray(d.tags) ? d.tags.slice() : []), status: d.status || 'unread', note: String(d.note || ''), time: nowISO() };
-    this.state.news.unshift(n); this.save(); return n;
-  };
-  Store.prototype.updateNews = function (id, patch) {
-    var n = find(this.state.news, id); if (!n) return null;
-    if (typeof patch.title === 'string') n.title = patch.title.trim() || n.title;
-    if (typeof patch.url === 'string') n.url = patch.url;
-    if (typeof patch.source === 'string') n.source = patch.source;
-    if (Array.isArray(patch.tags)) n.tags = patch.tags.slice();
-    if (typeof patch.status === 'string') n.status = patch.status;
-    if (typeof patch.note === 'string') n.note = patch.note;
-    this.save(); return n;
-  };
-  Store.prototype.removeNews = function (id) {
-    this.state.news = this.state.news.filter(function (n) { return n.id !== id; });
-    this.save();
-  };
-
-  /* ====== 设计计划 ====== */
-  Store.prototype.addDesign = function (d) {
-    var x = { id: uid(), type: d.type === 'project' ? 'project' : 'idea', title: String(d.title || '').trim() || '未命名', link: String(d.link || ''), category: String(d.category || ''), note: String(d.note || ''), stage: d.stage || '构想', time: nowISO() };
-    this.state.designs.unshift(x); this.save(); return x;
-  };
-  Store.prototype.updateDesign = function (id, patch) {
-    var x = find(this.state.designs, id); if (!x) return null;
-    if (typeof patch.title === 'string') x.title = patch.title.trim() || x.title;
-    if (typeof patch.type === 'string') x.type = patch.type === 'project' ? 'project' : 'idea';
-    if (typeof patch.category === 'string') x.category = patch.category;
-    if (typeof patch.link === 'string') x.link = patch.link;
-    if (typeof patch.note === 'string') x.note = patch.note;
-    if (typeof patch.stage === 'string') x.stage = patch.stage;
-    this.save(); return x;
-  };
-  Store.prototype.removeDesign = function (id) {
-    this.state.designs = this.state.designs.filter(function (x) { return x.id !== id; });
-    this.save();
-  };
-
-  /* ====== 娱乐游戏 ====== */
-  /* 单人休闲游戏 kind（战绩并入对局记录，mode 记为 solo，难度按自身档位保存） */
-  var SOLO_KINDS = { guessnum: 1, minesweeper: 1, idiom: 1, brainteaser: 1 };
-  Store.prototype.addGameRecord = function (d) {
-    var solo = SOLO_KINDS[d.kind] ? true : false;
-    var kind = d.kind === 'gomoku' || d.kind === 'tictactoe' || solo ? d.kind : 'tictactoe';
-    var mode = d.mode === 'pvp' ? 'pvp' : (solo ? 'solo' : 'ai');
-    var winner = d.winner === 'draw' ? 'draw' : d.winner;
-    var r = {
-      id: uid(),
-      kind: kind,
-      mode: mode,
-      player: d.player || (mode === 'pvp' ? 'X' : 'player'),
-      winner: winner,
-      byResign: !!d.byResign,
-      /* 棋类难度映射为 easy/normal/hard；单人休闲游戏保留自身档位 */
-      difficulty: mode === 'pvp' ? null : (solo
-        ? (d.difficulty || null)
-        : (d.difficulty === 'easy' || d.difficulty === 'hard' ? d.difficulty : 'normal')),
-      note: d.note || null,
-      date: todayStr(),
-      time: nowISO()
-    };
-    this.state.gameRecords.unshift(r);
-    this.save();
-    return r;
-  };
-  Store.prototype.clearGameRecords = function () {
-    this.state.gameRecords = [];
-    this.save();
-  };
-
-  /* ====== 设置 ====== */
-  Store.prototype.setTheme = function (t) {
-    this.state.settings.theme = (t === 'auto' || t === 'dark') ? t : 'light';
-    this.save();
-  };
-  Store.prototype.setWallpaperOpacity = function (v) {
-    this.state.settings.wallpaperOpacity = clampOpacity(v);
-    this.save();
-    return this.state.settings.wallpaperOpacity;
-  };
-  /* 自定义壁纸：data URL 存取，不走主快照（返回是否成功，配额写满返回 false） */
-  Store.prototype.getCustomWallpaper = function () {
-    try { return this._storage ? this._storage.getItem(STORAGE_WALLPAPER_KEY) : null; } catch (e) { return null; }
-  };
-  Store.prototype.setCustomWallpaper = function (dataUrl) {
-    if (typeof dataUrl !== 'string' || dataUrl.indexOf('data:image/') !== 0) return false;
-    try {
-      this._storage.setItem(STORAGE_WALLPAPER_KEY, dataUrl);
-      return true;
-    } catch (e) { return false; }
-  };
-  Store.prototype.clearCustomWallpaper = function () {
-    try { if (this._storage) this._storage.removeItem(STORAGE_WALLPAPER_KEY); } catch (e) { /* 忽略 */ }
-  };
-  Store.prototype.setTaskReminder = function (on) {
-    this.state.settings.taskReminder = !!on;
-    this.save();
-    return this.state.settings.taskReminder;
-  };
-  Store.prototype.setModuleEnabled = function (key, on) {
-    if (!(key in this.state.settings.modules)) return;
-    this.state.settings.modules[key] = !!on;
-    this.save();
-  };
-  Store.prototype.setGameDifficulty = function (d) {
-    var v = d === 'easy' || d === 'hard' ? d : 'normal';
-    this.state.settings.gameDifficulty = v;
-    this.save();
-    return v;
-  };
-  Store.prototype.setFrameRate = function (f) {
-    var v = f === 60 || f === 90 ? f : 120;
-    this.state.settings.frameRate = v;
-    this.save();
-    return v;
-  };
   var moduleKeysList = [{ key: 'today', label: '今日计划' }, { key: 'memo', label: '快速备忘' }, { key: 'selfmedia', label: '自媒体' }, { key: 'dev', label: '开发工作' }, { key: 'consulting', label: '咨询工作' }, { key: 'reading', label: '阅读计划' }, { key: 'news', label: '看新闻计划' }, { key: 'design', label: '设计计划' }, { key: 'game', label: '娱乐游戏' }];
 
   /* ====== 导出 / 导入 ======
@@ -1345,7 +953,14 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     devProgress: devProgress,
     sortNotesByUpdate: sortNotesByUpdate,
     normalize: normalize,
-    moduleList: moduleKeysList
+    moduleList: moduleKeysList,
+    /* 领域文件（store-tasks/media/content/settings）可用的 core 私有 helper 白名单 */
+    _h: {
+      uid: uid, nowISO: nowISO, todayStr: todayStr, fmtDate: fmtDate,
+      deepClone: deepClone, isPlainObject: isPlainObject, find: find, idxOf: idxOf,
+      normalizePriority: normalizePriority, clampOpacity: clampOpacity, normalize: normalize,
+      num0: num0, STORAGE_WALLPAPER_KEY: STORAGE_WALLPAPER_KEY
+    }
   };
   return api;
 });
