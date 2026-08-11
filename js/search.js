@@ -2,7 +2,7 @@
 (function () {
   'use strict';
 
-  var input = document.getElementById('globalSearch');
+  var input = /** @type {HTMLInputElement|null} */ (document.getElementById('globalSearch'));
   var panel = document.getElementById('gsearchPanel');
   var UI = window.UI;
   var NAV_MODULE = { today: 'today', memo: 'memo', selfmedia: 'selfmedia', dev: 'dev', consulting: 'consulting', reading: 'reading', news: 'news', design: 'design' };

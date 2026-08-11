@@ -8,6 +8,7 @@
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
+    "@types/node": "^26.2.0",
     "fake-indexeddb": "^6.2.5",
     "jsdom": "^24.0.0",
     "typescript": "^7.0.2"

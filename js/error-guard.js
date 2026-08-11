@@ -40,10 +40,13 @@
 
   /* 捕获阶段监听，才能收到不冒泡的资源 error（img/script/link） */
   window.addEventListener('error', function (e) {
-    if (e && e.target && e.target !== window && e.target.tagName) {
-      var src = e.target.currentSrc || e.target.src || e.target.href || '';
-      report({ time: new Date().toISOString(), type: 'resource', message: '资源加载失败: ' + src, stack: null });
-      return;
+    if (e && e.target) {
+      var t = /** @type {any} */ (e.target);
+      if (t !== window && t.tagName) {
+        var src = String(t.currentSrc || t.src || t.href || '');
+        report({ time: new Date().toISOString(), type: 'resource', message: '资源加载失败: ' + src, stack: null });
+        return;
+      }
     }
     report({
       time: new Date().toISOString(),

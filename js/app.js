@@ -56,7 +56,7 @@
   function applyWallpaper() {
     var v = store.state.settings.wallpaperOpacity;
     document.documentElement.style.setProperty('--wallpaper-opacity', String(Number(v) / 100));
-    var img = document.getElementById('wallpaperImg');
+    var img = /** @type {HTMLImageElement|null} */ (document.getElementById('wallpaperImg'));
     if (!img) return;
     var custom = store.getCustomWallpaper();
     img.src = custom || 'img/wallpaper.jpg';

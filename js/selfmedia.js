@@ -179,7 +179,8 @@
         chip.style.left = (t.clientX - 30) + 'px';
         chip.style.top = (t.clientY - 18) + 'px';
         var el = document.elementFromPoint(t.clientX, t.clientY);
-        chip._stayDate = (el && el.closest('.cal-day[data-date]')) ? el.closest('.cal-day[data-date]').dataset.date : null;
+        var day = /** @type {HTMLElement|null} */ (el ? el.closest('.cal-day[data-date]') : null);
+        chip._stayDate = day ? day.dataset.date : null;
         grid.querySelectorAll('.cal-day.drop-target').forEach(function (d) { d.classList.remove('drop-target'); });
         if (el && el.closest('.cal-day[data-date]')) el.closest('.cal-day[data-date]').classList.add('drop-target');
       }, { passive: false });

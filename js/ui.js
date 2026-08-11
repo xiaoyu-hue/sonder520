@@ -81,8 +81,8 @@
         '</div></div>',
         function () { resolve(false); }
       );
-      ov.querySelector('[data-act="no"]').onclick = function () { ov.remove(); resolve(false); };
-      ov.querySelector('[data-act="yes"]').onclick = function () { ov.remove(); resolve(true); };
+      /** @type {HTMLButtonElement} */ (ov.querySelector('[data-act="no"]')).onclick = function () { ov.remove(); resolve(false); };
+      /** @type {HTMLButtonElement} */ (ov.querySelector('[data-act="yes"]')).onclick = function () { ov.remove(); resolve(true); };
     });
   }
 
@@ -93,7 +93,7 @@
       '<div class="body"><p style="margin:0">' + esc(message) + '</p></div>' +
       '<div class="foot"><button class="btn primary" data-act="ok">' + esc(confirmText || '知道了') + '</button></div></div>'
     );
-    ov.querySelector('[data-act="ok"]').onclick = function () { ov.remove(); };
+    /** @type {HTMLButtonElement} */ (ov.querySelector('[data-act="ok"]')).onclick = function () { ov.remove(); };
   }
 
   /* 表单弹窗
@@ -135,7 +135,7 @@
       var v = {};
       var badNodes = [];
       fields.forEach(function (f) {
-        var node = ov.querySelector('[data-k="' + f.key + '"]');
+        var node = /** @type {HTMLInputElement|HTMLSelectElement|HTMLTextAreaElement|null} */ (ov.querySelector('[data-k="' + f.key + '"]'));
         var val = node ? node.value : '';
         v[f.key] = (f.type === 'number') ? Number(val) : val;
         if (f.required && !String(val).trim()) badNodes.push({ node: node, label: f.label || f.key });
@@ -150,8 +150,8 @@
       hint.style.display = 'block';
     }
 
-    ov.querySelector('[data-act="cancel"]').onclick = function () { ov.remove(); };
-    ov.querySelector('[data-act="ok"]').onclick = function () {
+    /** @type {HTMLButtonElement} */ (ov.querySelector('[data-act="cancel"]')).onclick = function () { ov.remove(); };
+    /** @type {HTMLButtonElement} */ (ov.querySelector('[data-act="ok"]')).onclick = function () {
       var r = collect();
       if (r.badNodes.length) {
         r.badNodes.forEach(function (b) { showErr(b.node, '请填写' + b.label); });
@@ -170,11 +170,11 @@
       }
       if (res === true) { ov.remove(); }
       else if (typeof res === 'string' && res.length) {
-        var first = ov.querySelector('.hint');
+        var first = /** @type {HTMLElement|null} */ (ov.querySelector('.hint'));
         if (first) { first.textContent = res; first.style.display = 'block'; }
       }
     };
-    var firstInput = ov.querySelector('input,select,textarea');
+    var firstInput = /** @type {HTMLElement|null} */ (ov.querySelector('input,select,textarea'));
     if (firstInput) { firstInput.focus(); }
     ov.querySelector('.modal').addEventListener('keydown', /** @param {KeyboardEvent} e */ function (e) {
       if (e.key === 'Enter' && /** @type {HTMLElement} */ (e.target).tagName !== 'TEXTAREA') {
