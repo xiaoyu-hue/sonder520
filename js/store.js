@@ -138,7 +138,9 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
       excerpts: [],
       news: [],
       designs: [],
-      gameRecords: []
+      gameRecords: [],
+      /* 单人小游戏最佳纪录（原独立 localStorage key，P3e 并入统一 state：加密/备份/导出随之覆盖） */
+      miniRecords: {}
     };
   }
 

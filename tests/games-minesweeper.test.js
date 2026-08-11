@@ -169,10 +169,10 @@ test('扫雷 UI：翻格与插旗交互，踩雷结束并计入战绩', () => {
   cellAt(0, 4).click();
   assert.ok(doc.body.textContent.includes('踩到雷了'), '踩雷提示');
   assert.ok(doc.body.textContent.includes('负 1'), '战绩显示失败 1 次');
-  assert.equal(JSON.parse(h.window.localStorage.getItem('sonder_games_minesweeper')).losses, 1, '失败计数持久化');
+  assert.equal(h.store.state.miniRecords.minesweeper.losses, 1, '失败计数持久化');
   doc.querySelector('[data-mact="again"]').click();
   assert.equal(doc.querySelectorAll('.ms-cell').length, 81, '再来一局重开');
-  assert.equal(JSON.parse(h.window.localStorage.getItem('sonder_games_minesweeper')).wins, 0, '未胜局胜场为 0');
+  assert.equal(h.store.state.miniRecords.minesweeper.wins, 0, '未胜局胜场为 0');
 });
 
 test('扫雷 UI：再来一局与难度切换持久化偏好', () => {
@@ -186,7 +186,7 @@ test('扫雷 UI：再来一局与难度切换持久化偏好', () => {
   diff.value = 'mid';
   diff.dispatchEvent(new h.window.Event('change', { bubbles: true }));
   assert.equal(doc.querySelectorAll('.ms-cell').length, 144, '切换中等难度重开 12x12');
-  assert.equal(JSON.parse(h.window.localStorage.getItem('sonder_games_minesweeper')).diff, 'mid', '难度偏好持久化');
+  assert.equal(h.store.state.miniRecords.minesweeper.diff, 'mid', '难度偏好持久化');
   doc.querySelector('[data-mact="back"]').click();
   assert.ok(doc.querySelector('[data-pick="tictactoe"]'), '返回游戏选择');
   h.window.document.querySelector('[data-pick="minesweeper"]').click();

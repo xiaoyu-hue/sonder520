@@ -69,6 +69,8 @@ interface SonderStoreImpl {
   /* ---------- 游戏 ---------- */
   addGameRecord(data: SonderGameRecordInput): SonderGameRecord;
   clearGameRecords(): void;
+  getMiniRecord(kind: string): Record<string, unknown>;
+  updateMiniRecord(kind: string, patch: Record<string, unknown>): Record<string, unknown>;
   /* ---------- 设置 ---------- */
   setTheme(theme: string): void;
   setWallpaperOpacity(opacity: number): void;
@@ -219,6 +221,8 @@ interface SonderState {
   news: SonderNews[];
   designs: SonderDesign[];
   gameRecords: SonderGameRecord[];
+  /** 单人小游戏纪录（kind → { best, diff, right, wrong, ... }），P3e 并入统一 state */
+  miniRecords: Record<string, Record<string, unknown>>;
 }
 
 interface SonderSettings {

@@ -95,7 +95,7 @@ test('猜数字 UI：大了/小了/猜中全流程，最佳纪录写入 localSto
   assert.ok(doc.body.textContent.includes('猜中了'), '显示猜中结果');
   assert.ok(doc.body.textContent.includes('新纪录'), '首次即新纪录');
   assert.ok(doc.body.textContent.includes('🔄 再来一局'), '有再来一局按钮');
-  const rec = JSON.parse(h.window.localStorage.getItem('sonder_games_guessnum'));
+  const rec = h.store.state.miniRecords.guessnum;
   assert.equal(rec.best, 3, '最佳纪录持久化');
 });
 
@@ -120,7 +120,7 @@ test('猜数字 UI：再来一局重置，失败展示答案', () => {
   assert.ok(!doc.body.textContent.includes('答案是'), '历史与结果清空');
   h.window.__gamesDbg.setMiniTarget(42);
   guess(42);
-  const rec = JSON.parse(h.window.localStorage.getItem('sonder_games_guessnum'));
+  const rec = h.store.state.miniRecords.guessnum;
   assert.equal(rec.best, 1, '更优纪录覆盖');
   doc.querySelector('[data-mact="back"]').click();
   assert.ok(doc.querySelector('[data-pick="tictactoe"]'), '返回游戏选择');

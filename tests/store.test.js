@@ -239,3 +239,20 @@ test('normalize：缺失字段用默认补齐', () => {
   assert.equal(n2.tasks.length, 0);
   assert.equal(n2.settings.modules.design, true);
 });
+
+test('P3e：miniRecords 并入统一 state——读写/合并/持久化', () => {
+  const s = newStore();
+  assert.deepEqual(s.getMiniRecord('guessnum'), {}, '未写入时返回空对象');
+  s.updateMiniRecord('guessnum', { best: 3 });
+  s.updateMiniRecord('guessnum', { right: 7 });
+  const rec = s.getMiniRecord('guessnum');
+  assert.equal(rec.best, 3, '首次写入应生效');
+  assert.equal(rec.right, 7, '后续写入应合并而非覆盖');
+  assert.equal(s.state.miniRecords.guessnum.best, 3, '应落到 state.miniRecords');
+  const s2 = newStore({ sonder_data_v1: JSON.stringify({ version: 1, miniRecords: { idiom: { right: 5 } } }) });
+  assert.equal(s2.state.miniRecords.idiom.right, 5, '持久化数据重启后仍在');
+  const n = S.normalize({ version: 1, miniRecords: { brainteaser: { wrong: 2 } } });
+  assert.equal(n.miniRecords.brainteaser.wrong, 2, 'normalize 应保留 miniRecords');
+  const n2 = S.normalize({ version: 1 });
+  assert.deepEqual(n2.miniRecords, {}, '缺失时默认空对象');
+});

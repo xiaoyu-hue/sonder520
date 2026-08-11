@@ -81,12 +81,12 @@ test('猜成语 UI：答对/答错全流程，提示字与战绩持久化', () =
   answer('一字千金');
   assert.ok(doc.body.textContent.includes('答对了'), '答对提示');
   assert.ok(doc.body.textContent.includes('🎉'), '成功表情');
-  assert.equal(JSON.parse(h.window.localStorage.getItem('sonder_games_idiom')).right, 1, '答对计数');
+  assert.equal(h.store.state.miniRecords.idiom.right, 1, '答对计数');
   doc.querySelector('[data-mact="again"]').click();
   h.window.__gamesDbg.setIdiomAnswer('一步登天');
   answer('乱七八糟'); answer('乱七八糟'); answer('乱七八糟');
   assert.ok(doc.body.textContent.includes('答案是'), '三次未中揭示答案');
-  assert.equal(JSON.parse(h.window.localStorage.getItem('sonder_games_idiom')).wrong, 1, '答错计数');
+  assert.equal(h.store.state.miniRecords.idiom.wrong, 1, '答错计数');
   doc.querySelector('[data-mact="back"]').click();
   assert.ok(doc.querySelector('[data-pick="tictactoe"]'), '返回游戏选择');
 });

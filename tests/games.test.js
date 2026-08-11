@@ -358,7 +358,33 @@ test('战绩：双人对局不记录难度，旧记录无难度字段也正常�
   await wait(60);
   const pvpRec = h.store.state.gameRecords[0];
   assert.equal(pvpRec.mode, 'pvp');
-  assert.equal(pvpRec.difficulty, null, '双人对局不应有难度');
+  assert.equal(pvpRec.difficulty, null, '双人对局不应有难度徽标');
   const afterBadges = h.window.document.querySelectorAll('#content .title span.small.muted');
   assert.equal(afterBadges.length, 0, '双人记录不应显示难度徽标');
+});
+
+test('P3e：小游戏纪录写入统一 store 而非独立 localStorage', () => {
+  const h = boot();
+  h.goto('game');
+  h.window.document.querySelector('[data-pick="minesweeper"]').click();
+  const diff = h.window.document.querySelector('#msDiff');
+  assert.ok(diff, '扫雷应有难度选择器');
+  diff.value = 'mid';
+  diff.dispatchEvent(new h.window.Event('change'));
+  const rec = h.store.state.miniRecords.minesweeper;
+  assert.ok(rec && rec.diff === 'mid', '难度应写入 store.state.miniRecords');
+  assert.equal(h.window.localStorage.getItem('sonder_games_minesweeper'), null, '不应再落独立 localStorage 键');
+});
+
+test('P3e：旧版独立 localStorage 纪录首次进入时一次性迁移并入 store', () => {
+  const h = boot();
+  h.window.localStorage.setItem('sonder_games_guessnum', JSON.stringify({ best: 3 }));
+  h.window.localStorage.setItem('sonder_games_idiom', JSON.stringify({ right: 5, wrong: 2 }));
+  h.goto('game');
+  assert.equal(h.store.state.miniRecords.guessnum.best, 3, '猜数字最佳纪录应迁入 store');
+  assert.equal(h.store.state.miniRecords.idiom.right, 5, '成语计数应迁入 store');
+  assert.equal(h.window.localStorage.getItem('sonder_games_guessnum'), null, '旧键应被删除');
+  assert.equal(h.window.localStorage.getItem('sonder_games_idiom'), null, '旧键应被删除');
+  h.goto('game');
+  assert.equal(h.store.state.miniRecords.guessnum.best, 3, '二次进入不应重复迁移或覆盖已有纪录');
 });

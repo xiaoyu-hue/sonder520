@@ -212,4 +212,19 @@
     this.state.gameRecords = [];
     this.save();
   };
+
+  /* 单人小游戏纪录（guessnum/minesweeper/idiom/brainteaser 的 best/diff/right/wrong 等）：
+   * 原独立 localStorage key，P3e 并入 state.miniRecords 统一持久化 */
+  Store.prototype.getMiniRecord = function (kind) {
+    var o = this.state.miniRecords[kind];
+    return o && typeof o === 'object' ? h.deepClone(o) : {};
+  };
+  Store.prototype.updateMiniRecord = function (kind, patch) {
+    var o = this.state.miniRecords[kind];
+    if (!o || typeof o !== 'object') o = {};
+    Object.keys(patch || {}).forEach(function (k) { o[k] = patch[k]; });
+    this.state.miniRecords[kind] = o;
+    this.save();
+    return this.getMiniRecord(kind);
+  };
 });

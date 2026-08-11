@@ -5,6 +5,8 @@
   var G = window.SonderGames;
 
   var currentEl = null, currentCtx = null;
+  var ctxRef = { store: null }; /* 最近一次 render 的 store 引用（小游戏纪录统一读写 store） */
+  var legacyMigrated = false; /* 旧版独立 localStorage 纪录一次性迁移标记 */
   var state = { game: null, mode: 'ai', playerStone: 'X', difficulty: 'normal', mini: null };
   var busy = false;
   var aiTimer = null;
@@ -44,9 +46,15 @@
 
   function render(ctx) {
     var container = currentEl;
+    ctxRef.store = (ctx && ctx.store) || null;
     container.innerHTML = '';
     container.appendChild(state.game ? gameView(ctx) : (state.mini ? miniView(ctx) : pickView(ctx)));
     container.appendChild(recordsArea(ctx));
+    /* P3e：首次进入游戏页时把旧版独立 localStorage 纪录一次性并入统一 store（老用户数据不丢） */
+    if (!legacyMigrated) {
+      legacyMigrated = true;
+      migrateMiniRecords(ctx);
+    }
     /* 恢复被切页打断的 AI 回合：AI 模式对局停在 AI 思考且未在思考中时重新调度落子 */
     if (state.mode === 'ai' && state.game && !state.game.over && state.game.turn === aiStone() && !busy) {
       aiThink(ctx);
@@ -89,31 +97,37 @@
     return pickView(ctx);
   }
 
-  function miniBest(kind) {
+  /* 单人小游戏纪录统一存 store.state.miniRecords（P3e；原独立 localStorage 键 sonder_games_* 仅用于一次性迁移） */
+  var MINI_KINDS = ['guessnum', 'minesweeper', 'idiom', 'brainteaser'];
+  function migrateMiniRecords(ctx) {
     try {
-      var raw = window.localStorage.getItem('sonder_games_' + kind);
-      if (!raw) return null;
-      var o = JSON.parse(raw);
-      return o && typeof o.best === 'number' ? o.best : null;
-    } catch (e) { return null; }
-  }
-  function saveMiniBest(kind, best) {
-    try { window.localStorage.setItem('sonder_games_' + kind, JSON.stringify({ best: best })); } catch (e) { /* 存储不可用则忽略 */ }
+      MINI_KINDS.forEach(function (kind) {
+        var raw = window.localStorage.getItem('sonder_games_' + kind);
+        if (!raw) return;
+        var o = JSON.parse(raw);
+        if (o && typeof o === 'object') {
+          ctx.store.updateMiniRecord(kind, o);
+        }
+        window.localStorage.removeItem('sonder_games_' + kind);
+      });
+    } catch (e) { /* 迁移失败则保留旧键，后续访问再试 */ }
   }
   function miniRec(kind) {
-    try {
-      var raw = window.localStorage.getItem('sonder_games_' + kind);
-      return raw ? JSON.parse(raw) : {};
-    } catch (e) { return {}; }
+    return ctxRef.store ? ctxRef.store.getMiniRecord(kind) : {};
+  }
+  function miniBest(kind) {
+    var o = miniRec(kind);
+    return typeof o.best === 'number' ? o.best : null;
+  }
+  function saveMiniBest(kind, best) {
+    if (ctxRef.store) ctxRef.store.updateMiniRecord(kind, { best: best });
   }
   function miniBest2(kind, key) {
     var o = miniRec(kind);
     return key in o ? o[key] : null;
   }
   function saveMiniRec(kind, patch) {
-    var o = miniRec(kind);
-    Object.keys(patch).forEach(function (k) { o[k] = patch[k]; });
-    try { window.localStorage.setItem('sonder_games_' + kind, JSON.stringify(o)); } catch (e) { /* 忽略 */ }
+    if (ctxRef.store) ctxRef.store.updateMiniRecord(kind, patch);
   }
 
   /* -------- 猜数字 -------- */
