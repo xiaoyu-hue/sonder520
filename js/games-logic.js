@@ -417,7 +417,7 @@
   }
   function mineReveal(s, r, c) {
     if (!s || s.over) return { ok: false, error: '本局已结束' };
-    if (r < 0 || r >= s.rows || c < 0 || c >= s.cols) return { ok: false, error: '越界' };
+    if (!(r >= 0 && r < s.rows && c >= 0 && c < s.cols) || r % 1 !== 0 || c % 1 !== 0) return { ok: false, error: '越界' };
     if (!s.board) mineLay(s, r, c);
     var b = s.board;
     if (b[r][c].revealed) return { ok: false, error: '该格已翻开' };
@@ -454,7 +454,7 @@
   }
   function mineToggleFlag(s, r, c) {
     if (!s || s.over) return { ok: false, error: '本局已结束' };
-    if (r < 0 || r >= s.rows || c < 0 || c >= s.cols) return { ok: false, error: '越界' };
+    if (!(r >= 0 && r < s.rows && c >= 0 && c < s.cols) || r % 1 !== 0 || c % 1 !== 0) return { ok: false, error: '越界' };
     var b = s.board || mineLay(s, r, c), cell = b[r][c];
     if (cell.revealed) return { ok: false, error: '已翻开的格子不能标记' };
     cell.flagged = !cell.flagged;

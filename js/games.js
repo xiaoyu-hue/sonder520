@@ -277,7 +277,9 @@ function histHtml(g) {
     if (!g.board) {
       var empty = '';
       for (var i = 0; i < g.rows * g.cols; i++) {
-        empty += '<button type="button" class="ms-cell" aria-label="未翻开" style="min-height:28px"></button>';
+        var er = Math.floor(i / g.cols), ec = i % g.cols;
+        empty += '<button type="button" class="ms-cell" data-r="' + er + '" data-c="' + ec + '" ' +
+          'aria-label="第' + (er + 1) + '行第' + (ec + 1) + '列，未翻开" style="min-height:28px"></button>';
       }
       return empty;
     }
@@ -323,6 +325,7 @@ function histHtml(g) {
     var g = state.mini.g;
     if (g.over) return;
     var r = Number(cell.dataset.r), c = Number(cell.dataset.c);
+    if (!isFinite(r) || !isFinite(c)) return;
     if (msFlagMode) {
       mineCellFlag(ctx, cell);
       return;
@@ -904,7 +907,7 @@ function histHtml(g) {
       game: g && { kind: g.kind, turn: g.turn, moves: g.moves.length, over: g.over, winner: g.winner },
       mini: state.mini && (state.mini.kind === 'guessnum'
         ? { kind: 'guessnum', target: state.mini.g.target, attempts: state.mini.g.attempts.length, over: state.mini.g.over, won: state.mini.g.won }
-        : { kind: state.mini.kind, over: state.mini.g.over, won: state.mini.g.won, revealed: state.mini.g.revealed, flagged: state.mini.g.flagged })
+        : { kind: state.mini.kind, over: state.mini.g.over, won: state.mini.g.won, revealed: state.mini.g.revealed, flagged: state.mini.g.flagged, boardReady: !!state.mini.g.board, rows: state.mini.g.rows, cols: state.mini.g.cols, mines: state.mini.g.mines })
     };
   };
   /* 测试钩子：注入确定的猜数字答案（仅测试用） */
