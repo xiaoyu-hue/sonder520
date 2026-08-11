@@ -26,8 +26,11 @@ test('周报：本周任务/阅读/随手记/选题统计与完成率', () => {
     { id: 't4', date: '2026-08-09', done: true, priority: 'p4' } /* 上周日，不计 */
   ];
   s.state.books = [
-    { id: 'b1', title: 'A', status: '在读', readingLog: { '2026-08-11': 30, '2026-08-13': 25 } },
-    { id: 'b2', title: 'B', status: '在读', readingLog: { '2026-08-09': 90 } } /* 上周日，不计 */
+    /* 真实写入形态：addReadingSession 追加 {date, minutes} 会话条目 */
+    { id: 'b1', title: 'A', status: '在读', readingLog: [
+      { date: '2026-08-11', minutes: 30 }, { date: '2026-08-13', minutes: 25 }, { date: '2026-08-11', minutes: 0 }
+    ] },
+    { id: 'b2', title: 'B', status: '在读', readingLog: [{ date: '2026-08-09', minutes: 90 }] } /* 上周日，不计 */
   ];
   s.state.memos = [
     { id: 'm1', time: '2026-08-10T09:00:00+08:00', text: '灵感' },
@@ -57,6 +60,15 @@ test('周报：空数据周返回全零不报错', () => {
   assert.equal(r.rate, 0);
   assert.equal(r.readingMinutes, 0);
   assert.ok(r.text.includes('完成率 0%'));
+});
+
+test('周报：addReadingSession 真实写入路径可被统计（防假绿回归）', () => {
+  const s = S.createStore({ getItem: () => null, setItem: () => {}, removeItem: () => {} });
+  s.state.books = [{ id: 'b1', title: 'A', status: 'reading', progress: 0, notes: [], readingLog: [] }];
+  s.addReadingSession('b1', 30); /* 真实 API：写入 {date, minutes} 会话条目 */
+  s.addReadingSession('b1', 25); /* 同日两次会话应累加 */
+  const r = s.buildWeeklyReport(new Date().toISOString());
+  assert.equal(r.readingMinutes, 55, '真实写入的会话应被周报累加统计');
 });
 
 test('设置页：生成本周报告按钮 → 展示文本并可复制', () => {

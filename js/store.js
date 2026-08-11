@@ -886,8 +886,16 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     });
     var readingMinutes = 0;
     (st.books || []).forEach(function (b) {
-      var log = b.readingLog || {};
-      Object.keys(log).forEach(function (k) { if (inWeek(k)) readingMinutes += log[k]; });
+      var log = b.readingLog || [];
+      if (Array.isArray(log)) {
+        /* 会话日志形态：[{date, minutes}]，同日多条逐条累加 */
+        log.forEach(function (s) {
+          if (s && s.date && inWeek(weekKey(s.date))) readingMinutes += (Number(s.minutes) || 0);
+        });
+      } else {
+        /* 兼容旧对象形态 {dateKey: minutes} */
+        Object.keys(log).forEach(function (k) { if (inWeek(k)) readingMinutes += log[k]; });
+      }
     });
     var memos = 0;
     (st.memos || []).forEach(function (m) {
