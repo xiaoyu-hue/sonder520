@@ -2,14 +2,13 @@
  * 部署新版本时请递增 CACHE 版本号；sw 更新后会自动清理旧缓存。 */
 'use strict';
 
-var CACHE = 'sonder-v13';
+var CACHE = 'sonder-v14';
 
 var ASSETS = [
   './',
   './index.html',
   './css/style.css',
-  './assets/icon.svg',
-  './img/wallpaper.jpg',
+  './js/encryption.js',
   './js/store.js',
   './js/ui.js',
   './js/error-guard.js',
@@ -27,9 +26,11 @@ var ASSETS = [
   './js/design.js',
   './js/games-logic.js',
   './js/games.js',
-  './js/encryption.js',
   './js/settings.js',
-  './js/app.js'
+  './js/app.js',
+  './manifest.json',
+  './img/wallpaper.jpg',
+  './assets/icon.svg'
 ];
 
 /* install：预缓存全部资源，立即接管 */

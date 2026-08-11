@@ -4,9 +4,17 @@ const path = require('node:path');
 const { JSDOM } = require('jsdom');
 
 const root = path.join(__dirname, '..');
-const SCRIPT_ORDER = ['encryption.js', 'store.js', 'ui.js', 'error-guard.js', 'search.js', 'quotes.js', 'markdown.js', 'home.js', 'today.js', 'memo.js', 'selfmedia.js',
-  'dev.js', 'consulting.js', 'reading.js', 'news.js', 'design.js', 'games-logic.js', 'games.js',
-  'settings.js', 'app.js'];
+
+/* 脚本清单唯一真源 = index.html 中的 <script src="js/..."> 出现顺序 */
+function parseIndexScripts() {
+  const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+  const re = /<script src="js\/([^"]+)"><\/script>/g;
+  const out = [];
+  let m;
+  while ((m = re.exec(html))) out.push(m[1]);
+  return out;
+}
+const SCRIPT_ORDER = parseIndexScripts();
 
 /* 启动一个完整 App 的 JSDOM 实例。每个实例有自己独立的 localStorage。 */
 function boot(opts = {}) {
@@ -97,3 +105,4 @@ function boot(opts = {}) {
 module.exports = { boot: boot };
 module.exports.root = root;
 module.exports.SCRIPT_ORDER = SCRIPT_ORDER;
+module.exports.parseIndexScripts = parseIndexScripts;
