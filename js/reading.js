@@ -20,7 +20,9 @@
     if (!nodes.length || !timer) { stopClockLoop(); return; }
     var sec = elapsedSecs();
     nodes.forEach(function (n) { n.textContent = mmss(sec); });
+    stopClockLoop(); /* 单链自愈：先停旧链再重排，防止多次 render 各起一条链造成泄漏 */
     clockTimer = setTimeout(clockTick, 1000);
+    if (clockTimer.unref) clockTimer.unref(); /* 仅测试环境（Node）防进程悬挂；浏览器无 unref */
   }
   function stopClockLoop() {
     if (clockTimer) { clearTimeout(clockTimer); clockTimer = null; }
@@ -72,6 +74,8 @@
       container.appendChild(UI.el('<div class="section-title">' + grp + ' ' + list.length + '</div>'));
       list.forEach(function (b) { container.appendChild(bookCard(store, ctx, b)); });
     });
+    /* 切页恢复：计时中切走再切回时 data-clock 节点重建但时钟循环已停，重启之 */
+    if (timer) clockTick();
   }
 
   function statsSection(store, ctx) {

@@ -117,6 +117,33 @@ test('阅读页：书卡片有开始阅读按钮与累计分钟，结束时落�
   assert.ok(h.window.document.querySelector('[data-timerbtn]').textContent.includes('开始阅读'), '停止后按钮复原');
 });
 
+test('阅读页：计时中切页再切回，时钟恢复走动并显示真实流逝', async () => {
+  const h = boot();
+  h.goto('reading');
+  const b = h.store.addBook({ title: '局外人', status: '在读' });
+  h.goto('reading');
+  h.window.document.querySelector('[data-timerbtn]').click();
+  assert.ok(h.window.document.querySelector('[data-clock]'), '计时开始应有实时时钟');
+  h.goto('home'); /* 切走：时钟节点消失，循环停止 */
+  await wait(1200);
+  assert.ok(!h.window.document.querySelector('[data-clock]'), '切走的页面不残留时钟节点');
+  h.goto('reading'); /* 切回：render 尾部应重启时钟循环 */
+  try {
+    const clk = h.window.document.querySelector('[data-clock]');
+    assert.ok(clk, '切回后应重建实时时钟');
+    assert.notEqual(clk.textContent, '00:00', '时钟应显示真实流逝而非静态 00:00');
+    const t1 = clk.textContent;
+    await wait(1500);
+    const clk2 = h.window.document.querySelector('[data-clock]'); /* 引用须重取：store 保存触发重渲染会重建节点 */
+    assert.ok(clk2, '重渲染后时钟节点仍在');
+    assert.notEqual(clk2.textContent, t1, '时钟应持续走动');
+  } finally {
+    const btn = h.window.document.querySelector('[data-timerbtn]');
+    if (btn && btn.textContent.includes('停止')) btn.click(); /* 失败路径也停表，防 clockTick 链使测试进程悬挂 */
+  }
+  assert.ok(h.store.state.books.find(x => x.id === b.id).readingMinutes >= 1, '切页期间计时仍累计（短会话按1分钟落账）');
+});
+
 test('阅读页：摘抄金句弹窗填写句子页码后入库，书卡片可再编辑', () => {
   const h = boot();
   h.goto('reading');
