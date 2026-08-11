@@ -199,7 +199,7 @@
   var lockScreenEl = null, lockPwdEl = null, lockErrEl = null, lockRememberEl = null;
 
   function showLockScreen() {
-    if (lockScreenEl) { lockScreenEl.hidden = false; lockPwdEl.focus(); return; }
+    if (lockScreenEl) { lockScreenEl.style.display = 'flex'; lockPwdEl.focus(); return; }
     lockScreenEl = UI.el(
       '<div id="lockScreen" style="position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;background:var(--bg);backdrop-filter:blur(6px)">' +
       '<div style="width:min(92vw,360px);text-align:center;padding:28px 24px;border:1px solid var(--border);border-radius:16px;background:var(--glass-2)">' +
@@ -238,7 +238,8 @@
         if (lockRememberEl.checked) {
           try { sessionStorage.setItem('sonder_session_pwd', pwd); } catch (e) { /* 隐私模式忽略 */ }
         }
-        lockScreenEl.hidden = true;
+        /* 内联 display:flex 会覆盖 UA 的 [hidden] 规则，必须直接改 display */
+        lockScreenEl.style.display = 'none';
         lockErrEl.textContent = '';
         lockPwdEl.value = '';
         onHash();

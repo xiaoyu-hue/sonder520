@@ -89,16 +89,16 @@ test('锁屏：设置页锁定 → 错密码提示 → 对密码解锁恢复', a
 
   doc.querySelector('#encLock').click();
   assert.ok($('#lockScreen'), '应出现锁屏遮罩');
-  assert.equal($('#lockScreen').hidden, false);
+  assert.equal(window.getComputedStyle($('#lockScreen')).display, 'flex', '锁屏应显示（flex）');
 
   $('#lockPwd').value = '错误密码';
   $('#lockBtn').click();
   await poll(() => /密码不正确/.test($('#lockErr').textContent), 100, 10000);
-  assert.equal($('#lockScreen').hidden, false, '错密码保持锁定');
+  assert.equal(window.getComputedStyle($('#lockScreen')).display, 'flex', '错密码保持锁定');
 
   $('#lockPwd').value = PWD;
   $('#lockBtn').click();
-  await poll(() => $('#lockScreen').hidden === true, 100, 15000);
+  await poll(() => window.getComputedStyle($('#lockScreen')).display === 'none', 100, 15000);
   assert.equal(window.__sonderHooks.store.state.tasks.length, 1, '解锁后数据恢复可见');
   const raw = JSON.parse(doc.defaultView.localStorage.getItem('sonder_data_v1'));
   assert.equal(raw.e, 1, '解锁后落盘仍为密文');
@@ -125,7 +125,7 @@ test('免密会话：勾选免密解锁后新实例自动解锁', async () => {
   b.$('#lockRemember').checked = true;
   b.$('#lockPwd').value = PWD;
   b.$('#lockBtn').click();
-  await poll(() => b.$('#lockScreen').hidden === true, 100, 15000);
+  await poll(() => b.window.getComputedStyle(b.$('#lockScreen')).display === 'none', 100, 15000);
   assert.equal(b.window.sessionStorage.getItem('sonder_session_pwd'), PWD, '会话免密标记已写入');
 
   const c = bootSnap(snap, { 'sonder_session_pwd': PWD });
