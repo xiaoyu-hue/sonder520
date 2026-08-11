@@ -143,3 +143,32 @@ test('行为: updateMemo 支持 text 与 archived 白名单字段', () => {
   assert.equal(m.archived, false);
   assert.equal(store.updateMemo('ghost', { text: 'x' }), null);
 });
+
+/* ---------- 旧数据字段迁移 ---------- */
+
+test('normalize: 旧数据缺数组字段自动补默认，首页 summarize 与各页渲染不崩', () => {
+  const seed = {
+    version: 1,
+    settings: { modules: {} },
+    tasks: [],
+    memos: [],
+    posts: [{ id: 'p1', title: '旧选题' }],
+    clients: [{ id: 'c1', name: '旧客户' }],
+    news: [{ id: 'n1', title: '旧新闻' }],
+    devProjects: [{ id: 'd1', name: '旧项目' }],
+    designs: [{ id: 'x1', type: 'idea' }],
+    books: [], excerpts: [], gameRecords: []
+  };
+  const { store, goto } = boot({ seed });
+  assert.doesNotThrow(() => store.summarize(), '旧数据 summarize 不得崩溃');
+  assert.equal(store.state.clients[0].followups.length, 0, 'clients.followups 补默认数组');
+  assert.equal(store.state.clients[0].projects.length, 0);
+  assert.equal(store.state.clients[0].income.length, 0);
+  assert.equal(store.state.posts[0].tags.length, 0, 'posts.tags 补默认数组');
+  assert.equal(store.state.news[0].tags.length, 0, 'news.tags 补默认数组');
+  assert.equal(store.state.devProjects[0].tasks.length, 0, 'devProjects.tasks 补默认数组');
+  assert.equal(store.state.designs[0].title, '', 'designs.title 补默认');
+  assert.doesNotThrow(() => {
+    goto('home'); goto('consulting'); goto('news'); goto('dev'); goto('selfmedia');
+  }, '旧数据各页面渲染不得崩溃');
+});

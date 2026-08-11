@@ -187,6 +187,30 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
       if (typeof x.page !== 'number') x.page = 0;
       if (typeof x.time !== 'string') x.time = nowISO();
     });
+    /* 旧客户补默认：projects/followups/income 数组缺失会导致 summarize 与页面渲染崩溃 */
+    out.clients.forEach(function (c) {
+      if (!Array.isArray(c.projects)) c.projects = [];
+      if (!Array.isArray(c.followups)) c.followups = [];
+      if (!Array.isArray(c.income)) c.income = [];
+      if (typeof c.name !== 'string') c.name = '未命名客户';
+    });
+    /* 旧选题/旧新闻补默认：tags 数组缺失会导致 filterPosts/collectTags/CSV 导出崩溃 */
+    out.posts.forEach(function (p) {
+      if (!Array.isArray(p.tags)) p.tags = [];
+      if (typeof p.title !== 'string') p.title = '';
+    });
+    out.news.forEach(function (n) {
+      if (!Array.isArray(n.tags)) n.tags = [];
+      if (typeof n.title !== 'string') n.title = '';
+    });
+    /* 旧项目/旧设计补默认 */
+    out.devProjects.forEach(function (p) {
+      if (!Array.isArray(p.tasks)) p.tasks = [];
+      if (typeof p.name !== 'string') p.name = '未命名项目';
+    });
+    out.designs.forEach(function (x) {
+      if (typeof x.title !== 'string') x.title = '';
+    });
     return out;
   }
 
