@@ -27,7 +27,7 @@ test('normalize：旧数据无该字段时补默认，非法值夹紧', () => {
   a.setWallpaperOpacity(30);
   const s = S.createStore(memStorage());
   let restored;
-  const s2 = (() => { const st = S.createStore(memStorage()); st.importBackup(JSON.stringify(a.state)); restored = st; return st; })();
+  (() => { const st = S.createStore(memStorage()); st.importBackup(JSON.stringify(a.state)); restored = st; })();
   assert.equal(restored.state.settings.wallpaperOpacity, 30, '备份恢复保留透明度');
   assert.equal(s.state.settings.wallpaperOpacity, 40, '空数据用默认 40');
 });

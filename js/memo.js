@@ -2,7 +2,6 @@
 (function () {
   'use strict';
   var Pages = window.Pages = window.Pages || {};
-  var S = window.SonderStore;
   var currentEl = null;
 
   function fmt(t) {

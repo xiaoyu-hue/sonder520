@@ -102,7 +102,6 @@
     }).join('');
     return '<div class="section-title">' + esc(title) + '</div>' + inner + (items.length ? '' : '');
   }
-  var esc = window.UI.esc;
   function delOnly(id) {
     return '<span class="row">' +
       '<button class="small-btn danger" data-act="del" data-id="' + id + '" title="删除">✕</button>' +

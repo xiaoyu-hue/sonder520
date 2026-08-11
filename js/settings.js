@@ -3,7 +3,7 @@
   'use strict';
   var Pages = window.Pages = window.Pages || {};
   var S = window.SonderStore;
-  var currentEl = null, currentCtx = null;
+  var currentEl = null;
 
   function render(ctx) {
     var container = currentEl, store = ctx.store, UI = ctx.UI;
@@ -438,6 +438,6 @@
 
   Pages.settings = {
     title: '数据与设置',
-    render: function (container, ctx) { currentEl = container; currentCtx = ctx; render(ctx); }
+    render: function (container, ctx) { currentEl = container; render(ctx); }
   };
 })();

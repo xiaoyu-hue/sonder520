@@ -66,7 +66,7 @@
     return false;
   }
   function tttStateWinner(board) {
-    var i, j, p;
+    var i, p;
     for (i = 0; i < 3; i++) {
       p = board[i][0];
       if (p && board[i][1] === p && board[i][2] === p) return p;

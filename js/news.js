@@ -6,8 +6,6 @@
   var currentEl = null, currentCtx = null;
   var state = { status: '', tag: '' };
 
-  var STATUS = { unread: '待读', read: '已读', favorite: '收藏' };
-
   function render(ctx) {
     var container = currentEl, store = ctx.store, UI = ctx.UI;
     container.innerHTML = '';

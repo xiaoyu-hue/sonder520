@@ -3,7 +3,7 @@
   'use strict';
   var Pages = window.Pages = window.Pages || {};
   var S = window.SonderStore;
-  var currentEl = null, currentCtx = null;
+  var currentEl = null;
 
   /* ---------- 阅读计时（当前正在计时的书，会话结束才落账） ---------- */
   var timer = null; // { bookId, startTs }
@@ -254,7 +254,7 @@
 
   Pages.reading = {
     title: '阅读计划',
-    render: function (container, ctx) { currentEl = container; currentCtx = ctx; render(ctx); },
+    render: function (container, ctx) { currentEl = container; render(ctx); },
     add: function (ctx) { openBook(ctx); }
   };
   Pages.excerpts = {

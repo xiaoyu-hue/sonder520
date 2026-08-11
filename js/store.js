@@ -123,10 +123,6 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     taskReminder: false
   };
 
-  function moduleKeys() {
-    return Object.keys(DEFAULT_SETTINGS.modules);
-  }
-
   function defaultState() {
     return {
       version: 1,
@@ -259,7 +255,6 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
   };
   /* 盐获取（localStorage 缺失时从 IndexedDB 冗余读取，配合双写恢复） */
   Store.prototype._encSaltAsync = function () {
-    var self = this;
     var local = this._encSalt();
     if (local) return Promise.resolve(local);
     if (!idbAvailable()) return Promise.resolve(null);
@@ -278,7 +273,7 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
   };
   /* 未解锁判定：localStorage 主快照为密文，或 IDB 侧存在待解锁密文（loadIdb 探测标记） */
   Store.prototype.needsUnlock = function () {
-    return !!this._encKey ? false : (this._hasEncSnapshot() || !!this._idbEncLocked);
+    return this._encKey ? false : (this._hasEncSnapshot() || !!this._idbEncLocked);
   };
 
   function clone(o) { return deepClone(o); }
@@ -618,19 +613,6 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
   /* ====== 自媒体 ====== */
   var STAT_FIELDS = ['views', 'likes', 'comments', 'favorites'];
   function num0(v) { var n = Number(v); return isNaN(n) ? 0 : Math.max(0, n); }
-  function postFactory(d) {
-    var p = {
-      id: uid(), title: String(d.title || '').trim() || '未命名内容',
-      platform: String(d.platform || '').trim(), account: String(d.account || '').trim(),
-      note: String(d.note || ''), tags: (Array.isArray(d.tags) ? d.tags.slice() : []),
-      status: d.status || 'draft', publishDate: d.publishDate || null,
-      createdAt: nowISO()
-    };
-    STAT_FIELDS.forEach(function (f) { p[f] = num0(d[f]); });
-    p.progress = num0(d.progress);
-    if (p.progress > 100) p.progress = 100;
-    return p;
-  }
   function filterPosts(posts, opts) {
     opts = opts || {};
     var tag = opts.tag, status = opts.status;

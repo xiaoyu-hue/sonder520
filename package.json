@@ -6,10 +6,12 @@
   "scripts": {
     "test": "node --test \"tests/**/*.test.js\"",
     "typecheck": "tsc --noEmit",
+    "lint": "eslint js/*.js tests/*.js scripts/*.js",
     "sync-sw": "node scripts/sync-sw.js"
   },
   "devDependencies": {
     "@types/node": "^26.2.0",
+    "eslint": "^8.57.1",
     "fake-indexeddb": "^6.2.5",
     "jsdom": "^24.0.0",
     "typescript": "^7.0.2"

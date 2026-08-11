@@ -7,7 +7,6 @@ const root = path.join(__dirname, '..');
 
 const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const css = fs.readFileSync(path.join(root, 'css', 'style.css'), 'utf8');
-const appJs = fs.readFileSync(path.join(root, 'js', 'app.js'), 'utf8');
 
 test('性能：壁纸预加载 + 站点图标内联（首次绘制提速，无 404）', () => {
   assert.ok(html.includes('<link rel="preload" as="image" href="img/wallpaper.jpg">'), '应预加载壁纸');

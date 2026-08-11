@@ -1,0 +1,25 @@
+{
+  "root": true,
+  "env": {
+    "browser": true,
+    "node": true,
+    "es2020": true
+  },
+  "parserOptions": {
+    "ecmaVersion": 2020,
+    "sourceType": "script"
+  },
+  "extends": ["eslint:recommended"],
+  "ignorePatterns": ["node_modules/", "js/globals.d.ts"],
+  "globals": {
+    "SonderStore": "readonly",
+    "SonderMarkdown": "readonly",
+    "SonderCrypto": "readonly",
+    "SonderGames": "readonly",
+    "SonderQuotes": "readonly"
+  },
+  "rules": {
+    "no-console": "off",
+    "no-unused-vars": ["warn", { "args": "none", "varsIgnorePattern": "^_" }]
+  }
+}

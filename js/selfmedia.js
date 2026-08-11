@@ -12,7 +12,6 @@
     cal.year = d.getFullYear();
     cal.month = d.getMonth();
   }
-  function calLabel() { return { year: cal.year, month: cal.month }; }
   function shiftCal(delta) {
     var d = new Date(cal.year, cal.month + delta, 1);
     cal.year = d.getFullYear();

@@ -4,16 +4,6 @@ const assert = require('node:assert');
 const { boot } = require('./harness.js');
 const S = require('../js/store.js');
 const TODAY = S.todayStr();
-const PAST = '2000-01-01';
-
-function memStorage(initial = {}) {
-  const m = { ...initial };
-  return {
-    getItem(k) { return Object.prototype.hasOwnProperty.call(m, k) ? m[k] : null; },
-    setItem(k, v) { m[k] = String(v); },
-    removeItem(k) { delete m[k]; }
-  };
-}
 
 test('首页卡片点击跳转到对应模块', () => {
   const h = boot();

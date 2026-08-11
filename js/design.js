@@ -2,7 +2,7 @@
 (function () {
   'use strict';
   var Pages = window.Pages = window.Pages || {};
-  var currentEl = null, currentCtx = null;
+  var currentEl = null;
   var STAGES = ['构想', '进行', '定稿'];
 
   function render(ctx) {
@@ -88,7 +88,7 @@
 
   Pages.design = {
     title: '设计计划',
-    render: function (container, ctx) { currentEl = container; currentCtx = ctx; render(ctx); },
+    render: function (container, ctx) { currentEl = container; render(ctx); },
     add: function (ctx) { openDesign(ctx, 'idea'); }
   };
 })();

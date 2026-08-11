@@ -12,8 +12,6 @@ const SEED = {
   version: 1
 };
 
-function wait(ms) { return new Promise(r => setTimeout(r, ms || 80)); }
-
 /* 加密操作（PBKDF2 600k 迭代）耗时随机器负载浮动，用轮询替代固定等待 */
 function poll(fn, stepMs, timeoutMs) {
   return new Promise((resolve, reject) => {
@@ -136,7 +134,7 @@ test('免密会话：勾选免密解锁后新实例自动解锁', async () => {
 });
 
 test('停用加密：错密码拒绝并保持密文，对密码转明文并清盐', async () => {
-  const { window, $ } = boot({ seed: SEED });
+  const { window } = boot({ seed: SEED });
   await enableViaUI(window);
   const doc = window.document;
 

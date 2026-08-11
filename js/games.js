@@ -43,7 +43,7 @@
   function kindName(g) { return KIND_NAME[g.kind] || g.kind; }
 
   function render(ctx) {
-    var container = currentEl, UI = ctx.UI;
+    var container = currentEl;
     container.innerHTML = '';
     container.appendChild(state.game ? gameView(ctx) : (state.mini ? miniView(ctx) : pickView(ctx)));
     container.appendChild(recordsArea(ctx));
@@ -443,7 +443,6 @@ function histHtml(g) {
   function brainView(ctx) {
     var UI = ctx.UI, g = state.mini.g;
     var rec = miniRec('brainteaser');
-    var shown = g.over && !g.correct;
     var wrap = UI.el('<div></div>');
     wrap.appendChild(UI.el(
       '<div class="hbar">' +
@@ -582,7 +581,7 @@ function histHtml(g) {
 
   /* ---------- 对局界面 ---------- */
   function gameView(ctx) {
-    var UI = ctx.UI, g = state.game, i;
+    var UI = ctx.UI, g = state.game;
     var wrap = UI.el('<div></div>');
     wrap.appendChild(UI.el(
       '<div class="hbar">' +
@@ -760,7 +759,7 @@ function histHtml(g) {
   }
 
   function newGame(ctx) {
-    var g = state.game, UI = ctx.UI;
+    var g = state.game;
     if (!g) return;
     if (!g.moves.length) { startGame(ctx, g.kind); return; }
     askConfirm(ctx, '新开一局？当前进度将被清空', '新开局').then(function (ok) {
@@ -769,7 +768,7 @@ function histHtml(g) {
   }
 
   function backToPick(ctx) {
-    var g = state.game, UI = ctx.UI;
+    var g = state.game;
     if (!g) return;
     var leave = function () {
       if (aiTimer) { clearTimeout(aiTimer); aiTimer = null; }

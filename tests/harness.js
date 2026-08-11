@@ -25,7 +25,6 @@ function boot(opts = {}) {
     pretendToBeVisual: true
   });
   const { window } = dom;
-  const storeFile = path.join(root, 'js', 'store.js');
 
   // 注入真实 WebCrypto + TextEncoder/TextDecoder（jsdom 原生缺失）
   try {

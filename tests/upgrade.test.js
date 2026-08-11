@@ -103,7 +103,7 @@ test('启用加密：自检前置校验，弱密码被拒绝且明文快照保�
 });
 
 test('导出/导入：加密备份导出为密文包，密码导入成功、错密码拒绝且原数据不动', async () => {
-  const { st, s } = seeded(['甲', '乙']);
+  const { s } = seeded(['甲', '乙']);
   await s.enableEncryption(PWD);
   await s.unlock(PWD);
   const pkgText = await s.exportBackup();

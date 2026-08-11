@@ -4,7 +4,7 @@
   var Pages = window.Pages = window.Pages || {};
   var S = window.SonderStore;
   var MD = window.SonderMarkdown;
-  var currentEl = null, currentCtx = null;
+  var currentEl = null;
   var tabState = 'projects';
 
   function render(ctx) {
@@ -152,7 +152,7 @@
 
   Pages.dev = {
     title: '开发工作',
-    render: function (container, ctx) { currentEl = container; currentCtx = ctx; render(ctx); },
+    render: function (container, ctx) { currentEl = container; render(ctx); },
     add: function (ctx) { openProject(ctx); }
   };
 

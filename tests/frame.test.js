@@ -44,6 +44,6 @@ test('帧率：90 档与 60 档有 CSS 覆盖规则，120 档保持原速', () =
   assert.ok(css.includes('[data-frame="90"]'), '90 档应有覆盖规则');
   assert.ok(css.includes('[data-frame="90"] .rd-donut'), '90 档应降频装饰动画');
   assert.ok(css.includes('[data-frame="60"]'), '60 档应有覆盖规则');
-  assert.ok(/\[data-frame="60"\][^\{]*\*[,.{]?/.test(css), '60 档应全局压制动画');
+  assert.ok(/\[data-frame="60"\][^{]*\*[,.{]?/.test(css), '60 档应全局压制动画');
   assert.ok(!css.includes('[data-frame="120"]'), '120 档不应有覆盖规则（保持满速原版）');
 });

@@ -67,7 +67,7 @@ test('契约: store 方法全集与 globals.d.ts 声明一致（两边都要更�
   const { store } = boot({});
   const dts = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'js', 'globals.d.ts'), 'utf8');
   const block = dts.slice(dts.indexOf('interface SonderStoreImpl {'), dts.indexOf('interface SonderStoreFactory'));
-  const declared = [...block.matchAll(/^  (\w+)\([^)]*\): /gm)].map(m => m[1]);
+  const declared = [...block.matchAll(/^ {2}(\w+)\([^)]*\): /gm)].map(m => m[1]);
   assert.ok(declared.length >= 30, 'd.ts 应声明至少 30 个方法，当前 ' + declared.length);
   declared.forEach(name => {
     assert.equal(typeof store[name], 'function', 'globals.d.ts 声明了 store.' + name + '，但实例上不是函数');
