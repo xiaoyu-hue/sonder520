@@ -270,6 +270,10 @@ body::after {
   .game-board.big { width: min(97vw, 480px); gap: 2px; padding: 8px; }
   .game-board.big .cell { border-radius: 4px; }
   .game-board.big .stone { width: 86%; height: 86%; }
+
+  /* 扫雷手机端：格子保持 ≥26px 触控尺寸；大棋盘超出视口时横向滑动查看 */
+  .ms-board { width: max(100%, calc(var(--cols) * 26px)); min-width: 100%; }
+  .ms-cell { min-height: 26px; }
 }
 
 /* 超小屏手机（≤360px）：压缩留白，保证导航不挤爆 */
@@ -825,7 +829,7 @@ input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border-radius
 .mg-line {
   display: flex; align-items: center; gap: 10px;
   padding: 7px 10px; margin-top: 6px;
-  background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+  background: var(--glass-2); border: 1px solid var(--border); border-radius: 10px;
 }
 .mg-num { min-width: 44px; text-align: center; font-size: 16px; }
 .mg-hint { margin-left: auto; font-size: 13px; padding: 2px 10px; border-radius: 999px; white-space: nowrap; }
@@ -851,8 +855,9 @@ input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border-radius
   --ms-grid: rgba(255, 245, 225, 0.14);
   --ms-text-soft: #a29b8c;
 }
+.ms-board-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: thin; }
 .ms-board {
-  display: grid; gap: 2px; margin: 12px auto 0;
+  display: grid; gap: 2px; margin: 0 auto;
   background: var(--ms-grid); padding: 2px; border-radius: 12px;
   border: 1px solid var(--ms-grid);
   max-width: min(100%, 540px);

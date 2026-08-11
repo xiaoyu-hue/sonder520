@@ -208,7 +208,9 @@
       '<label class="toggle small" style="margin-left:auto"><input type="checkbox" id="msFlagMode"' + (msFlagMode ? ' checked' : '') + '> ⚑ 标记模式' + '</label>' +
       '<span class="muted small">' + statsTxt + '</span>' +
       '</div>' +
-      '<div class="ms-board" id="msBoard" style="grid-template-columns:repeat(' + g.cols + ',1fr)" role="grid" aria-label="扫雷雷区">' + mineCellsHtml(g, ctx.UI) + '</div>' +
+      '<div class="ms-board-wrap" style="margin-top:12px">' +
+      '<div class="ms-board" id="msBoard" style="--cols:' + g.cols + ';grid-template-columns:repeat(' + g.cols + ',1fr)" role="grid" aria-label="扫雷雷区">' + mineCellsHtml(g, ctx.UI) + '</div>' +
+      '</div>' +
       '<div class="row" style="margin-top:12px">' +
       '<button class="btn" data-mact="again" type="button" style="min-height:44px">🔄 再来一局</button>' +
       '</div>' +
