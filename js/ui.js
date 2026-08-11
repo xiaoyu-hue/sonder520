@@ -28,7 +28,8 @@
     var s = String(u === null || u === undefined ? '' : u).trim();
     if (!s) return s;
     if (/^javascript:|^data:|^vbscript:/i.test(s)) return '';
-    return s;
+    /* 返回值用于拼进 HTML 属性（href），必须转义引号与 &，防属性闭合注入（如 " onmouseover="） */
+    return s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
 
   /** @param {string} html @returns {HTMLElement} */

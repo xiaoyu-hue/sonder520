@@ -95,3 +95,28 @@ test('XSS：属性注入（双引号闭合）不生效', () => {
   const attrs = titles.length ? Array.from(titles[0].attributes).map(a => a.name).join(',') : '';
   assert.ok(!attrs.includes('onerror') && !attrs.includes('style2'), 'title 元素不得长出注入属性');
 });
+
+test('XSS：URL 属性闭合注入（" onmouseover=）不生效', () => {
+  const seed = seedXss();
+  seed.news[0].url = 'https://x.com/" onmouseover="alert(1)';
+  seed.designs[0].link = 'https://d.com/" onclick="alert(2)';
+  const h = boot({ seed });
+  h.goto('news');
+  const c = h.window.document.getElementById('content');
+  const a = c.querySelector('.list-item a[href]');
+  assert.ok(a, '安全协议链接应渲染');
+  assert.equal(a.getAttribute('onmouseover'), null, '注入不得生成 onmouseover 属性');
+  assert.equal(a.getAttribute('href'), 'https://x.com/" onmouseover="alert(1)', '注入内容应完整保留在 href 值内而非成为属性');
+  h.goto('design');
+  const d = h.window.document.querySelector('.list-item a[href]');
+  assert.ok(d, '设计链接应渲染');
+  assert.equal(d.getAttribute('onclick'), null, '注入不得生成 onclick 属性');
+  assert.equal(d.getAttribute('href'), 'https://d.com/" onclick="alert(2)', '链接值应原样保留');
+});
+
+test('sanitizeUrl：属性闭合 payload 被转义', () => {
+  const h = boot();
+  const U = h.window.UI;
+  assert.equal(U.sanitizeUrl('https://x.com/" onmouseover="alert(1)'), 'https://x.com/&quot; onmouseover=&quot;alert(1)', '双引号应转义为实体');
+  assert.equal(U.sanitizeUrl('https://x.com/?a=1&b=2'), 'https://x.com/?a=1&amp;b=2', '& 应转义为实体');
+});
