@@ -312,8 +312,7 @@ test('QA：AI 模式可连续悔棋多回合', async () => {
   assert.equal(h.window.__gamesDbg().game.moves, 0, '可连续悔棋直到空盘');
 });
 
-test('QA：双人悔棋需对方同意，拒绝不撤销', async () => {
-  const h = boot();
+test('QA：双人悔棋需对方同意，拒绝不撤销', async () => {  const h = boot();
   const doc = h.window.document;
   h.goto('game');
   doc.querySelector('[data-pick="tictactoe"]').click();
@@ -332,4 +331,20 @@ test('QA：双人悔棋需对方同意，拒绝不撤销', async () => {
   yes.click();
   await wait(20);
   assert.equal(doc.querySelectorAll('#gBoard .mk').length, 1, '对方同意后撤销一步');
+});
+
+test('QA：AI 思考期间切页不劫持当前页面，切回后自动续走', async () => {
+  const h = boot();
+  const doc = h.window.document;
+  h.goto('game');
+  doc.querySelector('[data-pick="tictactoe"]').click();
+  cell(h, 0, 0).click(); /* 玩家落子，AI 220ms 后思考 */
+  h.goto('home'); /* 立即切页 */
+  await wait(350); /* 越过 AI 延时窗口 */
+  assert.ok(!doc.querySelector('#gStatus'), '切走的页面不得出现游戏棋盘（未被劫持）');
+  assert.ok(doc.querySelector('#quickMemo') || doc.body.textContent.includes('今日'), 'home 内容保持');
+  h.goto('game'); /* 切回 */
+  await wait(400);
+  assert.equal(doc.querySelectorAll('#gBoard .mk').length, 2, 'AI 应自动续走完成一回合');
+  assert.equal(h.window.__gamesDbg().busy, false, 'AI 思考状态复位');
 });

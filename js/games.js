@@ -47,6 +47,10 @@
     container.innerHTML = '';
     container.appendChild(state.game ? gameView(ctx) : (state.mini ? miniView(ctx) : pickView(ctx)));
     container.appendChild(recordsArea(ctx));
+    /* 恢复被切页打断的 AI 回合：AI 模式对局停在 AI 思考且未在思考中时重新调度落子 */
+    if (state.mode === 'ai' && state.game && !state.game.over && state.game.turn === aiStone() && !busy) {
+      aiThink(ctx);
+    }
   }
 
   /* ---------- 休闲小游戏 ---------- */
@@ -698,6 +702,9 @@ function histHtml(g) {
       aiTimer = null;
       busy = false;
       if (!state.game || state.game !== g || state.game.over || state.game.turn !== aiStone()) return;
+      /* 越页守卫：玩家在 AI 思考期间切走（#gStatus 已从 #content 移除）时不劫持当前页面；
+       * 对局保留，切回时 render 会重新调度 AI 落子 */
+      if (!document.getElementById('gStatus')) return;
       var mv = state.game.kind === 'tictactoe' ? G.tttAiMove(state.game, aiStone(), state.difficulty) : G.gomokuAiMove(state.game, aiStone(), state.difficulty);
       var res = G.place(state.game, mv.r, mv.c);
       render(ctx);
