@@ -311,10 +311,13 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     });
   };
 
-  /** @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _idbWrite: any, _lastJson: string, _rev: number, _encKey: any, _encSize: number, _encSave: Function }} */
+  /** @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _idbWrite: any, _lastJson: string, _rev: number, _encKey: any, _encSize: number, _encSave: Function, needsUnlock: Function }} */
   Store.prototype.save = function () {
     var json = JSON.stringify(this.state);
     if (json === this._lastJson) return; /* 内容未变：零序列化零 IO */
+    /* 锁定态守卫：快照为密文但无会话密钥时禁止明文落盘——
+     * 锁定后残留的定时器/异步回调若触发 save，明文会覆盖密文并静默解除加密 */
+    if (this.needsUnlock()) return;
     this._lastJson = json;
     this._rev++;
     if (this._encKey) {
@@ -356,7 +359,17 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     if (!idbAvailable()) return Promise.resolve(false);
     return openIdb().then(function (db) {
       return idbGet(db, IDB_KEY).then(function (entry) {
-        if (!entry) { self._idbWrite(); return false; }
+        if (!entry) {
+          /* IDB 为空：用 localStorage 原始串（密文或明文格式原样）回填。
+           * 禁用内存 state 序列化——锁定态下内存是空 defaultState，
+           * 序列化会把明文空数据写进 IDB，破坏密文兜底副本 */
+          var lsRaw = null;
+          if (self._storage) {
+            try { lsRaw = self._storage.getItem(STORAGE_KEY); } catch (e) { lsRaw = null; }
+          }
+          self._idbWrite(lsRaw || undefined);
+          return false;
+        }
         var idbSavedAt = (entry && typeof entry === 'object' && !Array.isArray(entry)) ? entry.savedAt : '';
         var idbData = (entry && typeof entry === 'object' && !Array.isArray(entry)) ? entry.data : entry;
         var localMeta = null, localRaw = null;
@@ -402,12 +415,16 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
   };
 
   /* 手动迁移：立即把当前全部数据写入 IndexedDB（只复制不删旧数据） */
-  /** @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _idbWrite: any }} */
+  /** @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _idbWrite: any, _encKey: any, _encSave: Function }} */
   Store.prototype.migrateToIdb = function () {
     var self = this;
     if (!idbAvailable()) return Promise.resolve(false);
     this._meta = nowISO();
     var json = JSON.stringify(this.state);
+    if (this._encKey) {
+      /* 加密态：IDB 兜底必须与 LS 同为密文（走 _encSave 双写），不得写入内存明文 */
+      return this._encSave(json).then(function () { return true; }).catch(function () { return false; });
+    }
     return openIdb().then(function (db) {
       return idbPut(db, IDB_KEY, { savedAt: self._meta, data: json }).then(function () { return true; });
     }).catch(function () { return false; });
@@ -529,8 +546,11 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
           if (self._storage) {
             try { self._storage.removeItem(STORAGE_SALT_KEY); } catch (e) { /* 忽略 */ }
           }
-          self._lastJson = null; /* 破除幂等保护，强制明文双写 */
-          self.save(); /* 明文双写（_encKey 已空） */
+          /* 显式转明文：直接双写绕过 save 的锁定态守卫（此时 LS 仍是密文） */
+          var plain = JSON.stringify(self.state);
+          self._lastJson = plain;
+          self._persistLocal(plain);
+          self._idbWrite(plain);
           return true;
         });
       });
@@ -805,16 +825,26 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
       });
     });
   };
-  /* 导入：明文备份同步完成；加密备份需 password。统一返回 Promise<{ok, error?}> */
+  /* 导入：明文备份同步完成；加密备份需 password。统一返回 Promise<{ok, error?}>
+   * 加密模式下导入必须保持密文落盘；锁定态拒绝导入（防止明文覆盖密文） */
   Store.prototype.importBackup = function (jsonStr, password) {
+    var self = this;
     var parsed;
     try { parsed = JSON.parse(jsonStr); } catch (e) { return Promise.resolve({ ok: false, error: '文件不是有效的 JSON' }); }
     if (parsed && parsed.format === BACKUP_ENC_FORMAT) return this._importEncBackup(parsed, password);
     if (!isPlainObject(parsed) || typeof parsed.version !== 'number') {
       return Promise.resolve({ ok: false, error: '文件缺少必要字段(version)，无法识别为备份文件' });
     }
+    if (this.needsUnlock()) return Promise.resolve({ ok: false, error: '当前处于锁定态，请先解锁后再导入' });
     this.state = normalize(parsed);
-    this.save();
+    if (this._encKey) {
+      /* 加密解锁态：导入数据以当前密钥落盘，不得明文覆盖密文 */
+      var encJson = JSON.stringify(this.state);
+      this._lastJson = encJson;
+      this._encSave(encJson);
+    } else {
+      this.save();
+    }
     return Promise.resolve({ ok: true });
   };
   Store.prototype._importEncBackup = function (pkg, password) {
@@ -824,13 +854,21 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     var salt;
     try { salt = Crypto.b64ToBytes(pkg.salt); } catch (e) { return Promise.resolve({ ok: false, error: '备份盐格式无效' }); }
     if (salt.length !== 16) return Promise.resolve({ ok: false, error: '备份盐长度无效' });
+    if (this.needsUnlock()) return Promise.resolve({ ok: false, error: '当前处于锁定态，请先解锁后再导入' });
     return Crypto.deriveKey(password, salt).then(function (key) {
       return Crypto.decryptBundle(pkg, key).then(function (json) {
         var parsed;
         try { parsed = JSON.parse(json); } catch (e) { return { ok: false, error: '解密结果不是有效数据' }; }
         if (!isPlainObject(parsed) || typeof parsed.version !== 'number') return { ok: false, error: '解密结果缺少必要字段' };
         self.state = normalize(parsed);
-        self.save();
+        if (self._encKey) {
+          /* 加密解锁态：导入数据以当前密钥落盘，保持密文不变量 */
+          var encJson = JSON.stringify(self.state);
+          self._lastJson = encJson;
+          self._encSave(encJson);
+        } else {
+          self.save();
+        }
         return { ok: true };
       }).catch(function () {
         return { ok: false, error: '密码错误或备份已损坏，导入中止（原数据未动）' };
