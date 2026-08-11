@@ -339,7 +339,7 @@ interface Window {
   SonderQuotes: { quoteOfDay(dateStr: string): string; quotes: string[] };
   UI: SonderUI;
   __sonderHooks: { [key: string]: any };
-  __sonderErrors: { list: SonderErrorEntry[]; readonly total: number; clear(): void };
+  __sonderErrors: { list: SonderErrorEntry[]; readonly total: number; clear(): void; report(errOrMsg: string | Error, type?: string): void };
   __gamesDbg: any;
   __readingDbg: any;
   __todayDbg: any;

@@ -305,7 +305,10 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
         entry.data = useJson;
         return idbPut(db, IDB_KEY, entry);
       });
-    }).catch(function () {});
+    }).catch(function (err) {
+      /* IDB 写入失败不影响主流程，但上报便于发现环境问题 */
+      try { console.error('[Sonder] IndexedDB 写入失败', err); } catch (e) { /* 忽略 */ }
+    });
   };
 
   /** @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _idbWrite: any, _lastJson: string, _rev: number, _encKey: any, _encSize: number, _encSave: Function }} */
@@ -314,7 +317,12 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     if (json === this._lastJson) return; /* 内容未变：零序列化零 IO */
     this._lastJson = json;
     this._rev++;
-    if (this._encKey) { this._encSave(json).catch(function () {}); }
+    if (this._encKey) {
+      this._encSave(json).catch(function (err) {
+        /* 加密写盘失败：下次 save 会重试；上报便于发现（数据仍在上次持久化版本） */
+        try { console.error('[Sonder] 加密持久化失败', err); } catch (e) { /* 忽略 */ }
+      });
+    }
     else { this._persistLocal(json); this._idbWrite(json); }
   };
 

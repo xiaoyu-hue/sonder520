@@ -80,3 +80,87 @@ test('error-guard: clear 可重置统计', () => {
   assert.equal(window.__sonderErrors.total, 0);
   assert.equal(window.__sonderErrors.list.length, 0);
 });
+
+test('error-guard: 公开 report API 记录字符串错误', () => {
+  const { window } = boot({});
+  assert.equal(typeof window.__sonderErrors.report, 'function', 'report 应为公开函数');
+  window.__sonderErrors.report('降级异常：壁纸加载失败');
+  assert.equal(window.__sonderErrors.total, 1);
+  const last = window.__sonderErrors.list[0];
+  assert.equal(last.type, 'reported');
+  assert.equal(last.message, '降级异常：壁纸加载失败');
+  assert.equal(last.stack, null);
+});
+
+test('error-guard: report API 支持 Error 实例与自定义类型', () => {
+  const { window } = boot({});
+  window.__sonderErrors.report(new window.Error('io-fail'), 'storage');
+  const last = window.__sonderErrors.list[0];
+  assert.equal(last.type, 'storage');
+  assert.equal(last.message, 'io-fail');
+  assert.ok(last.stack && last.stack.length > 0, 'Error 实例应提取堆栈');
+});
+
+/* ---------- 静默失败守卫（静态审计） ---------- */
+
+test('error-guard: 无注释的空 catch 块禁止（吞错必须说明降级理由）', () => {
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const dir = path.join(__dirname, '..', 'js');
+  const offenders = [];
+  fs.readdirSync(dir).filter(f => f.endsWith('.js')).forEach(f => {
+    const lines = fs.readFileSync(path.join(dir, f), 'utf8').split('\n');
+    let inCatch = false;
+    let block = '';
+    let start = 0;
+    lines.forEach((line, i) => {
+      const t = line.trim();
+      const m = t.match(/catch\s*\([^)]*\)/);
+      if (!inCatch && m) {
+        inCatch = true;
+        start = i + 1;
+        const openIdx = t.indexOf('{', m.index);
+        if (openIdx < 0) { inCatch = false; return; }
+        const closeIdx = t.indexOf('}', openIdx);
+        if (closeIdx >= 0) {
+          inCatch = false;
+          check(t.slice(openIdx + 1, closeIdx));
+        } else {
+          block = t.slice(openIdx + 1);
+        }
+        return;
+      }
+      if (inCatch) {
+        if (t.indexOf('}') >= 0 && t.indexOf('{') < 0) {
+          block += ' ' + t.slice(0, t.indexOf('}'));
+          inCatch = false;
+          check(block);
+        } else {
+          block += ' ' + t;
+        }
+      }
+    });
+    function check(body) {
+      const hasContent = body.split(/\n/).some(l => l.trim());
+      if (!hasContent) offenders.push(f + ':' + start);
+    }
+  });
+  assert.deepEqual(offenders, [], '以下空 catch 块无任何说明注释，吞错必须写明降级理由: ' + offenders.join(', '));
+});
+
+test('error-guard: Promise 链静默空回调禁止（.catch(function () {})）', () => {
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const dir = path.join(__dirname, '..', 'js');
+  const offenders = [];
+  fs.readdirSync(dir).filter(f => f.endsWith('.js')).forEach(f => {
+    const src = fs.readFileSync(path.join(dir, f), 'utf8');
+    const lines = src.split('\n');
+    lines.forEach((line, i) => {
+      if (/\.catch\(\s*function\s*\(\s*\)\s*\{\s*\}\s*\)/.test(line)) {
+        offenders.push(f + ':' + (i + 1));
+      }
+    });
+  });
+  assert.deepEqual(offenders, [], '以下静默空回调必须带 err 参数并说明原因: ' + offenders.join(', '));
+});

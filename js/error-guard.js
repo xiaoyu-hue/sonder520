@@ -70,6 +70,14 @@
   window.__sonderErrors = {
     list: list,
     get total() { return total; },
-    clear: function () { list.length = 0; total = 0; }
+    clear: function () { list.length = 0; total = 0; },
+    /* 公开上报：业务代码捕获到「非预期但已降级」的错误时主动上报。
+     * 参数可以是 Error 实例（自动提取 message/stack）或字符串。
+     * 与全局 error 事件共用记录/控制台/toast 节流，不额外打扰用户。 */
+    report: function (errOrMsg, type) {
+      var message = (errOrMsg instanceof Error) ? errOrMsg.message : String(errOrMsg);
+      var stack = (errOrMsg instanceof Error) ? String(errOrMsg.stack || '') : null;
+      report({ time: new Date().toISOString(), type: type || 'reported', message: message, stack: stack });
+    }
   };
 })();
