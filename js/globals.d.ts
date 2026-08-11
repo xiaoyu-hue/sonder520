@@ -5,6 +5,7 @@
 
 interface SonderStoreImpl {
   state: SonderState;
+  _rev: number;
   storageUsage(): number;
   isNearQuota(): boolean;
   save(): boolean;
@@ -103,14 +104,59 @@ interface SonderStoreFactory {
   todayStr(date?: Date): string;
   booksByStatus(books: SonderBook[]): SonderStatusBuckets;
   readingStats(books: SonderBook[]): SonderReadingStats;
-  [key: string]: any;
+  /* ---------- 纯函数工具（页面层直接调用） ---------- */
+  groupTasks(tasks: SonderTask[], today?: string): SonderTaskGroups;
+  todayProgress(tasks: SonderTask[], today?: string): { done: number; total: number; pct: number };
+  filterPosts(posts: SonderPost[], opts?: { tag?: string; status?: string }): SonderPost[];
+  collectTags(posts: SonderPost[]): string[];
+  publishedStats(posts: SonderPost[]): SonderPublishedStats;
+  recentPublished(posts: SonderPost[], n?: number): Array<{ id: string; title: string; views: number; likes: number; publishDate: string; createdAt: string }>;
+  toCSV(posts: SonderPost[]): string;
+  devProgress(p: SonderDevProject): { total: number; done: number; percent: number };
+  sortNotesByUpdate<T extends { updatedAt?: string; createdAt?: string }>(items: T[]): T[];
+  excerptsByBook(excerpts: SonderExcerpt[]): Array<{ bookId: string; bookTitle: string; items: Array<{ id: string; text: string; page: number; time: string }> }>;
+  dailyExcerpt(excerpts: SonderExcerpt[], dateStr?: string): { text: string; bookTitle: string; page: number } | null;
+  moduleList: Array<{ key: string; label: string }>;
+  /* ---------- 拆分扩展内部接口（store-tasks/content/media/settings 混入用） ---------- */
+  Store: (this: any, storage?: any) => any;
+  _h: SonderHelpers;
+}
+
+interface SonderTaskGroups {
+  now: SonderTask[];
+  overdue: SonderTask[];
+  upcoming: SonderTask[];
+  done: SonderTask[];
+}
+
+interface SonderPostStatFields { views: number; likes: number; comments: number; favorites: number; }
+interface SonderPublishedStats {
+  count: number;
+  sums: SonderPostStatFields;
+  max: SonderPostStatFields;
+  posts: Array<{ id: string; title: string; views: number; likes: number; comments: number; favorites: number }>;
+}
+
+interface SonderHelpers {
+  uid(): string;
+  nowISO(): string;
+  todayStr(): string;
+  fmtDate(d?: Date): string;
+  deepClone<T>(v: T): T;
+  isPlainObject(v: unknown): boolean;
+  find(arr: Array<{ id: string | number }>, id: string | number): any;
+  idxOf(arr: Array<{ id: string | number }>, id: string | number): number;
+  normalizePriority(p: string): string;
+  clampOpacity(v: number): number;
+  normalize(state: any): any;
+  num0(v: any): number;
+  STORAGE_WALLPAPER_KEY: string;
 }
 
 interface SonderPage {
   title: string;
   render(container: HTMLElement, ctx: SonderCtx): void;
   add?(ctx: SonderCtx): void;
-  [key: string]: any;
 }
 
 interface SonderUI {
@@ -334,15 +380,78 @@ interface Window {
   Pages: Record<string, SonderPage>;
   SonderStore: SonderStoreFactory;
   SonderMarkdown: { render(src: string): string; esc(s: unknown): string };
-  SonderCrypto: { [key: string]: any };
-  SonderGames: { [key: string]: (...args: any[]) => any };
+  SonderCrypto: SonderCryptoApi;
+  SonderGames: SonderGamesApi;
   SonderQuotes: { quoteOfDay(dateStr: string): string; quotes: string[] };
   UI: SonderUI;
-  __sonderHooks: { [key: string]: any };
+  __sonderHooks: SonderHooks;
   __sonderErrors: { list: SonderErrorEntry[]; readonly total: number; clear(): void; report(errOrMsg: string | Error, type?: string): void };
   __gamesDbg: any;
   __readingDbg: any;
   __todayDbg: any;
+}
+
+interface SonderCryptoApi {
+  ALGO: { name: string; length: number };
+  ITERATIONS: number;
+  BUNDLE_V: string;
+  saltBytes(): Uint8Array;
+  ivBytes(): Uint8Array;
+  deriveKey(password: string, salt: Uint8Array, iterations: number): Promise<CryptoKey>;
+  encryptText(text: string, key: CryptoKey): Promise<any>;
+  decryptBundle(bundle: any, key: CryptoKey): Promise<string>;
+  selfTest(password: string, salt: Uint8Array): Promise<boolean>;
+  bytesToB64(bytes: Uint8Array): string;
+  b64ToBytes(b64: string): Uint8Array;
+}
+
+interface SonderGameState {
+  kind: 'tictactoe' | 'gomoku';
+  size: number;
+  board: Array<Array<string | null>>;
+  turn: string;
+  moves: Array<{ r: number; c: number }>;
+  winner: string | null;
+  over: boolean;
+  byResign: boolean;
+  winLine: any;
+}
+
+interface SonderGamesApi {
+  createGame(kind: string): SonderGameState;
+  cloneGame(g: SonderGameState): SonderGameState;
+  place(g: SonderGameState, r: number, c: number): { ok: boolean; winner?: string; draw?: boolean; error?: string };
+  undo(g: SonderGameState): { ok: boolean; error?: string };
+  resign(g: SonderGameState, player: string): { ok: boolean };
+  tttAiMove(g: SonderGameState, player: string, difficulty: string): { r: number; c: number };
+  gomokuAiMove(g: SonderGameState, player: string, difficulty: string): { r: number; c: number };
+  guessNumStart(): any;
+  guessNumTry(g: any, input: string): any;
+  mineStart(rows: number, cols: number, mines: number): any;
+  mineLay(g: any, r: number, c: number, n: number): any;
+  mineReveal(g: any, r: number, c: number): any;
+  mineToggleFlag(g: any, r: number, c: number): any;
+  idiomStart(): any;
+  idiomTry(g: any, input: string): any;
+  IDIOM_POOL: string[];
+  brainStart(): any;
+  brainTry(g: any, input: string): any;
+  BRAIN_POOL: string[];
+}
+
+interface SonderHooks {
+  store: SonderStoreImpl;
+  ctx: SonderCtx;
+  Pages: Record<string, SonderPage>;
+  render(route: string): void;
+  applyTheme(): void;
+  applyWallpaper(): void;
+  applyFrame(): void;
+  todayLine(): void;
+  idbReady: Promise<boolean>;
+  todayReminder?: () => void;
+  lockNow?: () => void;
+  unlockNow?: () => void;
 }
 
 /* 部分代码直接裸用全局名（非 window. 前缀），声明为全局变量 */
