@@ -160,6 +160,7 @@ test('透明度滑块：自定义壁纸下仍联动 opacity 变量', async () =>
   slider.dispatchEvent(new window.Event('input', { bubbles: true }));
   await wait(50);
   assert.equal(window.document.documentElement.style.getPropertyValue('--wallpaper-opacity'), '0.7', '透明度应联动');
+  slider.dispatchEvent(new window.Event('change', { bubbles: true }));
   assert.equal(hooks.store.state.settings.wallpaperOpacity, 70);
   assert.ok(bLayer(window), '自定义背景仍在');
 });

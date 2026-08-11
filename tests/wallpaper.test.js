@@ -46,10 +46,12 @@ test('UI：设置页有透明度滑块，拖动更新存储与 CSS 变量', () =
   assert.equal(doc.querySelector('#wallOpacityVal').textContent, '40%');
   slider.value = '70';
   slider.dispatchEvent(new h.window.Event('input', { bubbles: true }));
-  assert.equal(h.store.state.settings.wallpaperOpacity, 70, '拖动后 store 应为 70');
+  assert.equal(h.store.state.settings.wallpaperOpacity, 40, '拖动过程（input）不应写 store（P3f 防抖：松手才持久化）');
   const applied = doc.documentElement.style.getPropertyValue('--wallpaper-opacity');
-  assert.equal(parseFloat(applied), 0.7, 'CSS 变量应为 0.7');
-  assert.equal(doc.querySelector('#wallOpacityVal').textContent, '70%', '标签应同步');
+  assert.equal(parseFloat(applied), 0.7, '拖动中 CSS 变量应实时预览 0.7');
+  assert.equal(doc.querySelector('#wallOpacityVal').textContent, '70%', '拖动中标签应同步');
+  slider.dispatchEvent(new h.window.Event('change', { bubbles: true }));
+  assert.equal(h.store.state.settings.wallpaperOpacity, 70, '松手（change）后 store 应为 70');
 });
 
 test('CSS：壁纸层覆盖视口且透明度走 var(--wallpaper-opacity) 默认 0.4', () => {

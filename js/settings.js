@@ -168,11 +168,15 @@
     var wpVal = wpCard.querySelector('#wallOpacityVal');
     wpInput.addEventListener('input', function () {
       var v = Number(wpInput.value);
-      store.setWallpaperOpacity(v);
       document.documentElement.style.setProperty('--wallpaper-opacity', String(v / 100));
       wpVal.textContent = v + '%';
     });
-    wpInput.addEventListener('change', function () { hooks.render('settings'); });
+    /* 拖动仅实时预览，松手才持久化（P3f：避免拖动过程高频全量写盘） */
+    wpInput.addEventListener('change', function () {
+      var v = Number(wpInput.value);
+      store.setWallpaperOpacity(v);
+      hooks.render('settings');
+    });
 
     container.appendChild(UI.el('<div class="section-title">模块开关</div>'));
     var modBox = UI.el('<div class="card"></div>');
