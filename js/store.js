@@ -326,21 +326,27 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     else { this._persistLocal(json); this._idbWrite(json); }
   };
 
-  /* 加密落盘：AES-GCM 异步（微任务级，用户操作间隙完成）；失败仅吞日志，
-   * 存储里上一份快照仍完好，下次 save 重试 */
+  /* 加密落盘：AES-GCM 异步（微任务级，用户操作间隙完成）。
+   * 串行队列保证加密按调用顺序落盘：encryptText 为异步，连续多次 save
+   * 若不排队，后发起的加密可能先完成并覆盖落盘 → 旧状态覆盖新状态（丢最新变更）。 */
+  /** @this {{ _storage: any, _encKey: any, _encSize: number, _persistLocal: any, _idbWrite: any, _encChain: Promise }} */
   Store.prototype._encSave = function (json) {
     var self = this;
     if (!this._encKey || !Crypto) return Promise.resolve();
-    return Crypto.encryptText(json, this._encKey).then(function (bundle) {
-      var payload = JSON.stringify({ e: 1, v: bundle.v, iv: bundle.iv, data: bundle.data });
-      self._encSize = payload.length;
-      self._persistLocal(payload);
-      var salt = self._storage ? self._storage.getItem(STORAGE_SALT_KEY) : null;
-      self._idbWrite(payload, salt ? { salt: salt } : {});
+    var prev = self._encChain || Promise.resolve();
+    self._encChain = prev.then(function () {
+      return Crypto.encryptText(json, self._encKey).then(function (bundle) {
+        var payload = JSON.stringify({ e: 1, v: bundle.v, iv: bundle.iv, data: bundle.data });
+        self._encSize = payload.length;
+        self._persistLocal(payload);
+        var salt = self._storage ? self._storage.getItem(STORAGE_SALT_KEY) : null;
+        self._idbWrite(payload, salt ? { salt: salt } : {});
+      });
     }).catch(function (err) {
-      /* eslint-disable no-console */
-      if (typeof console !== 'undefined' && console.error) console.error('encrypt save failed', err);
+      /* 加密失败：存储停留在上次成功版本，后续变更会继续重试；上报便于发现 */
+      try { console.error('[Sonder] 加密持久化失败', err); } catch (e) { /* 忽略 */ }
     });
+    return self._encChain;
   };
 
   /* 启动时调用：优先从 IndexedDB 恢复（若更新）。返回 Promise<是否采用 IDB 数据> */
