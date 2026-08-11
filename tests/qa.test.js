@@ -126,6 +126,32 @@ test('QA：overlay 关闭后 document keydown 监听器全部移除（无泄漏�
   assert.equal(doc.querySelectorAll('.overlay').length, 0, 'Esc 关闭无残留');
 });
 
+test('QA：overlay 焦点管理——打开落入、Tab 循环、关闭归还触发元素（P4b）', () => {
+  const h = boot();
+  const doc = h.window.document;
+  const trigger = h.$('#nav button');
+  trigger.focus();
+  assert.equal(doc.activeElement, trigger, '前置：焦点在触发按钮上');
+  h.window.UI.confirmBox('确认？').then(() => {});
+  const ov = doc.querySelector('.overlay');
+  assert.ok(ov, '弹层已打开');
+  const btns = ov.querySelectorAll('button');
+  assert.equal(doc.activeElement, btns[0], '打开后焦点落入弹层第一个按钮（取消）');
+  btns[btns.length - 1].focus();
+  doc.body.dispatchEvent(new h.window.KeyboardEvent('keydown', { key: 'Tab', bubbles: true }));
+  assert.equal(doc.activeElement, btns[0], 'Tab 在最后一个元素上循环回第一个');
+  btns[0].focus();
+  doc.body.dispatchEvent(new h.window.KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, bubbles: true }));
+  assert.equal(doc.activeElement, btns[btns.length - 1], 'Shift+Tab 在第一个元素上循环到最后一个');
+  const outside = h.$('#nav button');
+  outside.focus();
+  doc.body.dispatchEvent(new h.window.KeyboardEvent('keydown', { key: 'Tab', bubbles: true }));
+  assert.ok(ov.contains(doc.activeElement), '焦点逃逸到背景时 Tab 被拉回弹层');
+  doc.body.dispatchEvent(new h.window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  assert.equal(doc.querySelectorAll('.overlay').length, 0, 'Esc 已关闭');
+  assert.equal(doc.activeElement, trigger, '关闭后焦点归还触发元素');
+});
+
 test('QA：游戏中快速切换模式，对局状态保持合法（不重复落子）', async () => {
   const h = boot();
   const doc = h.window.document;

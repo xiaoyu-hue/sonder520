@@ -52,13 +52,19 @@
     var ov = /** @type {HTMLElement & { _sonderClose(): void }} */ (el('<div class="overlay"></div>'));
     ov.appendChild(el(innerHtml));
     root.appendChild(ov);
+    var opener = /** @type {HTMLElement | null} */ (document.activeElement); /* P4b：记录触发元素，关闭后归还焦点 */
     var onKey = function (e) {
-      if (e.key === 'Escape') closeOverlay(onClose);
+      if (e.key === 'Escape') {
+        closeOverlay(onClose);
+      } else if (e.key === 'Tab') {
+        trapFocus(e, ov); /* P4b：Tab 循环不逃逸到背景页面 */
+      }
     };
-    /* 统一关闭：移除节点 + 移除 document keydown 监听（防泄漏），可选回调 */
+    /* 统一关闭：移除节点 + 移除 document keydown 监听（防泄漏）+ 焦点归还触发元素，可选回调 */
     function closeOverlay(cb) {
       if (ov.parentNode) ov.parentNode.removeChild(ov);
       document.removeEventListener('keydown', onKey);
+      if (opener && opener.focus) opener.focus();
       if (cb) cb();
     }
     ov.addEventListener('mousedown', function (e) {
@@ -66,7 +72,30 @@
     });
     document.addEventListener('keydown', onKey);
     ov._sonderClose = function () { closeOverlay(null); };
+    /* P4b：焦点落入弹层内第一个可聚焦元素（无则落遮罩本身） */
+    var firstFocusable = ov.querySelector('button, input, select, textarea, [tabindex]:not([tabindex="-1"])');
+    if (firstFocusable) {
+      /** @type {HTMLElement} */ (firstFocusable).focus();
+    } else {
+      ov.setAttribute('tabindex', '-1');
+      ov.focus();
+    }
     return ov;
+  }
+
+  /* P4b：焦点陷阱——Tab 在弹层可聚焦元素间循环，不落入背景页面 */
+  function trapFocus(e, ov) {
+    var f = ov.querySelectorAll('button, input, select, textarea, [tabindex]:not([tabindex="-1"])');
+    if (!f.length) return;
+    var first = /** @type {HTMLElement} */ (f[0]);
+    var last = /** @type {HTMLElement} */ (f[f.length - 1]);
+    var cur = /** @type {HTMLElement | null} */ (document.activeElement);
+    if (e.shiftKey) {
+      if (cur === first || !ov.contains(cur)) { e.preventDefault(); last.focus(); }
+    } else if (cur === last || !ov.contains(cur)) {
+      e.preventDefault();
+      first.focus();
+    }
   }
 
   /* 确认框：返回 Promise<boolean> */
