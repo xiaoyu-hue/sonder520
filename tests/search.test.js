@@ -82,6 +82,33 @@ test('搜索：点击结果跳转对应模块并高亮该条目', async () => {
   assert.ok(flash.textContent.indexOf('水墨画入门') >= 0, '高亮的应是命中条目');
 });
 
+test('搜索：多词查询跳转后任一词命中即高亮（原整串匹配常落空）', async () => {
+  const h = boot({ seed: seed() });
+  type(h, '入门 周某');
+  const item = h.$('#gsearchPanel .gsearch-item[data-module="reading"]');
+  assert.ok(item, '多词 AND 应命中阅读条目');
+  item.click();
+  await wait(150);
+  const flash = h.$('#content .search-flash');
+  assert.ok(flash, '多词查询跳转后应高亮命中条目');
+  assert.ok(flash.textContent.indexOf('水墨画入门') >= 0, '高亮完整条目');
+});
+
+test('搜索：连续点击两个结果，最终只高亮后一次跳转的条目', async () => {
+  const h = boot({ seed: seed() });
+  type(h, '水墨');
+  const first = h.$('#gsearchPanel .gsearch-item[data-module="reading"]');
+  const second = h.$('#gsearchPanel .gsearch-item[data-module="today"]');
+  first.click();
+  await wait(30);
+  second.click();
+  await wait(200);
+  assert.ok(h.window.location.hash.indexOf('today') >= 0, '最终应停在最后点击的模块');
+  const flash = h.$('#content .search-flash');
+  assert.ok(flash, '应存在高亮条目');
+  assert.ok(flash.textContent.indexOf('写水墨风插件') >= 0, '高亮的应是最后跳转的目标');
+});
+
 test('搜索：Escape 关闭面板', () => {
   const h = boot({ seed: seed() });
   type(h, '水墨');

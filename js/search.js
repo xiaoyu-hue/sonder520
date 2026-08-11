@@ -65,7 +65,8 @@
   var idxCache = { rev: -1, index: [] };
   function getIndex() {
     var hooks = window.__sonderHooks;
-    var store = (hooks && hooks.store) || SonderStore.createStore();
+    var store = hooks && hooks.store;
+    if (!store) return buildIndex(SonderStore.createStore()); /* 启动早期兜底：一次性索引，不缓存（避免双实例 _rev 失步） */
     if (idxCache.rev !== store._rev) {
       idxCache.index = buildIndex(store);
       idxCache.rev = store._rev;
@@ -128,9 +129,26 @@
     if (location.hash.replace(/^#\/?/, '') === module) {
       flashInPage(q);
     } else {
+      var prev = contentSig();
       location.hash = module;
-      setTimeout(function () { flashInPage(q); }, 80);
+      waitRendered(prev, q); /* 渲染就绪后高亮（替代固定 80ms，消除快慢机器竞态） */
     }
+  }
+
+  function contentSig() {
+    var c = document.getElementById('content');
+    return c ? c.textContent : '';
+  }
+
+  /* 轮询 #content 内容变化：hash 切换后新页面渲染完成（文本签名变化）即高亮，1s 超时兜底 */
+  function waitRendered(prev, q) {
+    var t0 = Date.now();
+    var timer = setInterval(function () {
+      if (contentSig() !== prev || Date.now() - t0 > 1000) {
+        clearInterval(timer);
+        flashInPage(q);
+      }
+    }, 40);
   }
 
   /* 跳转后高亮包含关键词的条目：找到文本节点，向上定位列表项/卡片，闪烁标出 */
@@ -139,11 +157,14 @@
     if (!qs.length) return;
     var content = document.getElementById('content');
     if (!content) return;
-    var key = q.trim().toLowerCase();
     var walker = document.createTreeWalker(content, NodeFilter.SHOW_TEXT);
     var hit = null;
     while (walker.nextNode()) {
-      if (String(walker.currentNode.nodeValue).toLowerCase().indexOf(key) >= 0) { hit = walker.currentNode; break; }
+      var v = String(walker.currentNode.nodeValue).toLowerCase();
+      for (var i = 0; i < qs.length; i++) { /* 多词搜索：任一词命中即可定位条目 */
+        if (v.indexOf(qs[i]) >= 0) { hit = walker.currentNode; break; }
+      }
+      if (hit) break;
     }
     var el = hit && hit.parentNode;
     while (el && el !== content && el.nodeType === 1) {
