@@ -18,7 +18,8 @@
   --glass-sober: rgba(252, 249, 242, 0.92);
 
   --text: #2b2620;
-  --muted: #8d8578;
+  /* P4a：原 #8d8578 对 --bg 对比度仅 3.17:1（WCAG AA 普通文本需 ≥4.5），加深至 4.85:1 */
+  --muted: #6f675c;
   --soft-text: rgba(43, 38, 32, 0.9);
   --border: rgba(120, 108, 88, 0.26);
   --border-hi: rgba(255, 255, 255, 0.85);
@@ -187,7 +188,7 @@ body::after {
 }
 .quota-bar[hidden] { display: none; }
 .quota-bar b { font-weight: 700; }
-.quota-bar .qb-link { color: #b3622a; font-weight: 700; text-decoration: underline; }
+.quota-bar .qb-link { color: #8a4a1e; font-weight: 700; text-decoration: underline; } /* P4a：原 #b3622a 对配额条黄底 3.65:1，加深至 5.6:1 */
 .quota-bar .small-btn { margin-left: auto; background: rgba(107, 77, 19, .12); border-color: rgba(107, 77, 19, .35); color: #6b4d13; }
 .data-theme-dark .quota-bar,
 [data-theme="dark"] .quota-bar { background: #4a3c1c; color: #f0d9a8; border-bottom-color: #6b5a2a; }
@@ -380,10 +381,15 @@ input, select, textarea, button { font-size: 16px; }
   border: 1px solid var(--border); white-space: nowrap;
 }
 .pill.hi { color: #b32a1f; background: rgba(194, 59, 46, 0.12); border-color: rgba(194, 59, 46, 0.3); }
-.pill.mid { color: #9a6a1f; background: rgba(176, 114, 63, 0.12); }
-.pill.lo { color: #2e7d63; background: rgba(46, 125, 99, 0.12); }
+/* P4a：mid/lo 原色对浅色卡片对比度 3.6:1 不达 AA（≥4.5），加深至 ≥5:1 */
+.pill.mid { color: #7d5316; background: rgba(176, 114, 63, 0.12); }
+.pill.lo { color: #23634f; background: rgba(46, 125, 99, 0.12); }
 .pill.done { color: var(--muted); text-decoration: line-through; }
 .pill.overdue { color: #b32d22; background: rgba(194, 59, 46, 0.14); font-weight: 600; }
+/* P4a：暗色主题原红/赭/绿字对深底对比度不足（2.6:1），加亮至 ≥6:1 */
+[data-theme="dark"] .pill.hi, [data-theme="dark"] .pill.overdue { color: #e08a7d; }
+[data-theme="dark"] .pill.mid { color: #e0b47e; }
+[data-theme="dark"] .pill.lo { color: #8fc9b2; }
 
 /* ---------- 按钮 ---------- */
 .small-btn {
