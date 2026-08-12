@@ -12,6 +12,8 @@ test('扫雷移动端：棋盘容器可横向滚动，格子保持触控尺寸',
   assert.ok(/@media \(max-width:\s*720px\)\s*\{[^@]*?\.ms-board\s*\{[^}]*width:\s*max\(100%,\s*calc\(var\(--cols\)\s*\*\s*26px\)\)/s.test(CSS), '手机端棋盘按列数自适应宽度');
   assert.ok(/@media \(max-width:\s*720px\)\s*\{[^@]*?\.ms-board\s*\{[^}]*min-width:\s*100%/s.test(CSS), '手机端棋盘不窄于视口');
   assert.ok(/@media \(max-width:\s*720px\)\s*\{[^@]*?\.ms-cell\s*\{\s*min-height:\s*26px/s.test(CSS), '手机端格子最小 26px 触控尺寸');
+  assert.ok(/touch-action:\s*manipulation/.test(CSS), '格子禁用双击缩放');
+  assert.ok(/\.ms-cell\.long-pressing\s*\{/.test(CSS), '长按高亮态样式');
 });
 
 test('扫雷移动端：棋盘携带 --cols 变量供宽度计算', () => {
