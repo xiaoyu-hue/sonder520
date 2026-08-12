@@ -200,3 +200,25 @@ test('专注：🍅 按钮出现在未完成任务右侧，已完成任务不显
   assert.equal(btns.length, 1, '只有一个未完成任务有 🍅 按钮');
   assert.ok(btns[0].textContent.includes('未完成'));
 });
+
+test('P4c UI：今日任务删除后出现撤销按钮，点击撤销恢复任务', async () => {
+  const h = boot();
+  const ctx = h.window.__sonderHooks.ctx;
+  addSeedTask(h, '待删任务', 'p1');
+  h.goto('today');
+  const delBtn = h.window.document.querySelector('[data-act="del"]');
+  assert.ok(delBtn, '任务行有删除按钮');
+  delBtn.click();
+  assert.ok(h.window.document.querySelector('.overlay'), '弹出确认框');
+  h.window.document.querySelector('.overlay [data-act="yes"]').click();
+  await wait(10); /* 确认回调查询微任务完成 */
+  assert.equal(h.store.state.tasks.length, 0, '确认后任务已删除');
+  const act = h.window.document.querySelector('.toast .toast-act');
+  assert.ok(act, '删除后出现撤销按钮');
+  act.click();
+  assert.equal(h.store.state.tasks.length, 1, '点击撤销任务恢复');
+  assert.equal(h.store.state.tasks[0].title, '待删任务', '恢复的任务数据完整');
+  assert.ok(h.window.document.body.textContent.includes('待删任务'), '页面重渲染恢复任务');
+  assert.equal(h.window.document.querySelectorAll('.toast').length, 0, '点撤销后 toast 消失');
+  assert.equal(h.store.undoRemove(), null, '撤销栈已空');
+});

@@ -25,7 +25,11 @@
     return m;
   };
   Store.prototype.removeMemo = function (id) {
-    this.state.memos = this.state.memos.filter(function (m) { return m.id !== id; });
+    var at = h.idxOf(this.state.memos, id);
+    if (at >= 0) {
+      var memos = this.state.memos.splice(at, 1); /* P4c 记录供撤销 */
+      this._undoPush({ list: 'memos', at: at, data: memos[0] });
+    }
     this.save();
   };
 
@@ -60,7 +64,11 @@
     return t;
   };
   Store.prototype.removeTask = function (id) {
-    this.state.tasks = this.state.tasks.filter(function (t) { return t.id !== id; });
+    var at = h.idxOf(this.state.tasks, id);
+    if (at >= 0) {
+      var tasks = this.state.tasks.splice(at, 1); /* P4c 记录供撤销 */
+      this._undoPush({ list: 'tasks', at: at, data: tasks[0] });
+    }
     this.save();
   };
   Store.prototype.reorderTask = function (id, dir) {

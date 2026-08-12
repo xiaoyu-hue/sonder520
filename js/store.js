@@ -242,7 +242,7 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
   }
 
   /* ---------- Store ---------- */
-  /** @constructor @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _idbWrite: any, _lastJson: string, _rev: number, _encKey: any, _encSize: number, _hasEncSnapshot: Function, _idbEncLocked: boolean }} */
+  /** @constructor @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _idbWrite: any, _lastJson: string, _rev: number, _encKey: any, _encSize: number, _hasEncSnapshot: Function, _idbEncLocked: boolean, _undo: any[] }} */
   function Store(storage) {
     this._storage = storage || (typeof localStorage !== 'undefined' ? localStorage : null);
     var persisted = null;
@@ -258,7 +258,28 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     this._encKey = null;
     this._encSize = 0;
     this._idbEncLocked = false;
+    this._undo = []; /* P4c 删除撤销栈（内存态，不持久化）：{list,at,data} 或 {restore} */
   }
+
+  /* P4c：删除撤销——记录删除条目（容量 10，超出丢最旧），undoRemove 恢复 */
+  Store.prototype._undoPush = function (u) {
+    this._undo.push(u);
+    if (this._undo.length > 10) this._undo.shift();
+  };
+  /* P4c：撤销最近一次删除；成功返回被恢复的数据，无可撤销返回 null */
+  Store.prototype.undoRemove = function () {
+    var u = this._undo.pop();
+    if (!u) return null;
+    if (u.restore) {
+      u.restore(this.state);
+    } else {
+      var arr = this.state[u.list];
+      if (!Array.isArray(arr)) return null;
+      arr.splice(Math.min(u.at, arr.length), 0, u.data);
+    }
+    this.save();
+    return u.data || true;
+  };
 
   /* 主快照是否为密文（未解锁时据此判定"需要解锁"） */
   Store.prototype._hasEncSnapshot = function () {

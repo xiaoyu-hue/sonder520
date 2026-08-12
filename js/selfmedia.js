@@ -328,7 +328,14 @@
     }
     row.querySelector('[data-act="del"]').onclick = function () {
       UI.confirmBox('确定删除这条内容？').then(function (ok) {
-        if (ok) { store.removePost(p.id); render(ctx); }
+        if (ok) {
+          store.removePost(p.id);
+          render(ctx);
+          UI.toast('内容已删除', null, { label: '撤销', onClick: function () {
+            store.undoRemove();
+            render(ctx);
+          } });
+        }
       });
     };
     return row;

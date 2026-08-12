@@ -125,7 +125,14 @@
         var id = b.dataset.id;
         if (b.dataset.act === 'del') {
           UI.confirmBox('确定删除这条任务？').then(function (ok) {
-            if (ok) { store.removeTask(id); renderGroups(container, store, day); }
+            if (ok) {
+              store.removeTask(id);
+              renderGroups(container, store, day);
+              UI.toast('任务已删除', null, { label: '撤销', onClick: function () {
+                store.undoRemove();
+                render(currentEl, currentCtx); /* 整页重渲染：#content 常驻，避免 hashchange 重建后旧列表节点脱离文档 */
+              } });
+            }
           });
         } else if (b.dataset.act === 'edit') {
           var t = store.state.tasks.find(function (x) { return x.id === id; });

@@ -71,6 +71,8 @@ interface SonderStoreImpl {
   clearGameRecords(): void;
   getMiniRecord(kind: string): Record<string, unknown>;
   updateMiniRecord(kind: string, patch: Record<string, unknown>): Record<string, unknown>;
+  /* ---------- 删除撤销（P4c） ---------- */
+  undoRemove(): unknown;
   /* ---------- 设置 ---------- */
   setTheme(theme: string): void;
   setWallpaperOpacity(opacity: number): void;
@@ -166,7 +168,7 @@ interface SonderUI {
   sanitize(s: unknown): string;
   sanitizeUrl(u: unknown): string;
   el(html: string): HTMLElement;
-  toast(msg: string, type?: string): void;
+  toast(msg: string, type?: string, action?: { label: string; onClick: () => void }): void;
   confirmBox(message: string, okText?: string): Promise<boolean>;
   alertBox(message: string, confirmText?: string): void;
   formModal(opts: SonderFormOptions): HTMLElement;

@@ -154,11 +154,26 @@
       else startTimer(ctx, b.id);
     };
     card.querySelector('[data-act="del"]').onclick = function () {
-      UI.confirmBox('删除这本书？').then(function (ok) { if (ok) { store.removeBook(b.id); render(ctx); } });
+      UI.confirmBox('删除这本书？').then(function (ok) {
+        if (ok) {
+          store.removeBook(b.id);
+          render(ctx);
+          UI.toast('书籍已删除', null, { label: '撤销', onClick: function () {
+            store.undoRemove();
+            render(ctx);
+          } });
+        }
+      });
     };
     card.querySelectorAll('[data-note="del"]').forEach(function (btn) {
       btn.onclick = function () {
-        store.removeBookNote(b.id, btn.closest('[data-noteitem]').dataset.id); render(ctx);
+        var noteId = btn.closest('[data-noteitem]').dataset.id;
+        store.removeBookNote(b.id, noteId);
+        render(ctx);
+        UI.toast('笔记已删除', null, { label: '撤销', onClick: function () {
+          store.undoRemove();
+          render(ctx);
+        } });
       };
     });
     return card;
@@ -242,8 +257,11 @@
     container.querySelectorAll('[data-exdel]').forEach(function (btn) {
       btn.addEventListener('click', function () {
         store.removeExcerpt(btn.dataset.exdel);
-        UI.toast('已删除该条书摘');
         renderExcerpts(container, ctx);
+        UI.toast('已删除该条书摘', null, { label: '撤销', onClick: function () {
+          store.undoRemove();
+          render(ctx); /* 整页重渲染：#content 常驻，避免 hashchange 重建后旧节点脱离文档 */
+        } });
       });
     });
   }

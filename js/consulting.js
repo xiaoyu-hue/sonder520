@@ -47,7 +47,15 @@
     card.querySelector('[data-cedit]').onclick = function () { openClient(ctx, c); };
     card.querySelector('[data-cdel]').onclick = function () {
       UI.confirmBox('确定删除该客户？会一并删除其项目/跟进/收入。').then(function (ok) {
-        if (ok) { store.removeClient(c.id); delete expanded[c.id]; render(ctx); }
+        if (ok) {
+          store.removeClient(c.id);
+          delete expanded[c.id];
+          render(ctx);
+          UI.toast('客户已删除', null, { label: '撤销', onClick: function () {
+            store.undoRemove();
+            render(ctx);
+          } });
+        }
       });
     };
     var body = card.querySelector('[data-call]');
@@ -85,7 +93,16 @@
     wrap.querySelectorAll('[data-pd]').forEach(function (b) {
       b.onclick = function () {
         var id = b.closest('.cs-item').dataset.id;
-        UI.confirmBox('删除该项目？').then(function (ok) { if (ok) { store.removeClientProject(c.id, id); render(ctx); } });
+        UI.confirmBox('删除该项目？').then(function (ok) {
+          if (ok) {
+            store.removeClientProject(c.id, id);
+            render(ctx);
+            UI.toast('项目已删除', null, { label: '撤销', onClick: function () {
+              store.undoRemove();
+              render(ctx);
+            } });
+          }
+        });
       };
     });
   }
@@ -116,7 +133,16 @@
     wrap.querySelectorAll('[data-fd]').forEach(function (b) {
       b.onclick = function () {
         var id = b.closest('.cs-item').dataset.id;
-        UI.confirmBox('删除该跟进？').then(function (ok) { if (ok) { store.removeClientFollowup(c.id, id); render(ctx); } });
+        UI.confirmBox('删除该跟进？').then(function (ok) {
+          if (ok) {
+            store.removeClientFollowup(c.id, id);
+            render(ctx);
+            UI.toast('跟进已删除', null, { label: '撤销', onClick: function () {
+              store.undoRemove();
+              render(ctx);
+            } });
+          }
+        });
       };
     });
   }
@@ -140,7 +166,16 @@
     wrap.querySelectorAll('[data-idel]').forEach(function (b) {
       b.onclick = function () {
         var id = b.closest('.cs-item').dataset.id;
-        UI.confirmBox('删除该笔收入？').then(function (ok) { if (ok) { store.removeClientIncome(c.id, id); render(ctx); } });
+        UI.confirmBox('删除该笔收入？').then(function (ok) {
+          if (ok) {
+            store.removeClientIncome(c.id, id);
+            render(ctx);
+            UI.toast('收入已删除', null, { label: '撤销', onClick: function () {
+              store.undoRemove();
+              render(ctx);
+            } });
+          }
+        });
       };
     });
   }

@@ -73,7 +73,14 @@
     row.querySelector('[data-act="edit"]').onclick = function () { openAdd(ctx, m); };
     row.querySelector('[data-act="del"]').onclick = function () {
       UI.confirmBox('确定删除这条备忘？').then(function (ok) {
-        if (ok) { store.removeMemo(m.id); render(currentEl, ctx); }
+        if (ok) {
+          store.removeMemo(m.id);
+          render(currentEl, ctx);
+          UI.toast('备忘已删除', null, { label: '撤销', onClick: function () {
+            store.undoRemove();
+            render(currentEl, ctx);
+          } });
+        }
       });
     };
     return row;

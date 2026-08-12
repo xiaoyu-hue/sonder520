@@ -39,8 +39,17 @@
     return /** @type {HTMLElement} */ (t.content.firstChild);
   }
 
-  function toast(msg, type) {
-    var node = el('<div class="toast' + (type === 'err' ? ' err' : '') + '">' + esc(msg) + '</div>');
+  /* action: { label, onClick } 可选操作按钮（如删除撤销） */
+  function toast(msg, type, action) {
+    var node = el('<div class="toast' + (type === 'err' ? ' err' : '') + '"><span>' + esc(msg) + '</span></div>');
+    if (action) {
+      var btn = el('<button type="button" class="toast-act">' + esc(action.label) + '</button>');
+      btn.onclick = function () {
+        if (node.parentNode) node.parentNode.removeChild(node);
+        if (action.onClick) action.onClick();
+      };
+      node.appendChild(btn);
+    }
     toastWrap().appendChild(node);
     setTimeout(function () { node.style.transition = 'opacity .3s, transform .3s'; node.style.opacity = '0'; node.style.transform = 'translateX(24px)'; }, 2200);
     setTimeout(function () { if (node.parentNode) node.parentNode.removeChild(node); }, 2600);

@@ -76,7 +76,16 @@
     if (unfav) unfav.onclick = function () { store.updateNews(n.id, { status: 'unread' }); render(ctx); };
     row.querySelector('[data-act="edit"]').onclick = function () { openAdd(ctx, n); };
     row.querySelector('[data-act="del"]').onclick = function () {
-      UI.confirmBox('删除这条资讯？').then(function (ok) { if (ok) { store.removeNews(n.id); render(ctx); } });
+      UI.confirmBox('删除这条资讯？').then(function (ok) {
+        if (ok) {
+          store.removeNews(n.id);
+          render(ctx);
+          UI.toast('资讯已删除', null, { label: '撤销', onClick: function () {
+            store.undoRemove();
+            render(ctx);
+          } });
+        }
+      });
     };
     return row;
   }

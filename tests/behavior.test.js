@@ -132,6 +132,30 @@ test('行为: remove 后记录消失且重复删除幂等', () => {
   assert.equal(store.state.posts.find(x => x.id === p.id), undefined);
 });
 
+test('行为(P4c): 删除可撤销——顶级条目恢复原位、子项闭包恢复、无可撤销返回 null', () => {
+  const { store } = boot({});
+  /* 顶级条目：任务删除后 undoRemove 恢复原位置与字段 */
+  const t = store.addTask({ title: '甲', date: '2030-01-01', priority: 'p1' });
+  const t2 = store.addTask({ title: '乙' });
+  store.removeTask(t.id);
+  assert.equal(store.state.tasks.length, 1);
+  const back = store.undoRemove();
+  assert.equal(back.id, t.id, '返回被恢复的数据');
+  assert.equal(store.state.tasks[0].id, t.id, '恢复到原索引位置');
+  assert.equal(store.state.tasks[0].priority, 'p1', '字段完整恢复');
+  /* 子项删除（客户项目）走闭包恢复 */
+  const c = store.addClient({ name: '客户' });
+  const pr = store.addClientProject(c.id, { name: '项目A' });
+  store.removeClientProject(c.id, pr.id);
+  assert.equal(store.state.clients[0].projects.length, 0);
+  store.undoRemove();
+  assert.equal(store.state.clients[0].projects.length, 1, '子项目恢复');
+  assert.equal(store.state.clients[0].projects[0].id, pr.id);
+  /* 撤销栈空时返回 null */
+  assert.equal(store.undoRemove(), null);
+  assert.equal(store.undoRemove(), null);
+});
+
 test('行为: updateMemo 支持 text 与 archived 白名单字段', () => {
   const { store } = boot({});
   const m = store.addMemo('原文');

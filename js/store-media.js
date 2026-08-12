@@ -40,7 +40,11 @@
     this.save(); return p;
   };
   Store.prototype.removePost = function (id) {
-    this.state.posts = this.state.posts.filter(function (p) { return p.id !== id; });
+    var at = h.idxOf(this.state.posts, id);
+    if (at >= 0) {
+      var posts = this.state.posts.splice(at, 1); /* P4c 记录供撤销 */
+      this._undoPush({ list: 'posts', at: at, data: posts[0] });
+    }
     this.save();
   };
 
@@ -59,7 +63,11 @@
     this.save(); return p;
   };
   Store.prototype.removeDevProject = function (id) {
-    this.state.devProjects = this.state.devProjects.filter(function (p) { return p.id !== id; });
+    var at = h.idxOf(this.state.devProjects, id);
+    if (at >= 0) {
+      var ps = this.state.devProjects.splice(at, 1); /* P4c 记录供撤销 */
+      this._undoPush({ list: 'devProjects', at: at, data: ps[0] });
+    }
     this.save();
   };
   function devTask(d) { return { id: h.uid(), title: String(d.title || ''), note: String(d.note || ''), done: !!d.done }; }
@@ -95,7 +103,11 @@
     this.save(); return n;
   };
   Store.prototype.removeDevNote = function (id) {
-    this.state.devNotes = this.state.devNotes.filter(function (n) { return n.id !== id; });
+    var at = h.idxOf(this.state.devNotes, id);
+    if (at >= 0) {
+      var ns = this.state.devNotes.splice(at, 1); /* P4c 记录供撤销 */
+      this._undoPush({ list: 'devNotes', at: at, data: ns[0] });
+    }
     this.save();
   };
   Store.prototype.addDevSnippet = function (d) {
@@ -111,7 +123,11 @@
     this.save(); return s;
   };
   Store.prototype.removeDevSnippet = function (id) {
-    this.state.devSnippets = this.state.devSnippets.filter(function (s) { return s.id !== id; });
+    var at = h.idxOf(this.state.devSnippets, id);
+    if (at >= 0) {
+      var ss = this.state.devSnippets.splice(at, 1); /* P4c 记录供撤销 */
+      this._undoPush({ list: 'devSnippets', at: at, data: ss[0] });
+    }
     this.save();
   };
 });

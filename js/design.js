@@ -60,7 +60,14 @@
     card.querySelector('[data-act="edit"]').onclick = function () { openDesign(ctx, x.type, x); };
     card.querySelector('[data-act="del"]').onclick = function () {
       UI.confirmBox('删除这条' + (isProj ? '项目' : '灵感') + '？').then(function (ok) {
-        if (ok) { store.removeDesign(x.id); render(ctx); }
+        if (ok) {
+          store.removeDesign(x.id);
+          render(ctx);
+          UI.toast(isProj ? '项目已删除' : '灵感已删除', null, { label: '撤销', onClick: function () {
+            store.undoRemove();
+            render(ctx);
+          } });
+        }
       });
     };
     return card;

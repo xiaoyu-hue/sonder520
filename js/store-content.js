@@ -20,7 +20,11 @@
     this.save(); return c;
   };
   Store.prototype.removeClient = function (id) {
-    this.state.clients = this.state.clients.filter(function (c) { return c.id !== id; });
+    var at = h.idxOf(this.state.clients, id);
+    if (at >= 0) {
+      var clients = this.state.clients.splice(at, 1); /* P4c 记录供撤销 */
+      this._undoPush({ list: 'clients', at: at, data: clients[0] });
+    }
     this.save();
   };
   Store.prototype.addClientProject = function (clientId, d) {
@@ -38,7 +42,14 @@
   };
   Store.prototype.removeClientProject = function (clientId, projId) {
     var c = h.find(this.state.clients, clientId); if (!c) return;
-    c.projects = c.projects.filter(function (p) { return p.id !== projId; });
+    var at = h.idxOf(c.projects, projId);
+    if (at >= 0) {
+      var projs = c.projects.splice(at, 1); /* P4c 子项删除用闭包恢复 */
+      this._undoPush({ restore: function (st) {
+        var cc = h.find(st.clients, clientId);
+        if (cc) cc.projects.splice(Math.min(at, cc.projects.length), 0, projs[0]);
+      } });
+    }
     this.save();
   };
   Store.prototype.addClientFollowup = function (clientId, d) {
@@ -56,7 +67,14 @@
   };
   Store.prototype.removeClientFollowup = function (clientId, fuId) {
     var c = h.find(this.state.clients, clientId); if (!c) return;
-    c.followups = c.followups.filter(function (f) { return f.id !== fuId; });
+    var at = h.idxOf(c.followups, fuId);
+    if (at >= 0) {
+      var fus = c.followups.splice(at, 1); /* P4c 子项删除用闭包恢复 */
+      this._undoPush({ restore: function (st) {
+        var cc = h.find(st.clients, clientId);
+        if (cc) cc.followups.splice(Math.min(at, cc.followups.length), 0, fus[0]);
+      } });
+    }
     this.save();
   };
   Store.prototype.addClientIncome = function (clientId, d) {
@@ -76,7 +94,14 @@
   };
   Store.prototype.removeClientIncome = function (clientId, incId) {
     var c = h.find(this.state.clients, clientId); if (!c) return;
-    c.income = c.income.filter(function (i) { return i.id !== incId; });
+    var at = h.idxOf(c.income, incId);
+    if (at >= 0) {
+      var incs = c.income.splice(at, 1); /* P4c 子项删除用闭包恢复 */
+      this._undoPush({ restore: function (st) {
+        var cc = h.find(st.clients, clientId);
+        if (cc) cc.income.splice(Math.min(at, cc.income.length), 0, incs[0]);
+      } });
+    }
     this.save();
   };
 
@@ -106,7 +131,11 @@
     this.save(); return b;
   };
   Store.prototype.removeBook = function (id) {
-    this.state.books = this.state.books.filter(function (b) { return b.id !== id; });
+    var at = h.idxOf(this.state.books, id);
+    if (at >= 0) {
+      var books = this.state.books.splice(at, 1); /* P4c 记录供撤销 */
+      this._undoPush({ list: 'books', at: at, data: books[0] });
+    }
     this.save();
   };
   /* 阅读计时落账：minutes 为分钟数（浮点）。不足 1 分钟按 1 分钟计，写入当日会话日志（供周报）。 */
@@ -127,7 +156,11 @@
     this.state.excerpts.unshift(ex); this.save(); return ex;
   };
   Store.prototype.removeExcerpt = function (id) {
-    this.state.excerpts = this.state.excerpts.filter(function (x) { return x.id !== id; });
+    var at = h.idxOf(this.state.excerpts, id);
+    if (at >= 0) {
+      var exs = this.state.excerpts.splice(at, 1); /* P4c 记录供撤销 */
+      this._undoPush({ list: 'excerpts', at: at, data: exs[0] });
+    }
     this.save();
   };
   Store.prototype.addBookNote = function (bookId, text) {
@@ -137,7 +170,14 @@
   };
   Store.prototype.removeBookNote = function (bookId, noteId) {
     var b = h.find(this.state.books, bookId); if (!b) return;
-    b.notes = b.notes.filter(function (n) { return n.id !== noteId; });
+    var at = h.idxOf(b.notes, noteId);
+    if (at >= 0) {
+      var notes = b.notes.splice(at, 1); /* P4c 子项删除用闭包恢复 */
+      this._undoPush({ restore: function (st) {
+        var bb = h.find(st.books, bookId);
+        if (bb) bb.notes.splice(Math.min(at, bb.notes.length), 0, notes[0]);
+      } });
+    }
     this.save();
   };
 
@@ -157,7 +197,11 @@
     this.save(); return n;
   };
   Store.prototype.removeNews = function (id) {
-    this.state.news = this.state.news.filter(function (n) { return n.id !== id; });
+    var at = h.idxOf(this.state.news, id);
+    if (at >= 0) {
+      var news = this.state.news.splice(at, 1); /* P4c 记录供撤销 */
+      this._undoPush({ list: 'news', at: at, data: news[0] });
+    }
     this.save();
   };
 
@@ -177,7 +221,11 @@
     this.save(); return x;
   };
   Store.prototype.removeDesign = function (id) {
-    this.state.designs = this.state.designs.filter(function (x) { return x.id !== id; });
+    var at = h.idxOf(this.state.designs, id);
+    if (at >= 0) {
+      var ds = this.state.designs.splice(at, 1); /* P4c 记录供撤销 */
+      this._undoPush({ list: 'designs', at: at, data: ds[0] });
+    }
     this.save();
   };
 

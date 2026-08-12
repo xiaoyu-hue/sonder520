@@ -143,7 +143,14 @@
     card.querySelector('[data-pinfo]').addEventListener('click', function () { openProject(ctx, p); });
     card.querySelector('[data-pdel]').addEventListener('click', function () {
       ctx.UI.confirmBox('确定删除整个项目？').then(function (ok) {
-        if (ok) { store.removeDevProject(p.id); render(ctx); }
+        if (ok) {
+          store.removeDevProject(p.id);
+          render(ctx);
+          ctx.UI.toast('项目已删除', null, { label: '撤销', onClick: function () {
+            store.undoRemove();
+            render(ctx);
+          } });
+        }
       });
     });
     bindTaskButtons();
@@ -191,7 +198,14 @@
     card.querySelector('[data-nedit]').onclick = function () { openNote(ctx, n); };
     card.querySelector('[data-ndel]').onclick = function () {
       ctx.UI.confirmBox('删除这篇笔记？').then(function (ok) {
-        if (ok) { store.removeDevNote(n.id); render(ctx); }
+        if (ok) {
+          store.removeDevNote(n.id);
+          render(ctx);
+          ctx.UI.toast('笔记已删除', null, { label: '撤销', onClick: function () {
+            store.undoRemove();
+            render(ctx);
+          } });
+        }
       });
     };
     return card;

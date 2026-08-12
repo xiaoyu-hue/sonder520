@@ -16,9 +16,9 @@ const JS_DIR = path.join(__dirname, '..', 'js');
 
 /* 文件:行号 -> 人工审查结论（插值安全性说明） */
 const MANUAL_REVIEW = {
-  'consulting.js:71': 'renderProjects：pr.name/note/stage 均过 UI.esc，pr.id 为 uid() 生成',
-  'consulting.js:96': 'renderFollowups：f.note/date 均过 UI.esc，f.id 为 uid() 生成',
-  'consulting.js:127': 'renderIncomes：amount 经 Number()||0 归一为数字，i.date/note 过 UI.esc，i.id 为 uid() 生成',
+  'consulting.js:79': 'renderProjects：pr.name/note/stage 均过 UI.esc，pr.id 为 uid() 生成',
+  'consulting.js:113': 'renderFollowups：f.note/date 均过 UI.esc，f.id 为 uid() 生成',
+  'consulting.js:153': 'renderIncomes：amount 经 Number()||0 归一为数字，i.date/note 过 UI.esc，i.id 为 uid() 生成',
   'dev.js:109': '纯字面量（暂无任务占位）',
   'dev.js:111': 'bindTaskButtons：t.title 过 UI.esc，t.id 为 uid() 生成',
   'home.js:47': '多行数组拼接：greeting()/lastMemo/quoteHtml/rankCard 插值均过 UI.esc，汇总数字为数值型',
