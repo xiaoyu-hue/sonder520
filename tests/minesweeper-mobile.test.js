@@ -39,3 +39,60 @@ test('扫雷移动端：滚动容器内点击翻格正常', () => {
   assert.strictEqual(snap.boardReady, true, '容器内首击正常布雷');
   assert.ok(snap.revealed >= 1, '首击翻开');
 });
+
+function touchEvent(win, type, opts) {
+  const e = new win.MouseEvent(type, Object.assign({
+    bubbles: true, cancelable: true, clientX: 10, clientY: 10
+  }, opts));
+  Object.defineProperty(e, 'pointerType', { value: 'touch' });
+  return e;
+}
+
+test('扫雷移动端：长按 350ms 插旗且不误翻开', async () => {
+  const h = boot();
+  h.goto('game');
+  h.window.document.querySelector('[data-pick="minesweeper"]').click();
+  h.window.__gamesDbg.setMineField(9, 9, [[0, 0], [0, 4], [1, 4], [2, 4], [3, 4], [4, 4], [5, 4], [6, 4], [7, 4], [8, 4]]);
+  const doc = h.window.document;
+  const cell = doc.querySelector('.ms-cell[data-r="0"][data-c="0"]');
+  cell.dispatchEvent(touchEvent(h.window, 'pointerdown'));
+  assert.ok(cell.classList.contains('long-pressing'), '长按进行中有高亮态');
+  await new Promise(r => setTimeout(r, 450));
+  const fresh = doc.querySelector('.ms-cell[data-r="0"][data-c="0"]');
+  fresh.dispatchEvent(touchEvent(h.window, 'pointerup'));
+  fresh.dispatchEvent(touchEvent(h.window, 'click'));
+  assert.equal(fresh.textContent, '⚑', '长按插旗');
+  assert.ok(!fresh.classList.contains('open'), '插旗不误翻开');
+  assert.ok(doc.body.textContent.includes('剩余 9 雷'), '剩余雷数减少');
+});
+
+test('扫雷移动端：长按后抬手产生的 click 被抑制，不误翻开', async () => {
+  const h = boot();
+  h.goto('game');
+  h.window.document.querySelector('[data-pick="minesweeper"]').click();
+  h.window.__gamesDbg.setMineField(9, 9, [[2, 2], [5, 5], [7, 7]]);
+  const doc = h.window.document;
+  const cell = doc.querySelector('.ms-cell[data-r="1"][data-c="1"]');
+  cell.dispatchEvent(touchEvent(h.window, 'pointerdown'));
+  await new Promise(r => setTimeout(r, 450));
+  const fresh = doc.querySelector('.ms-cell[data-r="1"][data-c="1"]');
+  fresh.dispatchEvent(touchEvent(h.window, 'pointerup'));
+  fresh.dispatchEvent(touchEvent(h.window, 'click'));
+  assert.equal(fresh.textContent, '⚑', '长按插旗');
+  assert.equal(h.window.__gamesDbg().mini.revealed, 0, '未翻开任何格');
+});
+
+test('扫雷移动端：鼠标 pointerType 不启用长按', async () => {
+  const h = boot();
+  h.goto('game');
+  h.window.document.querySelector('[data-pick="minesweeper"]').click();
+  const doc = h.window.document;
+  const cell = doc.querySelector('.ms-cell[data-r="8"][data-c="8"]');
+  const ev = new h.window.MouseEvent('pointerdown', { bubbles: true, cancelable: true, clientX: 5, clientY: 5 });
+  Object.defineProperty(ev, 'pointerType', { value: 'mouse' });
+  cell.dispatchEvent(ev);
+  await new Promise(r => setTimeout(r, 450));
+  cell.click();
+  const fresh = doc.querySelector('.ms-cell[data-r="8"][data-c="8"]');
+  assert.ok(fresh.classList.contains('open'), '鼠标点击直接翻开，不受长按影响');
+});

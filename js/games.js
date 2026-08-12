@@ -68,6 +68,7 @@
     hard: { label: '困难', rows: 16, cols: 16, mines: 40 }
   };
   var MS_DEFAULT_DIFF = 'easy';
+  var MS_LONG_PRESS_MS = 350;
   var msFlagMode = false;
 
   function startMini(ctx, kind) {
@@ -242,11 +243,7 @@
     msFlagChange(card, ctx);
     var board = card.querySelector('#msBoard');
     board.querySelectorAll('.ms-cell').forEach(function (cell) {
-      cell.addEventListener('click', function () { mineCellClick(ctx, cell); });
-      cell.addEventListener('contextmenu', function (e) {
-        e.preventDefault();
-        mineCellFlag(ctx, cell);
-      });
+      bindMineCell(ctx, cell);
     });
     wrap.appendChild(card);
     wrap.querySelectorAll('[data-mact]').forEach(function (b) {
@@ -387,6 +384,58 @@ function histHtml(g) {
       return;
     }
     render(ctx);
+  }
+
+  /* 移动端交互：单击翻开（由 click 触发）、长按 350ms 插旗（仅触屏/手写笔）。
+   * pointerdown 启动定时器并显示 .long-pressing 高亮；位移 >10px 或 pointercancel（滚动）取消。
+   * 插旗后 render(ctx) 会重建棋盘 DOM，故误触抑制不能用格子局部标记，改为模块级
+   * 「位置 + 时间窗」：msLpPos=插旗坐标、msLpAt=时刻，700ms 内该坐标的首次 click/contextmenu 被吞掉。 */
+  var msLpPos = null, msLpAt = 0;
+
+  function lpSuppressed(cell) {
+    if (msLpPos === null) return false;
+    if (Date.now() - msLpAt > 700) { msLpPos = null; return false; }
+    var pos = cell.dataset.r + ',' + cell.dataset.c;
+    if (msLpPos !== pos) return false;
+    msLpPos = null;
+    return true;
+  }
+
+  function bindMineCell(ctx, cell) {
+    var lpTimer = null, sx = 0, sy = 0;
+    function cancelLp() {
+      if (lpTimer === null) return;
+      window.clearTimeout(lpTimer);
+      lpTimer = null;
+      cell.classList.remove('long-pressing');
+    }
+    cell.addEventListener('pointerdown', function (e) {
+      if (e.pointerType === 'mouse') return;
+      sx = e.clientX; sy = e.clientY;
+      cell.classList.add('long-pressing');
+      lpTimer = window.setTimeout(function () {
+        lpTimer = null;
+        cell.classList.remove('long-pressing');
+        msLpPos = cell.dataset.r + ',' + cell.dataset.c;
+        msLpAt = Date.now();
+        mineCellFlag(ctx, cell);
+        if (typeof window.navigator.vibrate === 'function') window.navigator.vibrate(15);
+      }, MS_LONG_PRESS_MS);
+    });
+    cell.addEventListener('pointermove', function (e) {
+      if (lpTimer !== null && (Math.abs(e.clientX - sx) > 10 || Math.abs(e.clientY - sy) > 10)) cancelLp();
+    });
+    cell.addEventListener('pointercancel', cancelLp);
+    cell.addEventListener('pointerup', cancelLp);
+    cell.addEventListener('contextmenu', function (e) {
+      e.preventDefault();
+      if (lpSuppressed(cell)) return;
+      mineCellFlag(ctx, cell);
+    });
+    cell.addEventListener('click', function () {
+      if (lpSuppressed(cell)) return;
+      mineCellClick(ctx, cell);
+    });
   }
 
   function msRestart(ctx) {
