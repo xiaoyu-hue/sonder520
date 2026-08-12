@@ -203,7 +203,6 @@ test('专注：🍅 按钮出现在未完成任务右侧，已完成任务不显
 
 test('P4c UI：今日任务删除后出现撤销按钮，点击撤销恢复任务', async () => {
   const h = boot();
-  const ctx = h.window.__sonderHooks.ctx;
   addSeedTask(h, '待删任务', 'p1');
   h.goto('today');
   const delBtn = h.window.document.querySelector('[data-act="del"]');

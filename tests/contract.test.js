@@ -32,7 +32,7 @@ const STORE_METHODS = [
   /* core */
   'save', 'clearAll', 'storageUsage', 'isNearQuota', 'summarize', 'buildWeeklyReport',
   'exportBackup', 'importBackup', 'migrateToIdb', 'loadIdb', 'needsUnlock', 'unlock', 'lock',
-  'enableEncryption', 'disableEncryption', 'encryptionEnabled', 'encryptionMode',
+  'enableEncryption', 'disableEncryption', 'encryptionMode',
   /* tasks 领域 */
   'addTask', 'updateTask', 'removeTask', 'reorderTask', 'addMemo', 'updateMemo', 'removeMemo',
   /* media 领域 */

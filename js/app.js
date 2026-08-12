@@ -107,9 +107,8 @@
     var bar = document.getElementById('quotaBar');
     if (!bar) return;
     if (!store.state.settings.quotaNoticeDismissed) {
-      var usage = store.storageUsage();
-      if (usage > 4.5 * 1024 * 1024) {
-        bar.querySelector('.qb-usage').textContent = (usage / 1048576).toFixed(1) + 'MB';
+      if (store.isNearQuota()) {
+        bar.querySelector('.qb-usage').textContent = (store.storageUsage() / 1048576).toFixed(1) + 'MB';
         bar.hidden = false;
         return;
       }

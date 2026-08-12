@@ -87,7 +87,6 @@ interface SonderStoreImpl {
   dismissQuotaNotice(): void;
   enableEncryption(password: string): Promise<boolean>;
   disableEncryption(): Promise<boolean>;
-  encryptionEnabled(): boolean;
   encryptionMode(): string;
   needsUnlock(): boolean;
   unlock(password: string): Promise<boolean>;

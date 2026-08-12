@@ -506,9 +506,6 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
   }
 
   /* ====== 可选加密（默认关闭；开启后本地快照为密文，需解锁使用） ====== */
-  Store.prototype.encryptionEnabled = function () {
-    return this._encKey ? true : this.needsUnlock();
-  };
   Store.prototype.encryptionMode = function () {
     return this._encKey ? 'unlocked' : (this.needsUnlock() ? 'locked' : 'off');
   };
@@ -875,7 +872,6 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
   /* 导入：明文备份同步完成；加密备份需 password。统一返回 Promise<{ok, error?}>
    * 加密模式下导入必须保持密文落盘；锁定态拒绝导入（防止明文覆盖密文） */
   Store.prototype.importBackup = function (jsonStr, password) {
-    var self = this;
     var parsed;
     try { parsed = JSON.parse(jsonStr); } catch (e) { return Promise.resolve({ ok: false, error: '文件不是有效的 JSON' }); }
     if (parsed && parsed.format === BACKUP_ENC_FORMAT) return this._importEncBackup(parsed, password);

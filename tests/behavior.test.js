@@ -136,7 +136,7 @@ test('行为(P4c): 删除可撤销——顶级条目恢复原位、子项闭包�
   const { store } = boot({});
   /* 顶级条目：任务删除后 undoRemove 恢复原位置与字段 */
   const t = store.addTask({ title: '甲', date: '2030-01-01', priority: 'p1' });
-  const t2 = store.addTask({ title: '乙' });
+  store.addTask({ title: '乙' });
   store.removeTask(t.id);
   assert.equal(store.state.tasks.length, 1);
   const back = store.undoRemove();
