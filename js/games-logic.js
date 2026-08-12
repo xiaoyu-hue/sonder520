@@ -421,7 +421,17 @@
   function mineReveal(s, r, c) {
     if (!s || s.over) return { ok: false, error: '本局已结束' };
     if (!(r >= 0 && r < s.rows && c >= 0 && c < s.cols) || r % 1 !== 0 || c % 1 !== 0) return { ok: false, error: '越界' };
-    if (!s.board) mineLay(s, r, c);
+    if (!s.board) {
+      mineLay(s, r, c);
+      /* 布雷后回填先插的旗（首次插旗不布雷，因此这里不会踩到首击必安全逻辑） */
+      if (s.pendingFlags) {
+        var pf;
+        for (pf in s.pendingFlags) {
+          var p = pf.split(','), pr = +p[0], pc = +p[1];
+          if (pr >= 0 && pr < s.rows && pc >= 0 && pc < s.cols) s.board[pr][pc].flagged = true;
+        }
+      }
+    }
     var b = s.board;
     if (b[r][c].revealed) return { ok: false, error: '该格已翻开' };
     if (b[r][c].flagged) return { ok: false, error: '该格已被标记，先取消标记再翻开' };
@@ -458,7 +468,16 @@
   function mineToggleFlag(s, r, c) {
     if (!s || s.over) return { ok: false, error: '本局已结束' };
     if (!(r >= 0 && r < s.rows && c >= 0 && c < s.cols) || r % 1 !== 0 || c % 1 !== 0) return { ok: false, error: '越界' };
-    var b = s.board || mineLay(s, r, c), cell = b[r][c];
+    /* 首次动作是插旗时不布雷：布雷推迟到首次翻开，保证首击必安全（插旗只暂存旗位，翻开时回填） */
+    if (!s.board) {
+      var key = r + ',' + c;
+      if (!s.pendingFlags) s.pendingFlags = {};
+      var on = !s.pendingFlags[key];
+      if (on) s.pendingFlags[key] = 1; else delete s.pendingFlags[key];
+      s.flagged += on ? 1 : -1;
+      return { ok: true, flagged: on };
+    }
+    var b = s.board, cell = b[r][c];
     if (cell.revealed) return { ok: false, error: '已翻开的格子不能标记' };
     cell.flagged = !cell.flagged;
     s.flagged += cell.flagged ? 1 : -1;

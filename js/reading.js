@@ -263,7 +263,9 @@
         renderExcerpts(container, ctx);
         UI.toast('已删除该条书摘', null, { label: '撤销', onClick: function () {
           store.undoRemove();
-          render(ctx); /* 整页重渲染：#content 常驻，避免 hashchange 重建后旧节点脱离文档 */
+          /* P5a：撤销只恢复数据；仍在书摘页才重渲染书摘视图（避免渲染成阅读列表页顶替当前页） */
+          if (((location.hash || '').replace(/^#\/?/, '').split('/')[0]) === 'excerpts') renderExcerpts(container, ctx);
+          else UI.toast('书摘已恢复');
         } });
       });
     });

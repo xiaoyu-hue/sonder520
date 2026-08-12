@@ -56,7 +56,7 @@ Source code: https://github.com/xiaoyu-hue/sonder520
 
 - Data & Settings: theme (follows system, overridable), wallpaper upload/opacity, animation fps (60/90/120), module toggles, stats, export/import backup, encryption switch, weekly report generator, desktop notifications, migrate to IndexedDB
 
-- Reliability: PWA offline, dual storage (localStorage + IndexedDB + optional encryption), warning bar when storage exceeds 4.5 MB, global search, XSS sanitization everywhere
+- Reliability: PWA offline, dual storage (localStorage + IndexedDB + optional encryption), encryption resilience (no plaintext writes while locked, future-version ciphertext preserved untouched), warning bar when storage exceeds 4.5 MB, global search, XSS sanitization everywhere (incl. attribute injection), error reporting with graceful shell degradation
 
 - Note: Chinese-cultural content (daily quotes, Idiom & Brain Teaser games) intentionally stays in Chinese — translating them would lose the flavor.
 
@@ -67,6 +67,8 @@ Source code: https://github.com/xiaoyu-hue/sonder520
 - Custom wallpaper: upload a background image (≤2 MB) in Settings, adjust opacity (0–100%, default 40%, live preview, persisted), restore default anytime.
 
 - Micro-interactions: staggered fade-in, ink-spread chart animations, button press feedback, breathing empty states, sliding toasts, bottom-sheet dialogs on mobile.
+
+- Both themes keep text/accent contrast ≥4.5:1 (WCAG AA, incl. light/dark tokens and Minesweeper digits, locked by tests).
 
 ## Platform Adaptation
 
@@ -112,9 +114,13 @@ Notes:
 
 - Pure HTML/CSS/vanilla JS — zero build/run dependencies, no npm install needed to use the app.
 
-- Run all tests: npm test (currently 213 passing, covering storage/encryption/UI/all modules/styles/animations/wallpaper/mobile adaptation/perf/game engines/interaction regressions/PWA/search/XSS/IndexedDB/notifications).
+- Run all tests: npm test (currently 422 passing, covering storage/encryption (incl. races & future-version resilience)/UI/all modules/styles/animations/wallpaper/mobile adaptation/perf/game engines/interaction regressions/PWA/search/XSS (incl. attribute injection)/contrast/IndexedDB/notifications).
 
-- Type check (zero-build): npm run typecheck (JSDoc + tsc --noEmit).
+- Type check (zero-build): npm run typecheck (JSDoc + tsc --noEmit, contracts locked in globals.d.ts).
+
+- Lint: npm run lint (eslint@8 — bans empty catch blocks and dead variables).
+
+- Sync offline cache: after changing scripts/entry, run npm run sync-sw (auto-syncs the sw.js cache manifest and bumps its version).
 
 ## Docs
 

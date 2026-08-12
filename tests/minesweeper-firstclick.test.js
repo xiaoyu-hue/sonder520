@@ -44,7 +44,7 @@ test('扫雷 UI：真实首击（不注入布雷）→ 点击即有反馈并正�
   assert.strictEqual(snap2.boardReady, true, '后续点击正常无崩溃');
 });
 
-test('扫雷 UI：空白阶段右键插旗也能正常布雷并出旗', () => {
+test('扫雷 UI：空白阶段右键插旗不布雷，旗位暂存并显示，首击翻开仍必安全', () => {
   const h = boot();
   h.goto('game');
   h.window.document.querySelector('[data-pick="minesweeper"]').click();
@@ -52,8 +52,17 @@ test('扫雷 UI：空白阶段右键插旗也能正常布雷并出旗', () => {
   const cell = doc.querySelector('.ms-cell');
   const ev = new h.window.MouseEvent('contextmenu', { bubbles: true, cancelable: true });
   cell.dispatchEvent(ev);
-  assert.ok(h.window.__gamesDbg().mini.boardReady, '右键首击布雷');
-  assert.strictEqual(doc.querySelector('.ms-cell').textContent, '⚑', '首击右键为插旗');
+  const snap = h.window.__gamesDbg().mini;
+  assert.strictEqual(snap.boardReady, false, '首击插旗不布雷（布雷推迟到首次翻开）');
+  assert.strictEqual(snap.flagged, 1, '旗位计数及时生效');
+  assert.strictEqual(doc.querySelector('.ms-cell').textContent, '⚑', '暂存旗位渲染到棋盘');
+  const reveal = doc.querySelector('.ms-cell[data-r="8"][data-c="8"]');
+  reveal.click();
+  const snap2 = h.window.__gamesDbg().mini;
+  assert.strictEqual(snap2.boardReady, true, '首次翻开时布雷');
+  assert.ok(!doc.body.textContent.includes('踩到雷了'), '首次翻开必安全（即使先插过旗）');
+  const flaggedCell = doc.querySelector('.ms-cell[data-r="0"][data-c="0"]');
+  assert.strictEqual(flaggedCell.textContent, '⚑', '先插的旗在布雷后保留');
 });
 
 test('扫雷 UI：完整一局确定性胜利（注入雷位布局）', () => {

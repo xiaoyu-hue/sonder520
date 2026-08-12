@@ -130,7 +130,9 @@
               renderGroups(container, store, day);
               UI.toast('任务已删除', null, { label: '撤销', onClick: function () {
                 store.undoRemove();
-                render(currentEl, currentCtx); /* 整页重渲染：#content 常驻，避免 hashchange 重建后旧列表节点脱离文档 */
+                /* P5a：撤销只恢复数据；若已切页（#content 常驻，currentEl 仍指向它）则不整页顶替当前页面 */
+                if (((location.hash || '').replace(/^#\/?/, '').split('/')[0]) === 'today') render(currentEl, currentCtx);
+                else UI.toast('任务已恢复');
               } });
             }
           });

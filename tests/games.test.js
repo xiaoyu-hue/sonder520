@@ -94,6 +94,25 @@ test('游戏：认输产生记录并显示胜者', async () => {
   assert.ok(txt.includes('玩家2胜'), '战绩应有胜方标签');
 });
 
+test('游戏：终局后认输不再追加战绩（P5a 双重记录防护）', async () => {
+  const h = boot();
+  h.goto('game');
+  h.window.document.querySelector('[data-pick="tictactoe"]').click();
+  h.window.document.querySelector('[data-mode="pvp"]').click();
+  /* 快速下完一局：X 落 (0,0)，O 落 (1,1)，X 落 (0,1)，O 落 (1,2)，X 落 (0,2) 成线获胜 */
+  cell(h, 0, 0).click();
+  cell(h, 1, 1).click();
+  cell(h, 0, 1).click();
+  cell(h, 1, 2).click();
+  cell(h, 0, 2).click();
+  await wait(30);
+  assert.equal(h.store.state.gameRecords.length, 1, '获胜写入一条战绩');
+  h.window.document.querySelector('[data-act="resign"]').click();
+  await wait(20);
+  assert.equal(h.store.state.gameRecords.length, 1, '终局后再认输不追加记录');
+  assert.ok(!h.window.document.body.textContent.includes('你已认输'), '终局认输不弹确认框');
+});
+
 test('游戏：所有操作事务化存储与统计数据一致', () => {
   const h = boot();
   const store = h.store;

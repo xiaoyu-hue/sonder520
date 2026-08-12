@@ -297,8 +297,12 @@ function histHtml(g) {
       var empty = '';
       for (var i = 0; i < g.rows * g.cols; i++) {
         var er = Math.floor(i / g.cols), ec = i % g.cols;
-        empty += '<button type="button" class="ms-cell" data-r="' + er + '" data-c="' + ec + '" ' +
-          'aria-label="第' + (er + 1) + '行第' + (ec + 1) + '列，未翻开" style="min-height:28px"></button>';
+        /* P5a：首次插旗不布雷，暂存旗位仍需渲染 */
+        var pf = g.pendingFlags && g.pendingFlags[er + ',' + ec];
+        var pfInner = pf ? '⚑' : '';
+        var pfLabel = pf ? '已标记' : '未翻开';
+        empty += '<button type="button" class="ms-cell' + (pf ? ' flagged' : '') + '" data-r="' + er + '" data-c="' + ec + '" ' +
+          'aria-label="第' + (er + 1) + '行第' + (ec + 1) + '列，' + pfLabel + '" style="min-height:28px">' + pfInner + '</button>';
       }
       return empty;
     }
@@ -713,7 +717,7 @@ function histHtml(g) {
 
   function aiThink(ctx) {
     var g = state.game;
-    if (!g || g.over) return;
+    if (!g || g.over || aiTimer) return; /* P5a：重入守卫——render 恢复路径与落子路径可能各自调度，已挂起时直接跳过 */
     busy = true;
     var st = document.querySelector('#gStatus');
     if (st) st.textContent = statusText();
@@ -778,7 +782,8 @@ function histHtml(g) {
     if (!g.moves.length) { UI.toast('还没落子，先下一手吧', 'err'); return; }
     askConfirm(ctx, state.mode === 'ai' ? '确定认输？本局判给 AI 获胜' : '确定认输？本局判给对面获胜', '认输').then(function (ok) {
       if (ok !== true) return;
-      G.resign(g, state.mode === 'ai' ? state.playerStone : 'X');
+      var w = G.resign(g, state.mode === 'ai' ? state.playerStone : 'X');
+      if (w === null) { UI.toast('对局已结束，未产生记录'); return; } /* P5a：终局后（如幽灵定时器已落子）不再补记 */
       recordMatch(ctx);
       UI.toast('你已认输');
       render(ctx);

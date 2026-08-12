@@ -78,7 +78,9 @@
           render(currentEl, ctx);
           UI.toast('备忘已删除', null, { label: '撤销', onClick: function () {
             store.undoRemove();
-            render(currentEl, ctx);
+            /* P5a：撤销只恢复数据；已切页则不整页顶替当前页面 */
+            if (((location.hash || '').replace(/^#\/?/, '').split('/')[0]) === 'memo') render(currentEl, ctx);
+            else UI.toast('备忘已恢复');
           } });
         }
       });
