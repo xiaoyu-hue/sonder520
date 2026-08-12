@@ -73,18 +73,23 @@
     nav.innerHTML = '';
     var active = currentPageKey();
     NAV.forEach(function (key) {
-      if (key !== 'home' && key !== 'settings') {
-        var modKey = key === 'excerpts' ? 'reading' : key; /* 我的书摘跟随阅读模块开关 */
-        if (TOGGLEABLE[key] && !store.state.settings.modules[modKey]) return;
+      try {
+        if (key !== 'home' && key !== 'settings') {
+          var modKey = key === 'excerpts' ? 'reading' : key; /* 我的书摘跟随阅读模块开关 */
+          if (TOGGLEABLE[key] && !store.state.settings.modules[modKey]) return;
+        }
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.dataset.route = key;
+        b.className = key === active ? 'active' : '';
+        if (key === active) b.setAttribute('aria-current', 'page');
+        b.innerHTML = '<span class="ico">' + (ICONS[key] || '') + '</span>' + UI.esc(Pages[key].title);
+        b.onclick = function () { ctx.navigate(key); };
+        nav.appendChild(b);
+      } catch (e) {
+        /* 单模块缺失/报错不拖垮整壳：跳过该导航项并上报（如 SW 陈旧缓存致 js 404） */
+        try { console.error('[Sonder] 导航模块不可用', key, e); } catch (x) { /* 忽略 */ }
       }
-      var b = document.createElement('button');
-      b.type = 'button';
-      b.dataset.route = key;
-      b.className = key === active ? 'active' : '';
-      if (key === active) b.setAttribute('aria-current', 'page');
-      b.innerHTML = '<span class="ico">' + (ICONS[key] || '') + '</span>' + UI.esc(Pages[key].title);
-      b.onclick = function () { ctx.navigate(key); };
-      nav.appendChild(b);
     });
   }
 

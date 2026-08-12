@@ -29,7 +29,7 @@ test('扫雷 UI：真实首击（不注入布雷）→ 点击即有反馈并正�
     if (cell.dataset.r === undefined || cell.dataset.c === undefined) noData++;
   });
   assert.strictEqual(noData, 0, '空白阶段每个格子都带坐标，点击不会传 NaN');
-  const first = cells[Math.floor(Math.random() * 81)];
+  const first = cells[0];
   first.click();
   const snap = h.window.__gamesDbg().mini;
   assert.strictEqual(snap.boardReady, true, '首击后布雷');
@@ -38,7 +38,7 @@ test('扫雷 UI：真实首击（不注入布雷）→ 点击即有反馈并正�
   assert.ok(opened >= 1, 'DOM 出现已翻开或数字格');
   assert.ok(!doc.body.textContent.includes('踩到雷了'), '首击不应踩雷');
   const again = doc.querySelectorAll('.ms-cell');
-  const rnd = again[Math.floor(Math.random() * again.length)];
+  const rnd = again[again.length - 1];
   rnd.click();
   const snap2 = h.window.__gamesDbg().mini;
   assert.strictEqual(snap2.boardReady, true, '后续点击正常无崩溃');
@@ -56,27 +56,28 @@ test('扫雷 UI：空白阶段右键插旗也能正常布雷并出旗', () => {
   assert.strictEqual(doc.querySelector('.ms-cell').textContent, '⚑', '首击右键为插旗');
 });
 
-test('扫雷 UI：真实一局可完整胜利（不注入）', () => {
+test('扫雷 UI：完整一局确定性胜利（注入雷位布局）', () => {
   const h = boot();
   h.goto('game');
   h.window.document.querySelector('[data-pick="minesweeper"]').click();
-  const tryWin = () => {
-    const snap = h.window.__gamesDbg().mini;
-    if (snap.over) return snap;
-    const doc = h.window.document;
-    const hidden = Array.from(doc.querySelectorAll('.ms-cell:not(.open):not(.flagged):not(.n1):not(.n2):not(.n3):not(.n4):not(.n5):not(.n6):not(.n7):not(.n8)'));
-    if (!hidden.length) {
-      assert.fail('不应走到这里：已翻开全部非雷格却未结束');
+  const doc = h.window.document;
+  h.window.__gamesDbg.setMineField(9, 9, [[0, 0]]); /* 单雷：其余 80 格全安全 */
+  const snap0 = h.window.__gamesDbg().mini;
+  assert.strictEqual(snap0.boardReady, true, '注入布局后进入实盘');
+  assert.strictEqual(snap0.mines, 1, '雷数以注入为准');
+  doc.querySelector('[data-r="0"][data-c="1"]').click(); /* 安全格：邻雷数字格 */
+  assert.ok(!doc.body.textContent.includes('踩到雷了'), '安全格不得引爆');
+  for (let r = 0; r < 9; r++) {
+    for (let c = 0; c < 9; c++) {
+      if (r === 0 && c === 0) continue; /* 唯一雷位不点 */
+      const el = doc.querySelector('.ms-cell[data-r="' + r + '"][data-c="' + c + '"]');
+      assert.ok(el, '每格应有对应 DOM 元素');
+      if (!el.classList.contains('open')) el.click();
     }
-    hidden[0].click();
-    return null;
-  };
-  let out = null, guard = 0;
-  while (!(out = tryWin()) && guard++ < 300) { /* 洪泛加运气，300 步内必见分晓 */ }
-  assert.ok(out, '真实游玩过程无异常');
-  assert.strictEqual(out.over, true, '真实一局能正常结束');
-  if (out.won) {
-    const rec = h.store.state.gameRecords[0];
-    assert.ok(rec && rec.kind === 'minesweeper' && rec.winner === 'player', '胜利写入对局记录');
   }
+  const end = h.window.__gamesDbg().mini;
+  assert.strictEqual(end.over, true, '翻完全部安全格应结束对局');
+  assert.strictEqual(end.won, true, '单雷局必赢（原随机胜利断言可被静默跳过，现为确定路径）');
+  const rec = h.store.state.gameRecords[0];
+  assert.ok(rec && rec.kind === 'minesweeper' && rec.winner === 'player', '胜利写入对局记录');
 });

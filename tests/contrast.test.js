@@ -107,3 +107,20 @@ test('P4a：配额条链接与配额条文字 ≥4.5:1', () => {
 test('P4a：主按钮/强调色白字 ≥4.5:1（与亮态背景合算）', () => {
   assertAA('#ffffff', '#c23b2e', 'accent 白字', 4.5);
 });
+
+test('P4a 续：状态文本色（warn/ok/accent 文本）两主题 ≥4.5:1', () => {
+  assertAA(varValue(light, 'warn-text'), varValue(light, 'bg'), '浅色 warn-text');
+  assertAA(varValue(light, 'ok-text'), varValue(light, 'bg'), '浅色 ok-text');
+  assertAA(varValue(light, 'accent-text'), varValue(light, 'bg'), '浅色 accent-text');
+  assertAA(varValue(dark, 'warn-text'), varValue(dark, 'bg'), '暗色 warn-text');
+  assertAA(varValue(dark, 'ok-text'), varValue(dark, 'bg'), '暗色 ok-text');
+  assertAA(varValue(dark, 'accent-text'), varValue(dark, 'bg'), '暗色 accent-text');
+});
+
+test('P4a 续：扫雷数字浅色主题 ≥4.5:1（对照已翻开格子底 #e2dcc9 更严）', () => {
+  const cellBg = '#e2dcc9';
+  assertAA('#1e4e9e', cellBg, '扫雷 n1');
+  assertAA(varValue(light, 'ok-text'), cellBg, '扫雷 n2');
+  assertAA(varValue(light, 'accent-text'), cellBg, '扫雷 n3');
+  assertAA(varValue(light, 'warn-text'), cellBg, '扫雷 n4-n8');
+});

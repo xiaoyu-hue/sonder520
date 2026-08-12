@@ -94,3 +94,19 @@ test('设置页：生成本周报告按钮 → 展示文本并可复制', () => 
     assert.ok(copied.includes('本周周报'), '一键复制获得报告全文');
   });
 });
+
+test('设置页统计：完成率分母为今日到期任务而非全量历史', () => {
+  const day = S.todayStr();
+  const seed = S.defaultState();
+  seed.tasks = [
+    { id: 'h1', title: '历史任务A', date: '2026-01-05', priority: '中', done: true, doneAt: '2026-01-05T10:00:00.000Z' },
+    { id: 'h2', title: '历史任务B', date: '2026-01-06', priority: '中', done: true, doneAt: '2026-01-06T10:00:00.000Z' },
+    { id: 'a1', title: '今日已办', date: day, priority: '中', done: true, doneAt: new Date().toISOString() },
+    { id: 'a2', title: '今日待办', date: day, priority: '中', done: false }
+  ];
+  const h = boot({ seed });
+  h.goto('settings');
+  const txt = h.$('#content').textContent;
+  assert.ok(txt.includes('1/4'), '今日计划框为 今日完成/全量任务：1/4');
+  assert.ok(txt.includes('完成率 50%'), '完成率分母应为今日到期任务（1 完成 + 1 待办 = 1/2），而非全量（1/4）');
+});

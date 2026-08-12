@@ -281,14 +281,16 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     return u.data || true;
   };
 
-  /* 主快照是否为密文（未解锁时据此判定"需要解锁"） */
+  /* 主快照是否为密文（未解锁时据此判定"需要解锁"）。
+   * 只看加密标记 e===1：未知/未来版本（v !== ENC_FORMAT）同样认定加密 → 走锁定流，
+   * 防止旧客户端把新密文当明文解析、normalize 清空数据后明文覆盖（不可逆丢失） */
   Store.prototype._hasEncSnapshot = function () {
     if (!this._storage) return false;
     try {
       var raw = this._storage.getItem(STORAGE_KEY);
       if (!raw) return false;
       var parsed = JSON.parse(raw);
-      return !!(parsed && parsed.e === 1 && parsed.v === ENC_FORMAT);
+      return !!(parsed && parsed.e === 1);
     } catch (e) { return false; }
   };
   Store.prototype._encSalt = function () {
@@ -338,11 +340,14 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
   };
 
   /* 异步写 IndexedDB。串行队列避免事务竞争；失败静默（localStorage 仍兜底）。
-   * 可传入 save 已序列化的 json 避免二次 stringify；extra 合并进 entry（如加密盐）。 */
+   * 只接受调用方显式传入的原始串（明文或密文格式原样落盘），extra 合并进 entry（如加密盐）。
+   * undefined/null/空串一律跳过——绝不回退到内存 state 序列化：锁定态下内存是明文空
+   * defaultState，回退写盘会把明文空数据写进 IDB，破坏密文兜底副本（loadIdb 空 IDB 回填路径）。 */
   /** @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _idbWrite: any, _lastJson: string, _rev: number }} */
   Store.prototype._idbWrite = function (json, extra) {
     if (!idbAvailable()) return;
-    var useJson = json || JSON.stringify(this.state);
+    if (json === undefined || json === null || json === '') return;
+    var useJson = json;
     var meta = this._meta || nowISO();
     var prev = this._idbPromise || Promise.resolve();
     this._idbPromise = prev.then(function () {
@@ -452,7 +457,10 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     var self = this;
     var parsed = null;
     try { parsed = JSON.parse(data); } catch (e) { return Promise.resolve(null); }
-    if (parsed && parsed.e === 1 && parsed.v === ENC_FORMAT) {
+    if (parsed && parsed.e === 1) {
+      /* 未知/未来加密版本（v !== ENC_FORMAT）：不可按明文解析（normalize 会清空数据字段），
+       * 一律返回 null —— loadIdb 据此标记 _idbEncLocked 走解锁 UI，数据原样保留、绝不落盘 */
+      if (parsed.v !== ENC_FORMAT) return Promise.resolve(null);
       if (!self._encKey || !Crypto) return Promise.resolve(null);
       return Crypto.decryptBundle(parsed, self._encKey).then(function (json) {
         try { return JSON.parse(json); } catch (e) { return null; }
@@ -462,10 +470,12 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
   };
 
   /* 手动迁移：立即把当前全部数据写入 IndexedDB（只复制不删旧数据） */
-  /** @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _idbWrite: any, _encKey: any, _encSave: Function }} */
+  /** @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _idbWrite: any, _encKey: any, _encSave: Function, needsUnlock: Function }} */
   Store.prototype.migrateToIdb = function () {
     var self = this;
     if (!idbAvailable()) return Promise.resolve(false);
+    /* 锁定态守卫：内存是明文空 defaultState，序列化直写会以明文空数据覆盖 IDB 密文兜底 */
+    if (this.needsUnlock()) return Promise.resolve(false);
     this._meta = nowISO();
     var json = JSON.stringify(this.state);
     if (this._encKey) {

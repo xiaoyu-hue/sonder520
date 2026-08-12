@@ -308,8 +308,9 @@
 
   function statsCard(store, UI) {
     var s = store.summarize();
-    var total = s.tasks.total;
-    var rate = total ? Math.round((s.tasks.doneToday / total) * 100) : 0;
+    /* 分母为"今日语境该完成的任务"（今日完成+今日待办+过期），避免全量历史任务稀释完成率 */
+    var dueToday = s.tasks.doneToday + s.tasks.current + s.tasks.overdue;
+    var rate = dueToday ? Math.round((s.tasks.doneToday / dueToday) * 100) : 0;
     var html = '<div class="card"><div class="grid cols-3">' +
       statBox('今日计划', s.tasks.doneToday + '/' + s.tasks.total, '完成率 ' + rate + '%') +
       statBox('自媒体', s.selfmedia.total, '待发布 ' + s.selfmedia.pending) +

@@ -31,6 +31,11 @@
   --ok-soft: rgba(46, 125, 99, 0.10);
   --warn: #b0723f;            /* 赭石 */
   --warn-soft: rgba(176, 114, 63, 0.12);
+  /* P4a 续：状态文本专用加深色。--warn/--ok/--accent 对 --bg 仅 3.2~4.3:1 不足 WCAG AA，
+   * 文本一律使用 *_text（≥4.5:1），装饰/背景仍用原 token */
+  --warn-text: #8a5220;
+  --ok-text: #23634e;
+  --accent-text: #a93125;
   --huaqing: #3b4a6b;         /* 花青 */
   --prio-soft: #a8a297;       /* 淡墨（低优先级圆点） */
 
@@ -59,6 +64,10 @@
 
   --accent: #e0643f;
   --accent-soft: rgba(224, 100, 63, 0.16);
+  /* 深色主题用亮色调的状态文本（浅色 *_text 在深底上对比不足） */
+  --warn-text: #e2b27e;
+  --ok-text: #6fbfa3;
+  --accent-text: #f08a63;
   --shadow: 0 14px 44px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.12);
   --wallpaper-opacity: 0.4;
 }
@@ -496,7 +505,7 @@ input, select, textarea, button { font-size: 16px; }
 .toggle { display: flex; align-items: center; gap: 8px; }
 .details { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--border); }
 .notes-area { font-size: 13px; color: var(--text); white-space: pre-wrap; word-break: break-word; }
-.enc-on { color: var(--ok); font-weight: 600; }
+.enc-on { color: var(--ok-text); font-weight: 600; }
 
 /* ---------- 自媒体统计图表（水墨配色） ---------- */
 .st-legend { display: flex; gap: 16px; padding: 6px 0 10px; border-bottom: 1px solid var(--border); margin-bottom: 10px; }
@@ -843,9 +852,9 @@ input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border-radius
 }
 .mg-num { min-width: 44px; text-align: center; font-size: 16px; }
 .mg-hint { margin-left: auto; font-size: 13px; padding: 2px 10px; border-radius: 999px; white-space: nowrap; }
-.mg-hint.hi { color: var(--accent); background: var(--accent-soft); }
-.mg-hint.lo { color: var(--ok); background: var(--ok-soft); }
-.mg-hint.mid { color: var(--warn); background: var(--warn-soft); }
+.mg-hint.hi { color: var(--accent-text); background: var(--accent-soft); }
+.mg-hint.lo { color: var(--ok-text); background: var(--ok-soft); }
+.mg-hint.mid { color: var(--warn-text); background: var(--warn-soft); }
 .mg-hint.got { color: #fff; background: var(--ok); }
 .mg-result {
   margin-top: 14px; padding: 12px 14px; border-radius: 10px;
@@ -889,10 +898,10 @@ input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border-radius
 }
 .ms-cell.flagged { color: var(--accent); }
 .ms-cell.mined { color: #fff; background: var(--danger); box-shadow: none; animation: ms-boom .3s ease; }
-.ms-cell.n1 { color: #2a66c9; }
-.ms-cell.n2 { color: var(--ok); }
-.ms-cell.n3 { color: var(--accent); }
-.ms-cell.n4, .ms-cell.n5, .ms-cell.n6, .ms-cell.n7, .ms-cell.n8 { color: var(--warn); }
+.ms-cell.n1 { color: #1e4e9e; }
+.ms-cell.n2 { color: var(--ok-text); }
+.ms-cell.n3 { color: var(--accent-text); }
+.ms-cell.n4, .ms-cell.n5, .ms-cell.n6, .ms-cell.n7, .ms-cell.n8 { color: var(--warn-text); }
 [data-theme="dark"] .ms-cell.n1 { color: #7fa8f0; }
 [data-theme="dark"] .ms-cell.n2 { color: #6fbfa3; }
 [data-theme="dark"] .ms-cell.n3 { color: #f08a63; }
@@ -908,4 +917,4 @@ input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border-radius
   background: linear-gradient(120deg, var(--accent-soft), rgba(194, 59, 46, 0.04));
   border: 1px solid var(--border); text-align: center;
 }
-.idm-tip { margin-top: 10px; min-height: 20px; color: var(--warn); font-size: 14px; }
+.idm-tip { margin-top: 10px; min-height: 20px; color: var(--warn-text); font-size: 14px; }

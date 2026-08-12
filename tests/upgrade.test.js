@@ -219,3 +219,62 @@ test('加密态 migrateToIdb：IDB 兜底必须为密文（新实例恢复后处
     delete globalThis.IDBKeyRange;
   }
 });
+
+test('加密格式韧性：未来版本密文（v2）不按明文解析、不落盘，数据原样保留', async () => {
+  const { st, s } = seeded(['A1', 'B2']);
+  await s.enableEncryption(PWD);
+  /* 篡改为未来版本格式（模拟升级后旧客户端遇到新格式） */
+  const raw = JSON.parse(st._data[KEY]);
+  raw.v = 'sonder-enc-v2';
+  const rawV2 = JSON.stringify(raw);
+  st._data[KEY] = rawV2;
+  const s3 = S.createStore(st);
+  assert.equal(s3.needsUnlock(), true, 'v2 密文应判定需解锁而非解析成空明文');
+  s3.addTask({ title: '锁定后新增', priority: '高' });
+  assert.ok(st._data[KEY].includes('sonder-enc-v2'), '锁定态写入不得落盘（未破坏 v2 密文）');
+  assert.ok(!st._data[KEY].includes('锁定后新增'), '明文不得落盘');
+});
+
+test('_idbWrite 空参守卫：拒绝 undefined/null，绝不回退内存序列化', async () => {
+  const { IDBFactory, IDBKeyRange } = require('fake-indexeddb');
+  const f = new IDBFactory();
+  globalThis.indexedDB = f;
+  globalThis.IDBKeyRange = IDBKeyRange;
+  try {
+    const st = memStorage();
+    const s = S.createStore(st);
+    s.state.memos.push({ id: 'x1', text: '内存明文', time: '', archived: false });
+    s._idbWrite(undefined);
+    s._idbWrite(null);
+    s._idbWrite('');
+    await s._idbPromise;
+    const s2 = S.createStore(st);
+    assert.equal(await s2.loadIdb(), false, '空参不应写入任何 IDB 数据');
+    assert.equal(s2.state.memos.length, 0, '内存明文不得借道 IDB 进入存储');
+  } finally {
+    delete globalThis.indexedDB;
+    delete globalThis.IDBKeyRange;
+  }
+});
+
+test('锁定态 migrateToIdb 被拒绝：不得以明文空数据覆盖 IDB 密文兜底', async () => {
+  const { IDBFactory, IDBKeyRange } = require('fake-indexeddb');
+  const f = new IDBFactory();
+  globalThis.indexedDB = f;
+  globalThis.IDBKeyRange = IDBKeyRange;
+  try {
+    const st = memStorage();
+    const s1 = S.createStore(st);
+    s1.addTask({ title: '机密迁移任务', priority: '高' });
+    await s1.enableEncryption(PWD);
+    await s1._idbPromise;
+    s1.lock();
+    assert.equal(await s1.migrateToIdb(), false, '锁定态迁移应被拒绝');
+    assert.equal(await s1.unlock(PWD), true, '密文兜底未被覆盖，仍可解锁');
+    assert.deepEqual(s1.state.tasks.map(t => t.title), ['机密迁移任务'], '数据完整');
+    assert.equal(await s1.migrateToIdb(), true, '解锁后迁移恢复正常');
+  } finally {
+    delete globalThis.indexedDB;
+    delete globalThis.IDBKeyRange;
+  }
+});

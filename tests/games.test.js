@@ -51,7 +51,12 @@ test('游戏：AI 对弈自动应手与悔棋回退两步', async () => {
   h.window.document.querySelector('[data-pick="tictactoe"]').click();
   cell(h, 0, 0).click();
   assert.equal(cell(h, 0, 0).textContent.trim(), '✕');
-  await wait(320);
+  /* AI 首步延时 320ms，与固定 wait 相等会偶发竞态：改为轮询就绪（1.5s 兜底） */
+  const t0 = Date.now();
+  while (Date.now() - t0 < 1500 &&
+    h.window.document.querySelectorAll('.cell .mk, .cell .stone').length < 2) {
+    await wait(25);
+  }
   const filled = h.window.document.querySelectorAll('.cell .mk, .cell .stone').length;
   assert.equal(filled, 2, 'AI 应已应一手');
   h.window.document.querySelector('[data-act="undo"]').click();
