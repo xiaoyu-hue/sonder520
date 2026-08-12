@@ -749,6 +749,8 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     });
     function esc(v) {
       v = String(v === null || v === undefined ? '' : v);
+      /* 防公式注入：以 = + - @ 开头的字段在 Excel/WPS 会被当公式执行，前置单引号转为文本 */
+      if (/^[=+\-@]/.test(v)) v = "'" + v;
       if (/[",\r\n]/.test(v)) v = '"' + v.replace(/"/g, '""') + '"';
       return v;
     }
@@ -924,6 +926,11 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     var st = this.state;
     var tasksAll = st.tasks;
     var grouped = groupTasks(tasksAll, todayStr());
+    var today = todayStr();
+    var doneToday = tasksAll.filter(function (t) {
+      if (!t.done || !t.doneAt) return false;
+      return fmtDate(new Date(t.doneAt)) === today;
+    }).length;
     var posts = st.posts;
     var pendingFollowups = 0;
     st.clients.forEach(function (c) { c.followups.forEach(function (f) { if (!f.done) pendingFollowups++; }); });
@@ -931,7 +938,7 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
       date: todayStr(),
       tasks: {
         total: tasksAll.length,
-        doneToday: grouped.done.length,
+        doneToday: doneToday,
         remaining: grouped.now.length + grouped.overdue.length + grouped.upcoming.length,
         current: grouped.now.length,
         overdue: grouped.overdue.length

@@ -83,10 +83,10 @@ test('游戏：认输产生记录并显示胜者', async () => {
   assert.equal(recs.length, 1);
   assert.equal(recs[0].kind, 'tictactoe');
   assert.equal(recs[0].mode, 'pvp');
-  assert.equal(recs[0].winner, 'X', '轮到 O 时认输，应判 X 胜');
+  assert.equal(recs[0].winner, 'O', '认输按钮归属主屏幕玩家（X），O 获胜');
   assert.equal(recs[0].byResign, true);
   const txt = h.window.document.body.textContent;
-  assert.ok(txt.includes('玩家1胜'), '战绩应有胜方标签');
+  assert.ok(txt.includes('玩家2胜'), '战绩应有胜方标签');
 });
 
 test('游戏：所有操作事务化存储与统计数据一致', () => {

@@ -57,6 +57,19 @@ test('井字棋：非法落子（占位/越界/终局后）', () => {
   assert.equal(G.place(g, 0, 1).ok, true);
 });
 
+test('棋类引擎：小数/NaN 坐标一律拒绝（与扫雷一致），不抛异常', () => {
+  const g = ttt();
+  for (const [r, c] of [[1.5, 0], [0, 2.5], [NaN, 0], [0, NaN], [0.1, 0.1]]) {
+    const a = G.place(g, r, c);
+    assert.strictEqual(a.ok, false, `place(${r},${c}) 拒绝`);
+    assert.strictEqual(g.moves.length, 0, '不得产生落子记录');
+    assert.strictEqual(g.turn, 'X', '不得换手');
+  }
+  const go = gomoku();
+  assert.strictEqual(G.place(go, 3.5, 4).ok, false, '五子棋小数拒绝');
+  assert.strictEqual(G.place(go, 0, 0).ok, true, '合法落子不受影响');
+});
+
 test('井字棋：悔棋恢复局面', () => {
   const g = ttt();
   G.place(g, 0, 0);

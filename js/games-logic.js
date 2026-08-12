@@ -52,12 +52,12 @@
     }
     return false;
   }
-  function gomokuWins(board, r, c, p) {
+  function gomokuWins(board, size, r, c, p) {
     for (var i = 0; i < DIRS.length; i++) {
       var d = DIRS[i], n = 1, s, rr, cc;
       for (s = -1; s <= 1; s += 2) {
         rr = r + d[0] * s; cc = c + d[1] * s;
-        while (rr >= 0 && rr < 15 && cc >= 0 && cc < 15 && board[rr][cc] === p) {
+        while (rr >= 0 && rr < size && cc >= 0 && cc < size && board[rr][cc] === p) {
           n++; rr += d[0] * s; cc += d[1] * s;
         }
       }
@@ -110,11 +110,12 @@
     var g = game, size = g.size, p;
     if (g.over) return { ok: false, error: '本局已结束' };
     if (r < 0 || c < 0 || r >= size || c >= size) return { ok: false, error: '位置超出棋盘' };
+    if (r % 1 !== 0 || c % 1 !== 0) return { ok: false, error: '位置非法' };
     if (g.board[r][c] !== null) return { ok: false, error: '该位置已有棋子' };
     p = g.turn;
     g.board[r][c] = p;
     g.moves.push({ r: r, c: c, p: p });
-    var win = g.kind === 'tictactoe' ? tttWins(g.board, r, c, p) : gomokuWins(g.board, r, c, p);
+    var win = g.kind === 'tictactoe' ? tttWins(g.board, r, c, p) : gomokuWins(g.board, g.size, r, c, p);
     if (win) {
       g.winner = p;
       g.over = true;
@@ -178,6 +179,7 @@
   function tttAiMove(game, aiStone, diff) {
     var board = game.board, best = null, bestScore = -Infinity, i, j, sc;
     var empties = emptyCells(game);
+    if (!empties.length) return null;
     if (diff === 'easy') return randOf(empties);
     if (diff === 'normal' && Math.random() < 0.25) return randOf(empties);
     for (i = 0; i < 3; i++) for (j = 0; j < 3; j++) {
@@ -224,7 +226,7 @@
     for (var r = 0; r < size; r++) for (var c = 0; c < size; c++) {
       if (board[r][c] !== null) continue;
       board[r][c] = p;
-      var w = gomokuWins(board, r, c, p);
+      var w = gomokuWins(board, size, r, c, p);
       board[r][c] = null;
       if (w) return { r: r, c: c };
     }
@@ -299,7 +301,7 @@
         var bm = gomokuBestMove(board, size, opp);
         var loss = 0;
         if (bm) {
-          var w = gomokuWins(board, bm.r, bm.c, opp);
+          var w = gomokuWins(board, size, bm.r, bm.c, opp);
           loss = w ? 500000 : evalCell(board, size, bm.r, bm.c, aiStone);
         }
         board[m.r][m.c] = null;
@@ -402,6 +404,7 @@
     }
     s.board = b;
     s.first = false;
+    s.mines = placed; /* 排除区过大时实际布雷数可能少于请求，以实盘为准 */
     return b;
   }
   function mineNeighbors(s, r, c) {
@@ -459,7 +462,21 @@
     if (cell.revealed) return { ok: false, error: '已翻开的格子不能标记' };
     cell.flagged = !cell.flagged;
     s.flagged += cell.flagged ? 1 : -1;
+    /* 旗数等于雷数且全部标对 → 判胜，避免错旗导致无法翻开的死局 */
+    if (s.flagged === s.mines && mineAllFlaggedCorrect(b)) {
+      s.over = true;
+      s.won = true;
+      return { ok: true, flagged: cell.flagged, won: true, over: true, left: 0 };
+    }
     return { ok: true, flagged: cell.flagged, left: s.mines - s.flagged };
+  }
+  function mineAllFlaggedCorrect(b) {
+    for (var i = 0; i < b.length; i++) {
+      for (var j = 0; j < b[i].length; j++) {
+        if (b[i][j].flagged && !b[i][j].mine) return false;
+      }
+    }
+    return true;
   }
 
   /* ================================================================

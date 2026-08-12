@@ -99,6 +99,19 @@ test('CSV 特殊字符转义', () => {
   assert.ok(csv.includes('和换行'));
 });
 
+test('CSV 公式注入防护：首字符 =+-@ 前置单引号转文本', () => {
+  const s = newStore();
+  s.addPost({ title: '=cmd|calc!A0', note: '+SUM(A1)', account: '-1+1', platform: '@x' });
+  const csv = S.toCSV(s.state.posts);
+  const rows = csv.split('\n');
+  const row = rows[1];
+  assert.ok(row.startsWith("'=cmd|calc!A0"), '= 开头须前置单引号');
+  assert.ok(row.includes("'+SUM(A1)"), '+ 开头须前置单引号');
+  assert.ok(row.includes("'-1+1"), '- 开头须前置单引号');
+  assert.ok(row.includes("'@x"), '@ 开头须前置单引号');
+  assert.ok(!csv.includes('=cmd|calc!A0\t') && !/^=cmd/m.test(csv), '不得出现裸露公式字段');
+});
+
 test('开发工作：项目 + 子任务 + 进度计算', () => {
   const s = newStore();
   const p = s.addDevProject({ name: 'Sonder', note: '备注' });
@@ -218,6 +231,16 @@ test('summarize：统计与各模块数据一致', () => {
   assert.equal(sum.tasks.overdue, 1);
   assert.equal(sum.tasks.doneToday, 1);
   assert.equal(sum.selfmedia.total, 1);
+});
+
+test('summarize：doneToday 只统计今天完成（历史完成不计入）', () => {
+  const s = newStore();
+  s.addTask({ title: '今', date: S.todayStr() });
+  s.addTask({ title: '昨', date: S.todayStr(), done: true, doneAt: '2000-01-01T10:00:00.000Z' });
+  s.updateTask(s.state.tasks[0].id, { done: true });
+  const sum = s.summarize();
+  assert.equal(sum.tasks.total, 2);
+  assert.equal(sum.tasks.doneToday, 1, '仅今天完成的任务计入 doneToday');
 });
 
 test('clearAll 清空', () => {

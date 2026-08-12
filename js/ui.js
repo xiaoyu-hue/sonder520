@@ -27,7 +27,7 @@
   function sanitizeUrl(u) {
     var s = String(u === null || u === undefined ? '' : u).trim();
     if (!s) return s;
-    if (/^javascript:|^data:|^vbscript:/i.test(s)) return '';
+    if (/^javascript:|^data:|^vbscript:|^file:/i.test(s)) return '';
     /* 返回值用于拼进 HTML 属性（href），必须转义引号与 &，防属性闭合注入（如 " onmouseover="） */
     return s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
@@ -154,7 +154,9 @@
       } else if (f.type === 'textarea') {
         html += '<textarea data-k="' + f.key + '" placeholder="' + esc(f.placeholder || '') + '">' + esc(val) + '</textarea>';
       } else {
-        html += '<input type="' + (f.type || 'text') + '" data-k="' + f.key + '" value="' + esc(val) + '" placeholder="' + esc(f.placeholder || '') + '" step="' + (f.step !== undefined ? esc(f.step) : 'any') + '">';
+        html += '<input type="' + (f.type || 'text') + '" data-k="' + f.key + '" value="' + esc(val) + '" placeholder="' + esc(f.placeholder || '') + '" step="' + (f.step !== undefined ? esc(f.step) : 'any') + '"' +
+          (f.min !== undefined ? ' min="' + esc(f.min) + '"' : '') +
+          (f.max !== undefined ? ' max="' + esc(f.max) + '"' : '') + '>';
       }
       html += '<div class="hint" style="display:none"></div></div>';
       return html;
@@ -175,8 +177,20 @@
       fields.forEach(function (f) {
         var node = /** @type {HTMLInputElement|HTMLSelectElement|HTMLTextAreaElement|null} */ (ov.querySelector('[data-k="' + f.key + '"]'));
         var val = node ? node.value : '';
-        v[f.key] = (f.type === 'number') ? Number(val) : val;
-        if (f.required && !String(val).trim()) badNodes.push({ node: node, label: f.label || f.key });
+        if (f.type === 'number') {
+          var num = Number(val);
+          if (val.trim() === '') {
+            v[f.key] = null;
+          } else if (!isFinite(num)) {
+            v[f.key] = num;
+            badNodes.push({ node: node, label: f.label || f.key, msg: '请输入有效数字' });
+          } else {
+            v[f.key] = num;
+          }
+        } else {
+          v[f.key] = val;
+        }
+        if (f.required && !String(val).trim()) badNodes.push({ node: node, label: f.label || f.key, msg: '请填写' + (f.label || f.key) });
       });
       return { v: v, badNodes: badNodes };
     }
@@ -192,7 +206,7 @@
     /** @type {HTMLButtonElement} */ (ov.querySelector('[data-act="ok"]')).onclick = function () {
       var r = collect();
       if (r.badNodes.length) {
-        r.badNodes.forEach(function (b) { showErr(b.node, '请填写' + b.label); });
+        r.badNodes.forEach(function (b) { showErr(b.node, b.msg || '请填写' + b.label); });
         return;
       }
       var res = opts.onSubmit(r.v);

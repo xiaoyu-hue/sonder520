@@ -21,7 +21,7 @@
 
   function clientCard(c, ctx) {
     var UI = ctx.UI, store = ctx.store;
-    var total = c.income.reduce(function (s, i) { return s + (Number(i.amount) || 0); }, 0);
+    var total = Math.round(c.income.reduce(function (s, i) { return s + (Number(i.amount) || 0); }, 0) * 100) / 100;
     var open = expanded[c.id];
     var card = UI.el(
       '<div class="card" style="margin-bottom:14px" data-client="' + c.id + '">' +
@@ -233,6 +233,7 @@
         { key: 'note', label: '备注', type: 'text', value: target ? target.note : '' }
       ],
       onSubmit: function (v) {
+        if (v.amount === null || !(v.amount >= 0)) return '金额需为非负数字';
         if (target) ctx.store.updateClientIncome(clientId, target.id, v);
         else ctx.store.addClientIncome(clientId, v);
         ctx.UI.toast('已保存'); render(ctx); return true;

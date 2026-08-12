@@ -41,6 +41,7 @@ test('sanitizeUrl：拦截危险协议，放行安全地址', () => {
   assert.equal(U.sanitizeUrl('javascript:alert(1)'), '', '应拦截 javascript:');
   assert.equal(U.sanitizeUrl('data:text/html,x'), '', '应拦截 data:');
   assert.equal(U.sanitizeUrl('vbscript:msgbox(1)'), '', '应拦截 vbscript:');
+  assert.equal(U.sanitizeUrl('file:///C:/secret.txt'), '', '应拦截 file:');
   assert.equal(U.sanitizeUrl('https://example.com/a?b=1'), 'https://example.com/a?b=1', 'http(s) 放行');
   assert.equal(U.sanitizeUrl('/css/style.css'), '/css/style.css', '相对路径放行');
   assert.equal(U.sanitizeUrl('mailto:a@b.com'), 'mailto:a@b.com', 'mailto 放行');

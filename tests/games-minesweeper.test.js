@@ -130,6 +130,35 @@ test('扫雷逻辑：标记/取消标记，已标记格不可翻开', () => {
   assert.equal(G.mineReveal(s, 0, 0).ok, false, '已标记雷格拒绝翻开');
 });
 
+test('扫雷逻辑：标全雷即判胜；错旗不判胜（消除错旗死局）', () => {
+  const w = G.mineStart(3, 3, 1);
+  w.board = boardFrom([
+    ['*', '.', '.'],
+    ['.', '.', '.'],
+    ['.', '.', '.']
+  ]);
+  w.first = false;
+  let r = G.mineToggleFlag(w, 1, 1);
+  assert.equal(r.ok, true);
+  assert.equal(r.over, undefined, '错旗（非雷格）不判胜');
+  assert.equal(w.over, false, '错旗后游戏继续，玩家可纠正');
+  G.mineToggleFlag(w, 1, 1);
+  assert.equal(G.mineToggleFlag(w, 0, 0).ok, true, '标在雷上');
+  assert.equal(w.over, true, '旗数等于雷数且全部标对 → 判胜');
+  assert.equal(w.won, true, '判胜为胜局');
+
+  const c = G.mineStart(3, 3, 1);
+  c.board = boardFrom([
+    ['*', '.', '.'],
+    ['.', '.', '.'],
+    ['.', '.', '.']
+  ]);
+  c.first = false;
+  G.mineToggleFlag(c, 0, 0);
+  assert.equal(c.over, true, '唯一雷标对即胜');
+  assert.equal(c.won, true);
+});
+
 /* ================= UI ================= */
 
 test('扫雷 UI：进入视图，网格与难度齐全，剩余雷数显示', () => {
@@ -173,6 +202,31 @@ test('扫雷 UI：翻格与插旗交互，踩雷结束并计入战绩', () => {
   doc.querySelector('[data-mact="again"]').click();
   assert.equal(doc.querySelectorAll('.ms-cell').length, 81, '再来一局重开');
   assert.equal(h.store.state.miniRecords.minesweeper.wins, 0, '未胜局胜场为 0');
+});
+
+test('扫雷 UI：插旗标对全部雷 → 胜利并计入战绩（错旗不触发）', () => {
+  const h = boot();
+  h.goto('game');
+  h.window.document.querySelector('[data-pick="minesweeper"]').click();
+  h.window.__gamesDbg.setMineField(9, 9, [[2, 2], [5, 5], [7, 7]]);
+  const doc = h.window.document;
+  function cellAt(r, c) {
+    return doc.querySelector('.ms-cell[data-r="' + r + '"][data-c="' + c + '"]');
+  }
+  doc.querySelector('#msFlagMode').click();
+  cellAt(1, 1).click();
+  assert.equal(h.window.__gamesDbg().mini.over, false, '插错旗不结束');
+  cellAt(1, 1).click();
+  cellAt(2, 2).click();
+  cellAt(5, 5).click();
+  assert.equal(h.window.__gamesDbg().mini.over, false, '旗数未满不判胜');
+  cellAt(7, 7).click();
+  assert.equal(h.window.__gamesDbg().mini.over, true, '3/3 雷标对即判胜');
+  assert.equal(h.window.__gamesDbg().mini.won, true, '胜局');
+  assert.ok(doc.body.textContent.includes('扫雷成功'), '页面显示胜利提示');
+  assert.equal(h.store.state.miniRecords.minesweeper.wins, 1, '胜场持久化');
+  assert.equal(h.store.state.gameRecords[0].winner, 'player', '对局记录为胜');
+  assert.ok(doc.querySelectorAll('.ms-cell.wrong-flag').length === 0, '无错旗标注');
 });
 
 test('扫雷 UI：再来一局与难度切换持久化偏好', () => {

@@ -60,6 +60,32 @@ test('formModal：onSubmit 返回错误字符串则保持打开并提示', () =>
   assert.equal(hint.textContent, '不能重复添加');
 });
 
+test('formModal：number 空值提交 null、非法数字被拦截提示、min/max 属性渲染', () => {
+  const { window } = boot();
+  const UI = window.UI;
+  let submitted = null;
+  UI.formModal({
+    title: '数字',
+    fields: [
+      { key: 'n1', label: '必填数', type: 'number', required: true, min: 0, max: 100 },
+      { key: 'n2', label: '可选数', type: 'number' }
+    ],
+    onSubmit: (v) => { submitted = v; return true; }
+  });
+  const doc = window.document;
+  const n1 = doc.querySelector('[data-k="n1"]');
+  assert.equal(n1.getAttribute('min'), '0', 'min 属性渲染');
+  assert.equal(n1.getAttribute('max'), '100', 'max 属性渲染');
+  n1.value = 'abc';
+  doc.querySelector('[data-act="ok"]').click();
+  assert.equal(submitted, null, '非法数字不提交');
+  assert.equal(doc.querySelector('.modal .hint').style.display, 'block', '非法数字提示');
+  n1.value = '50';
+  doc.querySelector('[data-act="ok"]').click();
+  assert.equal(submitted.n1, 50, '合法数字提交');
+  assert.equal(submitted.n2, null, 'number 空值提交 null 而非 NaN');
+});
+
 test('confirmBox：点确认返回 true，点取消返回 false', async () => {
   const { window } = boot();
   const UI = window.UI;

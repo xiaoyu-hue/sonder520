@@ -88,8 +88,10 @@
     /* 状态分布环形图（conic-gradient） */
     var total = Math.max(1, stats.total);
     var cum = 0;
-    var stops = stats.byStatus.map(function (s) {
+    var stops = stats.byStatus.map(function (s, i) {
       var pct = Math.round((s.count / total) * 100);
+      /* 末段兜底，保证分段总和恰为 100，避免 conic-gradient 缺口 */
+      if (i === stats.byStatus.length - 1) pct = Math.max(0, 100 - cum);
       var stop = s.color + ' ' + cum + '% ' + (cum + pct) + '%';
       cum += pct;
       return stop;
@@ -194,9 +196,10 @@
         { key: 'title', label: '书名', type: 'text', required: true, value: target ? target.title : '' },
         { key: 'author', label: '作者', type: 'text', value: target ? target.author : '' },
         { key: 'status', label: '状态', type: 'select', value: target ? target.status : '想读', options: ['想读', '在读', '已读完'] },
-        { key: 'progress', label: '进度(%)', type: 'number', required: true, value: target ? target.progress : 0 }
+        { key: 'progress', label: '进度(%)', type: 'number', required: true, min: 0, max: 100, value: target ? target.progress : 0 }
       ],
       onSubmit: function (v) {
+        if (v.progress !== null && (v.progress < 0 || v.progress > 100)) return '进度需在 0~100 之间';
         if (target) ctx.store.updateBook(target.id, v);
         else ctx.store.addBook(v);
         ctx.UI.toast('已保存'); render(ctx); return true;

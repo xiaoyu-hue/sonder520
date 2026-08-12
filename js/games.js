@@ -156,7 +156,7 @@
       '<button class="btn primary" id="mgGo" type="button" style="min-height:44px">猜！</button>' +
       '</div>' +
       '<div class="mg-hist" id="mgHist" role="status" aria-live="polite">' + histHtml(g) + '</div>' +
-      (g.over ? '<div class="mg-result" id="mgResult">' + resultHtml(g, best) + '</div>' : '') +
+      (g.over ? '<div class="mg-result" id="mgResult">' + resultHtml(g, state.mini.newBest) + '</div>' : '') +
       '<div class="row" style="margin-top:12px">' +
       '<button class="btn" data-mact="again" type="button" style="min-height:44px">🔄 再来一局</button>' +
       '</div>' +
@@ -168,6 +168,11 @@
       var res = G.guessNumTry(g, v);
       if (!res.ok) { UI.toast(res.error, 'err'); return; }
       if (res.win || res.lose) {
+        if (res.win) {
+          var oldBest = miniBest('guessnum');
+          state.mini.newBest = oldBest === null || g.attempts.length < oldBest;
+          if (state.mini.newBest) saveMiniBest('guessnum', g.attempts.length);
+        }
         ctx.store.addGameRecord({
           kind: 'guessnum', mode: 'solo', player: 'player',
           winner: res.win ? 'player' : 'opponent',
@@ -280,17 +285,11 @@ function histHtml(g) {
     return '<div style="margin-top:10px">' + rows + '</div>';
   }
 
-  function resultHtml(g, best) {
-    var html;
+  function resultHtml(g, isNewBest) {
     if (g.won) {
-      var nb = best === null || g.attempts.length < best ? g.attempts.length : best;
-      saveMiniBest('guessnum', nb);
-      html = '🎉 猜中了！用了 <b>' + g.attempts.length + '</b> 次' +
-        (nb === g.attempts.length ? '，新纪录！' : '');
-    } else {
-      html = '机会用完了，答案是 <b>' + g.target + '</b>，下次加油！';
+      return '🎉 猜中了！用了 <b>' + g.attempts.length + '</b> 次' + (isNewBest ? '，新纪录！' : '');
     }
-    return html;
+    return '机会用完了，答案是 <b>' + g.target + '</b>，下次加油！';
   }
 
   function mineCellsHtml(g, UI) {
@@ -341,6 +340,21 @@ function histHtml(g) {
     });
   }
 
+  function finishMinesweeper(ctx, won) {
+    var rec = miniRec('minesweeper');
+    rec.wins = (rec.wins || 0) + (won ? 1 : 0);
+    rec.losses = (rec.losses || 0) + (won ? 0 : 1);
+    rec.diff = state.mini.diff;
+    saveMiniRec('minesweeper', rec);
+    ctx.store.addGameRecord({
+      kind: 'minesweeper', mode: 'solo', player: 'player',
+      winner: won ? 'player' : 'opponent',
+      difficulty: state.mini.diff,
+      note: won ? '扫清全部地雷' : ('踩中地雷，雷数 ' + state.mini.g.mines)
+    });
+    render(ctx);
+  }
+
   function mineCellClick(ctx, cell) {
     var g = state.mini.g;
     if (g.over) return;
@@ -353,19 +367,7 @@ function histHtml(g) {
     var res = G.mineReveal(g, r, c);
     if (!res.ok) { ctx.UI.toast(res.error, 'err'); return; }
     if (res.over) {
-      var rec = miniRec('minesweeper');
-      var won = res.won;
-      rec.wins = (rec.wins || 0) + (won ? 1 : 0);
-      rec.losses = (rec.losses || 0) + (won ? 0 : 1);
-      rec.diff = state.mini.diff;
-      saveMiniRec('minesweeper', rec);
-      ctx.store.addGameRecord({
-        kind: 'minesweeper', mode: 'solo', player: 'player',
-        winner: won ? 'player' : 'opponent',
-        difficulty: state.mini.diff,
-        note: won ? '扫清全部地雷' : ('踩中地雷，雷数 ' + g.mineCount)
-      });
-      render(ctx);
+      finishMinesweeper(ctx, !!res.won);
       return;
     }
     render(ctx);
@@ -376,6 +378,10 @@ function histHtml(g) {
     if (g.over) return;
     var res = G.mineToggleFlag(g, Number(cell.dataset.r), Number(cell.dataset.c));
     if (!res.ok) { ctx.UI.toast(res.error, 'err'); return; }
+    if (res.over) {
+      finishMinesweeper(ctx, !!res.won);
+      return;
+    }
     render(ctx);
   }
 
@@ -772,7 +778,7 @@ function histHtml(g) {
     if (!g.moves.length) { UI.toast('还没落子，先下一手吧', 'err'); return; }
     askConfirm(ctx, state.mode === 'ai' ? '确定认输？本局判给 AI 获胜' : '确定认输？本局判给对面获胜', '认输').then(function (ok) {
       if (ok !== true) return;
-      G.resign(g, state.mode === 'ai' ? state.playerStone : g.turn);
+      G.resign(g, state.mode === 'ai' ? state.playerStone : 'X');
       recordMatch(ctx);
       UI.toast('你已认输');
       render(ctx);
@@ -964,6 +970,7 @@ function histHtml(g) {
     s.first = false;
     s.revealed = 0;
     s.flagged = 0;
+    s.mines = mineList.length; /* 以实盘为准 */
     render(currentCtx);
   };
 /* 测试钩子：注入确定的猜成语答案（仅测试用） */
