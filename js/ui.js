@@ -144,7 +144,7 @@
       var html = '<div class="field"><label>' + esc(f.label || f.key) + '</label>';
       var val = f.value === undefined || f.value === null ? '' : f.value;
       if (f.type === 'select') {
-        html += '<select data-k="' + f.key + '">';
+        html += '<select data-k="' + esc(f.key) + '">';
         (f.options || []).forEach(function (o) {
           var ov = (typeof o === 'object') ? o.value : o;
           var ol = (typeof o === 'object') ? o.label : o;
@@ -152,9 +152,9 @@
         });
         html += '</select>';
       } else if (f.type === 'textarea') {
-        html += '<textarea data-k="' + f.key + '" placeholder="' + esc(f.placeholder || '') + '">' + esc(val) + '</textarea>';
+        html += '<textarea data-k="' + esc(f.key) + '" placeholder="' + esc(f.placeholder || '') + '">' + esc(val) + '</textarea>';
       } else {
-        html += '<input type="' + (f.type || 'text') + '" data-k="' + f.key + '" value="' + esc(val) + '" placeholder="' + esc(f.placeholder || '') + '" step="' + (f.step !== undefined ? esc(f.step) : 'any') + '"' +
+        html += '<input type="' + (f.type || 'text') + '" data-k="' + esc(f.key) + '" value="' + esc(val) + '" placeholder="' + esc(f.placeholder || '') + '" step="' + (f.step !== undefined ? esc(f.step) : 'any') + '"' +
           (f.min !== undefined ? ' min="' + esc(f.min) + '"' : '') +
           (f.max !== undefined ? ' max="' + esc(f.max) + '"' : '') + '>';
       }
@@ -174,8 +174,12 @@
     function collect() {
       var v = {};
       var badNodes = [];
+      var nodes = Array.prototype.slice.call(ov.querySelectorAll('[data-k]'));
       fields.forEach(function (f) {
-        var node = /** @type {HTMLInputElement|HTMLSelectElement|HTMLTextAreaElement|null} */ (ov.querySelector('[data-k="' + f.key + '"]'));
+        var node = null;
+        for (var i = 0; i < nodes.length; i++) {
+          if (nodes[i].getAttribute('data-k') === f.key) { node = nodes[i]; break; }
+        }
         var val = node ? node.value : '';
         if (f.type === 'number') {
           var num = Number(val);

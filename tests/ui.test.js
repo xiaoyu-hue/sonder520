@@ -86,6 +86,24 @@ test('formModal：number 空值提交 null、非法数字被拦截提示、min/m
   assert.equal(submitted.n2, null, 'number 空值提交 null 而非 NaN');
 });
 
+test('formModal：字段 key 含特殊字符时属性转义，collect 仍能取到值', () => {
+  const { window } = boot();
+  const UI = window.UI;
+  let submitted = null;
+  UI.formModal({
+    title: '恶意 key',
+    fields: [{ key: 'a" onmouseover="window.__pwned=1', label: 'A' }],
+    onSubmit: (v) => { submitted = v; return true; }
+  });
+  const doc = window.document;
+  const inp = doc.querySelector('input[data-k]');
+  assert.ok(inp, '输入框渲染');
+  assert.equal(window.__pwned, undefined, 'key 不得逃逸出属性注入事件');
+  inp.value = '值X';
+  doc.querySelector('[data-act="ok"]').click();
+  assert.equal(submitted && submitted['a" onmouseover="window.__pwned=1'], '值X', 'collect 用转义后的选择器取到值');
+});
+
 test('confirmBox：点确认返回 true，点取消返回 false', async () => {
   const { window } = boot();
   const UI = window.UI;
