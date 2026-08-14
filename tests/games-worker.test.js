@@ -171,3 +171,35 @@ test('游戏：无 Worker 环境五子棋 AI 走同步路径（回归）', async
   assert.equal(gomokuStone(h), 1, '无 Worker 时 AI 应同步应手');
   assert.equal(h.window.__gamesDbg().worker, false);
 });
+
+test('游戏：worker 永不回复时超时同步兜底，对局不锁死', async () => {
+  const h = boot();
+  h.window.Worker = FakeWorker;
+  h.goto('game');
+  h.window.document.querySelector('[data-pick="gomoku"]').click();
+  cell(h, 7, 7).click();            /* X → AI 思考中，worker 被创建但永不回复 */
+  const w = FakeWorker.last;
+  assert.equal(w.sent.length, 1, '应投递一次 AI 计算');
+  const t0 = Date.now();
+  while (Date.now() - t0 < 6000 && gomokuStone(h) === 0) await wait(50);
+  assert.equal(gomokuStone(h), 1, 'worker 挂起应超时同步兜底落子');
+  assert.equal(h.window.__gamesDbg().busy, false, '超时后 busy 必须复位，棋盘可继续操作');
+  assert.equal(h.window.__gamesDbg().worker, true, '单次超时不应禁用 worker（下次仍尝试 worker）');
+});
+
+test('游戏：worker 超时兜底落子后，迟到回复被守卫丢弃', async () => {
+  const h = boot();
+  h.window.Worker = FakeWorker;
+  h.goto('game');
+  h.window.document.querySelector('[data-pick="gomoku"]').click();
+  cell(h, 7, 7).click();
+  const w = FakeWorker.last;
+  const id = w.sent[0].id;
+  const t0 = Date.now();
+  while (Date.now() - t0 < 6000 && gomokuStone(h) === 0) await wait(50);
+  assert.equal(gomokuStone(h), 1, '超时兜底应已完成落子');
+  w.fire({ id: id, mv: { r: 1, c: 1 } });   /* 迟到的原回复 */
+  await wait(50);
+  assert.equal(gomokuStone(h), 1, '迟到回复不得再落子');
+  assert.ok(!cell(h, 1, 1).querySelector('.stone'), '(1,1) 应仍为空');
+});

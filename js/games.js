@@ -14,6 +14,7 @@
   var aiWorker = null;
   var aiSeq = 0; /* 递增序号：悔棋/重开/切换时作废在途 AI 回复；同时用作 worker 消息 id */
   var aiWaitCtx = null; /* 等待 worker 回复期间的 ctx 快照（onerror/兜底使用） */
+  var WORKER_TIMEOUT = 3000; /* worker 回复最大等待：超过即视为挂起，走同步兜底防死锁 */
   var confirmOpen = false;
 
   var DIFF_LABEL = { easy: '简单', normal: '普通', hard: '困难', mid: '中等' };
@@ -762,6 +763,7 @@ function histHtml(g) {
     /* 五子棋：优先交给 Worker 异步计算（结构化克隆投递，不阻塞主线程）；失败自动回退同步 */
     if (g.kind === 'gomoku' && ensureAiWorker()) {
       aiWaitCtx = ctx;
+      aiTimer = setTimeout(workerTimeout, WORKER_TIMEOUT); /* P5f：worker 挂起/永不回复时同步兜底，防止 busy 永久锁死棋盘 */
       aiWorker.postMessage({ id: ++aiSeq, game: g, stone: aiStone(), diff: state.difficulty });
       return;
     }
@@ -803,7 +805,7 @@ function histHtml(g) {
     var d = e && e.data;
     if (!d || d.id !== aiSeq) return;
     aiSeq++; /* 本回复已消费，后续同 id 消息视为过期 */
-    aiTimer = null;
+    if (aiTimer) { clearTimeout(aiTimer); aiTimer = null; } /* 取消在看守的 watchdog */
     busy = false;
     var g = state.game;
     if (!g || g.over || g.turn !== aiStone()) return;
@@ -815,6 +817,12 @@ function histHtml(g) {
     var res = G.place(g, mv.r, mv.c);
     render(ctx);
     if (res.winner || res.draw) recordEnd(ctx);
+  }
+
+  /* worker 回复超时：AI 思考中未收到回复则同步兜底（fallbackSyncAi 内部先复位状态再守卫，
+   * 若玩家已悔棋/切走/对局结束则静默作废） */
+  function workerTimeout() {
+    fallbackSyncAi();
   }
 
   /* worker 异常/超时兜底：同步重算落子（保证 AI 对局不卡死） */
