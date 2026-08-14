@@ -9,9 +9,9 @@ const read = p => fs.readFileSync(path.join(root, p), 'utf8');
 const INDEX = read('index.html');
 const SW = read('sw.js');
 
-/* 用与 scripts/sync-sw.js 相同的解析逻辑提取 sw.js 的 ASSETS */
+/* 用与 scripts/sync-sw.js 相同的解析逻辑提取 sw.js 的 ASSETS（不依赖行尾，兼容 CRLF/LF） */
 function swAssets() {
-  const start = SW.indexOf('var ASSETS = [\n');
+  const start = SW.indexOf('var ASSETS = [');
   const end = SW.indexOf('];', start);
   return SW.slice(start, end)
     .split('\n')
