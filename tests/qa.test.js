@@ -3,7 +3,7 @@ const { test } = require('node:test');
 const assert = require('node:assert');
 const fs = require('node:fs');
 const path = require('node:path');
-const { boot } = require('./harness.js');
+const { boot, waitFor } = require('./harness.js');
 
 const root = path.join(__dirname, '..');
 const S = require(path.join(root, 'js', 'store.js'));
@@ -11,16 +11,6 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
 
 function cell(h, r, c) {
   return h.window.document.querySelector('.cell[data-r="' + r + '"][data-c="' + c + '"]');
-}
-
-/* 轮询等待条件成立（AI 落子为异步 setTimeout，固定 wait 在慢机器上会竞态失败） */
-async function waitFor(pred, what, timeoutMs = 3000) {
-  const deadline = Date.now() + timeoutMs;
-  while (Date.now() < deadline) {
-    if (pred()) return;
-    await wait(25);
-  }
-  throw new Error('waitFor 超时: ' + what);
 }
 
 test('QA：今日计划刷新/保存不重复渲染且不崩溃', () => {
@@ -170,7 +160,7 @@ test('QA：游戏中快速切换模式，对局状态保持合法（不重复落
   const firstSel = doc.querySelector('#gFirst');
   firstSel.value = 'O';
   firstSel.dispatchEvent(new h.window.Event('change', { bubbles: true }));
-  await wait(400);
+  await waitFor(() => doc.querySelectorAll('#gBoard .mk.x').length === 1, 'AI 先手落子');
   assert.equal(doc.querySelectorAll('#gBoard .mk.x').length, 1, 'AI 应已先手落子');
   cell(h, 1, 1).click();
   doc.querySelector('[data-mode="pvp"]').click();
@@ -408,11 +398,11 @@ test('QA：AI 思考期间切页不劫持当前页面，切回后自动续走', 
   doc.querySelector('[data-pick="tictactoe"]').click();
   cell(h, 0, 0).click(); /* 玩家落子，AI 220ms 后思考 */
   h.goto('home'); /* 立即切页 */
-  await wait(350); /* 越过 AI 延时窗口 */
+  await waitFor(() => !h.window.__gamesDbg().busy, 'AI 思考结束'); /* 越过 AI 延时窗口 */
   assert.ok(!doc.querySelector('#gStatus'), '切走的页面不得出现游戏棋盘（未被劫持）');
   assert.ok(doc.querySelector('#quickMemo') || doc.body.textContent.includes('今日'), 'home 内容保持');
   h.goto('game'); /* 切回 */
-  await wait(400);
+  await waitFor(() => doc.querySelectorAll('#gBoard .mk').length === 2, 'AI 自动续走');
   assert.equal(doc.querySelectorAll('#gBoard .mk').length, 2, 'AI 应自动续走完成一回合');
   assert.equal(h.window.__gamesDbg().busy, false, 'AI 思考状态复位');
 });

@@ -105,3 +105,17 @@ module.exports = { boot: boot };
 module.exports.root = root;
 module.exports.SCRIPT_ORDER = SCRIPT_ORDER;
 module.exports.parseIndexScripts = parseIndexScripts;
+
+/* 轮询等待同步谓词成立（如 AI 异步落子、IDB 事务完成）。
+ * 固定 wait(n) 在慢机器上会竞态失败，快机器上又浪费时间——统一用 waitFor。 */
+function waitFor(pred, what, timeoutMs = 3000) {
+  const deadline = Date.now() + timeoutMs;
+  return new Promise((resolve, reject) => {
+    (function poll() {
+      if (pred()) return resolve();
+      if (Date.now() > deadline) return reject(new Error('waitFor 超时: ' + what));
+      setTimeout(poll, 25);
+    })();
+  });
+}
+module.exports.waitFor = waitFor;

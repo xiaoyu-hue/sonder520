@@ -1,7 +1,7 @@
 'use strict';
 const { test } = require('node:test');
 const assert = require('node:assert');
-const { boot } = require('./harness.js');
+const { boot, waitFor } = require('./harness.js');
 const LG = require('../js/games-logic.js');
 
 const wait = ms => new Promise(r => setTimeout(r, ms));
@@ -159,7 +159,7 @@ test('游戏：五子棋棋盘渲染与落子', async () => {
   assert.equal(boardSize(h), 225, '15×15 共 225 格');
   cell(h, 7, 7).click();
   assert.ok(h.window.document.querySelector('.cell[data-r="7"][data-c="7"] .stone.b'), '应先落黑子');
-  await wait(500);
+  await waitFor(() => h.window.document.querySelectorAll('.cell .stone').length === 2, 'AI 应一手');
   const stones = h.window.document.querySelectorAll('.cell .stone').length;
   assert.equal(stones, 2, 'AI 应已应一手');
 });

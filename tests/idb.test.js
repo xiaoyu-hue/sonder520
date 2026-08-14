@@ -2,7 +2,7 @@
 const { test } = require('node:test');
 const assert = require('node:assert');
 const { IDBFactory, IDBKeyRange } = require('fake-indexeddb');
-const { boot } = require('./harness.js');
+const { boot, waitFor } = require('./harness.js');
 const S = require('../js/store.js');
 
 const withIdb = (f, seed) => Object.assign({ idb: f, idbKeyRange: IDBKeyRange }, seed ? { seed } : {});
@@ -113,7 +113,10 @@ test('IndexedDB：设置页提供手动迁移按钮，点击后数据进入 IDB'
   const btn = h1.$('#btnMigrateIdb');
   assert.ok(btn, '设置页应有迁移按钮');
   btn.click();
-  await wait(60); // 等待 IDB 事务完成
+  await waitFor(() => {
+    const t = h1.window.document.querySelector('#toastWrap');
+    return !!t && /已迁移至 IndexedDB/.test(t.textContent || '');
+  }, 'IDB 迁移完成');
 
   const h2 = boot(withIdb(f));
   assert.equal(await h2.hooks.idbReady, true, '迁移后的数据应能从 IDB 恢复');
