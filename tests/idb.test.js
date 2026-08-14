@@ -6,7 +6,6 @@ const { boot, waitFor } = require('./harness.js');
 const S = require('../js/store.js');
 
 const withIdb = (f, seed) => Object.assign({ idb: f, idbKeyRange: IDBKeyRange }, seed ? { seed } : {});
-const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
 test('IndexedDB：无 IDB 环境安全降级（loadIdb 返回 false，保存不报错）', async () => {
   const h = boot();
