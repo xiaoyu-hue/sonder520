@@ -17,7 +17,7 @@
   var WORKER_TIMEOUT = 3000; /* worker 回复最大等待：超过即视为挂起，走同步兜底防死锁 */
   var confirmOpen = false;
 
-  var DIFF_LABEL = { easy: '简单', normal: '普通', hard: '困难', mid: '中等' };
+  var DIFF_LABEL = { easy: '简单', normal: '普通', hard: '困难' };
   var KIND_NAME = { tictactoe: '井字棋', gomoku: '五子棋', guessnum: '🎯 猜数字', minesweeper: '💣 扫雷', idiom: '📖 猜成语', brainteaser: '🧠 脑筋急转弯' };
   function diffOptions(sel) {
     var s = '';

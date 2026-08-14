@@ -428,7 +428,6 @@ interface SonderGameState {
 
 interface SonderGamesApi {
   createGame(kind: string): SonderGameState;
-  cloneGame(g: SonderGameState): SonderGameState;
   place(g: SonderGameState, r: number, c: number): { ok: boolean; winner?: string; draw?: boolean; error?: string };
   undo(g: SonderGameState): { ok: boolean; error?: string };
   resign(g: SonderGameState, player: string): { ok: boolean };

@@ -153,7 +153,6 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     if (p === 'p1' || p === 'p2' || p === 'p3' || p === 'p4') return p;
     return 'p2';
   }
-  var PRIORITY_LIST = ['p1', 'p2', 'p3', 'p4'];
 
   /* 把已持久化的数据与默认结构合并，保证缺字段时也有默认值 */
   function normalize(raw) {
@@ -1136,7 +1135,6 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     groupTasks: groupTasks,
     todayProgress: todayProgress,
     normalizePriority: normalizePriority,
-    PRIORITY_LIST: PRIORITY_LIST,
     filterPosts: filterPosts,
     collectTags: collectTags,
     publishedStats: publishedStats,

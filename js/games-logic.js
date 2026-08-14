@@ -31,9 +31,6 @@
       winLine: null
     };
   }
-  function cloneGame(g) {
-    return JSON.parse(JSON.stringify(g));
-  }
 
   /* ---------- 胜负判定 ---------- */
   function tttWins(board, r, c, p) {
@@ -575,7 +572,6 @@
 
   return {
     createGame: createGame,
-    cloneGame: cloneGame,
     place: place,
     undo: undo,
     resign: resign,

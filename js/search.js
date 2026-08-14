@@ -6,7 +6,7 @@
   var panel = document.getElementById('gsearchPanel');
   var UI = window.UI;
   var NAV_MODULE = { today: 'today', memo: 'memo', selfmedia: 'selfmedia', dev: 'dev', consulting: 'consulting', reading: 'reading', excerpts: 'excerpts', news: 'news', design: 'design', game: 'game' };
-  var GAME_KIND = { guessnum: '猜数字', minesweeper: '扫雷', idiom: '猜成语', brainteaser: '脑筋急转弯', ttt: '井字棋', gomoku: '五子棋' };
+  var GAME_KIND = { guessnum: '猜数字', minesweeper: '扫雷', idiom: '猜成语', brainteaser: '脑筋急转弯', gomoku: '五子棋' };
 
   function shortTime(t) {
     if (!t) return '';
