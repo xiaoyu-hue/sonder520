@@ -74,6 +74,10 @@ function boot(opts = {}) {
     window.__mm = mm;
   }
 
+  /* 门闩：仅测试进程暴露测试专用钩子字段（ctx/Pages/applyTheme 等）。
+   * 必须在脚本加载前注入，app.js 在自身执行期间判断该标志。 */
+  window.__SONDER_TEST__ = true;
+
   // 手工按顺序注入脚本（避免 file:// 下加载外部脚本的约束）
   SCRIPT_ORDER.forEach(f => {
     const code = fs.readFileSync(path.join(root, 'js', f), 'utf8');

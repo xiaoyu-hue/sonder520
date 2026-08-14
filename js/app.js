@@ -177,22 +177,25 @@
 
   function onHash() { render(); }
 
-  /* 测试钩子（对正常运行无害） */
+  /* 测试钩子（对正常运行无害）。生产必需字段常驻；仅测试用字段置于 __SONDER_TEST__ 门闩后，
+   * 正常访问无法取到内部实例（ctx/Pages 等），杜绝误用与注入面。 */
   window.__sonderHooks = {
     store: store,
-    ctx: ctx,
-    Pages: Pages,
     render: function (route) { location.hash = route; render(); },
-    applyTheme: applyTheme,
-    applyWallpaper: applyWallpaper,
-    applyFrame: applyFrame,
-    todayLine: todayLine,
     /* 启动时尝试从 IndexedDB 恢复（数据更大、更稳）；若采用则重绘当前页 */
     idbReady: store.loadIdb().then(function (applied) {
       if (applied) onHash();
       return applied;
     })
   };
+  if (window.__SONDER_TEST__) {
+    window.__sonderHooks.ctx = ctx;
+    window.__sonderHooks.Pages = Pages;
+    window.__sonderHooks.applyTheme = applyTheme;
+    window.__sonderHooks.applyWallpaper = applyWallpaper;
+    window.__sonderHooks.applyFrame = applyFrame;
+    window.__sonderHooks.todayLine = todayLine;
+  }
   window.__sonderHooks.idbReady.then(function () {
     if (store.needsUnlock()) { autoUnlockOnce(); }
     else { todayReminder(); }

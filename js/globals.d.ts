@@ -393,6 +393,7 @@ interface Window {
   SonderQuotes: { quoteOfDay(dateStr: string): string; quotes: string[] };
   UI: SonderUI;
   __sonderHooks: SonderHooks;
+  __SONDER_TEST__?: boolean;
   __sonderErrors: { list: SonderErrorEntry[]; readonly total: number; clear(): void; report(errOrMsg: string | Error, type?: string): void };
   __gamesDbg: any;
   __readingDbg: any;
@@ -449,17 +450,18 @@ interface SonderGamesApi {
 
 interface SonderHooks {
   store: SonderStoreImpl;
-  ctx: SonderCtx;
-  Pages: Record<string, SonderPage>;
   render(route: string): void;
-  applyTheme(): void;
-  applyWallpaper(): void;
-  applyFrame(): void;
-  todayLine(): void;
   idbReady: Promise<boolean>;
   todayReminder?: () => void;
   lockNow?: () => void;
   unlockNow?: () => void;
+  /* 测试专用钩子（__SONDER_TEST__ 门闩后注入，生产环境不存在） */
+  ctx?: SonderCtx;
+  Pages?: Record<string, SonderPage>;
+  applyTheme?: () => void;
+  applyWallpaper?: () => void;
+  applyFrame?: () => void;
+  todayLine?: () => void;
 }
 
 /* 部分代码直接裸用全局名（非 window. 前缀），声明为全局变量 */
