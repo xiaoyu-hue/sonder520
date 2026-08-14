@@ -92,6 +92,26 @@ test('扫雷移动端：长按后抬手产生的 click 被抑制，不误翻开'
   assert.equal(h.window.__gamesDbg().mini.revealed, 0, '未翻开任何格');
 });
 
+test('扫雷移动端：长按插旗后浏览器未补发 click（坐标抑制残留），主动短按同格不被误吞', async () => {
+  const h = boot();
+  h.goto('game');
+  h.window.document.querySelector('[data-pick="minesweeper"]').click();
+  h.window.__gamesDbg.setMineField(9, 9, [[2, 2], [5, 5], [7, 7]]);
+  const doc = h.window.document;
+  let cell = doc.querySelector('.ms-cell[data-r="1"][data-c="1"]');
+  cell.dispatchEvent(touchEvent(h.window, 'pointerdown'));
+  await new Promise(r => setTimeout(r, 450));
+  cell = doc.querySelector('.ms-cell[data-r="1"][data-c="1"]');
+  cell.dispatchEvent(touchEvent(h.window, 'pointerup'));
+  assert.equal(cell.textContent, '⚑', '长按插旗');
+  await new Promise(r => setTimeout(r, 200));
+  cell.dispatchEvent(touchEvent(h.window, 'pointerdown'));
+  cell.dispatchEvent(touchEvent(h.window, 'pointerup'));
+  cell.dispatchEvent(touchEvent(h.window, 'click'));
+  const toasts = Array.from(doc.querySelectorAll('#toastWrap .toast'));
+  assert.ok(toasts.length > 0 && toasts[toasts.length - 1].textContent.includes('已被标记'), '残留抑制未吞掉主动点击，正常反馈');
+});
+
 test('扫雷移动端：鼠标 pointerType 不启用长按', async () => {
   const h = boot();
   h.goto('game');

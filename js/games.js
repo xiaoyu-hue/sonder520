@@ -376,18 +376,10 @@ function histHtml(g) {
 
   /* 移动端交互：单击翻开（由 click 触发）、长按 350ms 插旗（仅触屏/手写笔）。
    * pointerdown 启动定时器并显示 .long-pressing 高亮；位移 >10px 或 pointercancel（滚动）取消。
-   * 插旗后 render(ctx) 会重建棋盘 DOM，故误触抑制不能用格子局部标记，改为模块级
-   * 「位置 + 时间窗」：msLpPos=插旗坐标、msLpAt=时刻，700ms 内该坐标的首次 click/contextmenu 被吞掉。 */
-  var msLpPos = null, msLpAt = 0;
-
-  function lpSuppressed(cell) {
-    if (msLpPos === null) return false;
-    if (Date.now() - msLpAt > 700) { msLpPos = null; return false; }
-    var pos = cell.dataset.r + ',' + cell.dataset.c;
-    if (msLpPos !== pos) return false;
-    msLpPos = null;
-    return true;
-  }
+   * 插旗后 render(ctx) 会重建棋盘 DOM，长按抬手时浏览器补发的 click 会落到新格子，
+   * 故用「pointerup 关联」抑制：长按触发插旗后（msLpFired），本次抬手打时间戳 msLpUpAt，
+   * 紧接的 click/contextmenu 才被吞掉；新一轮 pointerdown 解除，主动点击不受误伤。 */
+  var msLpFired = false, msLpUpAt = null;
 
   function bindMineCell(ctx, cell) {
     var lpTimer = null, sx = 0, sy = 0;
@@ -398,14 +390,15 @@ function histHtml(g) {
       cell.classList.remove('long-pressing');
     }
     cell.addEventListener('pointerdown', function (e) {
+      msLpUpAt = null;
+      msLpFired = false;
       if (e.pointerType === 'mouse') return;
       sx = e.clientX; sy = e.clientY;
       cell.classList.add('long-pressing');
       lpTimer = window.setTimeout(function () {
         lpTimer = null;
         cell.classList.remove('long-pressing');
-        msLpPos = cell.dataset.r + ',' + cell.dataset.c;
-        msLpAt = Date.now();
+        msLpFired = true;
         mineCellFlag(ctx, cell);
         if (typeof window.navigator.vibrate === 'function') window.navigator.vibrate(15);
       }, MS_LONG_PRESS_MS);
@@ -414,16 +407,26 @@ function histHtml(g) {
       if (lpTimer !== null && (Math.abs(e.clientX - sx) > 10 || Math.abs(e.clientY - sy) > 10)) cancelLp();
     });
     cell.addEventListener('pointercancel', cancelLp);
-    cell.addEventListener('pointerup', cancelLp);
+    cell.addEventListener('pointerup', function () {
+      cancelLp();
+      if (msLpFired) msLpUpAt = Date.now();
+    });
     cell.addEventListener('contextmenu', function (e) {
       e.preventDefault();
-      if (lpSuppressed(cell)) return;
+      if (lpSuppressed()) return;
       mineCellFlag(ctx, cell);
     });
     cell.addEventListener('click', function () {
-      if (lpSuppressed(cell)) return;
+      if (lpSuppressed()) return;
       mineCellClick(ctx, cell);
     });
+  }
+
+  function lpSuppressed() {
+    if (msLpUpAt === null) return false;
+    if (Date.now() - msLpUpAt > 400) { msLpUpAt = null; return false; }
+    msLpUpAt = null;
+    return true;
   }
 
   function msRestart(ctx) {
