@@ -1,6 +1,6 @@
 # 个人工作生活 App · 产品需求文档（PRD）
 
-> 版本：v5.1
+> 版本：v5.2
 > 状态：已完成开发并上线
 > 在线地址：
 
@@ -37,6 +37,7 @@ https://xiaoyu-hue.github.io/sonder520/
 | v4.0 | 质量加固体系（23 项）：契约防御（类型/测试/白名单审计）、eslint 防线、错误上报、XSS 属性注入修复、加密 5 项修复、焦点管理与对比度、store 领域拆分、脚本清单收敛；测试深化至 407 项 |
 | **v5.0** | **两轮评审修复 + 一轮补丁（16 项）：统计语义、CSV 注入、扫雷死局、认输归属、渲染副作用、引擎校验、存储韧性、搜索索引、对比度 token、壳降级、测试 flake 加固、扫雷首击插旗暂存、终局认输防重记、AI 重入守卫、撤销不顶替当前页；测试深化至 423 项** |
 | **v5.1** | **性能与可靠性四补丁：PBKDF2 派生密钥缓存（解锁提速）、SonderBus 事件总线（跨模块解耦自动刷新）、五子棋 AI 异步化（Web Worker + 同步兜底 + 过期应手丢弃）、持久化危机兜底（双写失效红色警示条强制引导导出）；测试深化至 451 项** |
+| **v5.2** | **工程防线补强 + 可靠性（9 项）：表单注入转义（data-k 属性 + getAttribute 匹配）、waitFor 条件轮询（消除固定延时竞态）、测试超时硬性兜底（npm 30s + CI 10min）、__SONDER_TEST__ 门闩（测试钩子隔离）、死代码清理、重复逻辑收敛（num0/esc/hashStr/copyText）、弱覆盖域页面交互补测 29 项、CI Node 20 弃用警告消除、PWA 导航 Network First（刷新即拿新版，离线仍回退）；测试深化至 487 项** |
 
 ### v5.0 更新摘要（本版）
 
@@ -68,6 +69,19 @@ https://xiaoyu-hue.github.io/sonder520/
 3. **五子棋 AI 异步化**：AI 计算（含困难档前瞻）移至 `game-worker.js` Web Worker 执行，落子不卡界面；Worker 不可用时自动降级为同步计算；带过期应手丢弃（对局状态已变则旧应手作废）与重入守卫。
 4. **持久化危机兜底**：localStorage 写失败且 IndexedDB 兜底亦失败时进入危机态——红色警示条（`qb-fail`，双主题配色）仅保留「导出备份」入口、隐藏其他操作；「知道了」关闭不持久化（重启后仍提示）；任一侧恢复后警示条自动消除并复位。
 5. **测试基线**：新增 Worker 行为、过期应手、双写失败/恢复、危机态 UI 等回归，`npm test` 423 → **451 项全部通过**；tsc/lint 0；离线缓存同步至 v18。
+
+### v5.2 工程防线补强与可靠性摘要（本版）
+
+1. **表单注入转义**：`formModal` 的 `data-k` 属性值转义 + `collect` 改用 `getAttribute` 匹配，杜绝字段 key 注入属性选择器。
+2. **测试时序加固（waitFor）**：`waitFor` 提取到 harness 并替换 4 处固定延时 wait——AI 落子/续走、IDB 迁移改为条件轮询，消除慢机器竞态。
+3. **测试超时兜底**：`npm test` 增加 `--test-timeout=30000` 单测超时上限 + CI job 10min 硬性兜底，挂死测试不再拖垮流水线；移除遗留死 wait 定义。
+4. **测试门闩（__SONDER_TEST__）**：`ctx/Pages/applyTheme` 等测试钩子隔离到测试进程，生产面只暴露 `store/render/idbReady`；harness 于脚本加载前注入门闩。
+5. **死代码清理**：移除 `cloneGame`/`PRIORITY_LIST`/`GAME_KIND.ttt`/`DIFF_LABEL.mid` 及对应 d.ts 声明。
+6. **重复逻辑收敛**：`num0`/`esc`/`hashStr`/`copyText` 收敛为共享实现，消除多文件重复。
+7. **弱覆盖域补测**：新增 home/memo/consulting/news/design 五个页面交互测试（29 项，含删除确认 Promise 时序、任务勾选移出今日列表、收入负数拦截、危险链接 XSS 等）。
+8. **CI 升级**：checkout/setup-node v4 → v5，消除 Node 20 弃用警告（CI 零 annotations）。
+9. **PWA 导航 Network First**：导航请求改为网络优先（成功回写缓存、离线回退缓存首页），刷新即拿新版；静态资源保持 Cache First；离线缓存同步至 v19。
+10. **测试基线**：新增回归后 `npm test` 451 → **487 项全部通过**；tsc/lint 0。
 
 ### v4.0 加固摘要（本版）
 
@@ -154,7 +168,7 @@ https://xiaoyu-hue.github.io/sonder520/
   - 五子棋大棋盘 ≤720px：棋盘宽 `min(97vw,480px)`、格距 2px、内边距 8px、格子方形、棋子 86% 填充；≤360px 进一步压缩；棋盘始终不横向溢出（照顾 iPhone SE 一档小屏）
   - 扫雷棋盘手机端：棋盘宽 `max(100%, 列数×26px)` 横向滚动容器，格子 ≥26px 触控尺寸
   - 安全区 `env(safe-area-inset-bottom)`、`100vh→100dvh` 回退（老 iOS/安卓）、触控目标 ≥44px、输入控件 16px 防 iOS 聚焦缩放、`color-scheme` 同步表单与滚动条
-- **PWA 友好**：`viewport-fit=cover` + `apple-mobile-web-app-capable`，支持「添加到主屏幕」作为 App 打开；Service Worker 离线缓存（当前缓存版本 v18，`npm run sync-sw` 自动同步清单并递增版本）。
+- **PWA 友好**：`viewport-fit=cover` + `apple-mobile-web-app-capable`，支持「添加到主屏幕」作为 App 打开；Service Worker 离线缓存（当前缓存版本 v19，`npm run sync-sw` 自动同步清单并递增版本）；导航请求网络优先（刷新即拿新版，离线回退缓存首页），静态资源缓存优先。
 
 ---
 
@@ -282,9 +296,9 @@ https://xiaoyu-hue.github.io/sonder520/
 9. 娱乐游戏六款：井字棋 / 五子棋（AI 三档难度 / 双人，悔棋认输开局确认制，全规则回归锁定）+ 猜数字 / 扫雷 / 猜成语 / 脑筋急转弯（战绩并入对战记录，含 solo 模式与备注、AI 难度显示；小游戏最佳纪录统一存储）。
 10. 数据与设置：导出/导入/统计（完成率分母=今日到期任务）/清空战绩/主题/模块开关/动画帧率（60/90/120）/数据迁移（IndexedDB）/加密（向导+锁屏+免密会话+韧性防线）/桌面通知/本周报告一键复制/壁纸上传。
 11. 统一交互：弹窗规则、二次确认、Esc 关闭、Toast、确认框防叠、弹层焦点管理（落焦/陷阱/归还）。
-12. 可靠性：PWA 离线可用（缓存 v18 自动同步）、存储双写双存、存储超 4.5MB 顶部警示条、双写后端同时失效时红色危机警示条强制引导导出、XSS 全模块净化（含属性注入）、可选加密、性能优化（序列化去重/搜索索引缓存/AI 剪枝/派生密钥缓存）、错误上报与壳层降级。
+12. 可靠性：PWA 离线可用（缓存 v19 自动同步；导航网络优先，刷新即新版）、存储双写双存、存储超 4.5MB 顶部警示条、双写后端同时失效时红色危机警示条强制引导导出、XSS 全模块净化（含属性注入与表单字段 key 转义）、可选加密、性能优化（序列化去重/搜索索引缓存/AI 剪枝/派生密钥缓存）、错误上报与壳层降级。
 13. 工程防线：eslint 全绿、零构建类型契约（d.ts + tsc）、innerHTML 白名单审计、状态双轨契约、store 领域拆分、脚本清单单一真源。
-14. 自动化测试 451 项全绿（各版本全量验证）。
+14. 自动化测试 487 项全绿（各版本全量验证）。
 
 ---
 
@@ -316,7 +330,7 @@ https://xiaoyu-hue.github.io/sonder520/
 14. 导出 JSON → 修改数据 → 导入恢复，数据与导出时一致（导入前有覆盖提示）。
 15. 持久化：任意数据录入后刷新、关标签、重启浏览器均不丢失。
 16. 手机外链、离线打开本地 index.html 均可用；数据只在本地浏览器中。
-17. 工程验收：npm test（451 项）、npm run typecheck、npm run lint 三绿。
+17. 工程验收：npm test（487 项）、npm run typecheck、npm run lint 三绿。
 
 ---
 
@@ -330,11 +344,11 @@ https://xiaoyu-hue.github.io/sonder520/
   - 游戏：`games-logic.js`（纯对弈规则与三档难度 AI 策略：井字棋完全搜索、五子棋启发式评分 + 困难档前瞻剪枝；猜数字/扫雷/猜成语/脑筋急转弯规则与题库）+ `games.js`（游戏视图、悔棋/认输/开局/战绩、AI 落子节奏）+ `game-worker.js`（五子棋 AI 计算 Web Worker，异步不卡 UI；Worker 不可用时 games.js 自动降级为同步计算，过期应手丢弃）
   - 搜索：`search.js`（全局索引 + 缓存、模糊匹配、分组跳转、水墨高亮定位）
   - 扩展渲染：`markdown.js`（技术笔记 Markdown 渲染与代码复制）
-  - 壳层：`app.js`（路由/主题跟随/帧率档位/警示条/危机警示条/导航降级）、`error-guard.js`（全局错误安全网与上报）、`sw.js`（Service Worker 离线缓存，当前 v18，脚本自动同步）、`manifest.json`（PWA 清单与图标）
+  - 壳层：`app.js`（路由/主题跟随/帧率档位/警示条/危机警示条/导航降级）、`error-guard.js`（全局错误安全网与上报）、`sw.js`（Service Worker 离线缓存，当前 v19，脚本自动同步；导航网络优先）、`manifest.json`（PWA 清单与图标）
   - 类型：`globals.d.ts`（Pages/SonderStore 61 个公开方法/UI 全局接口 + 24 个领域类型契约）
 - **主题系统**：CSS 自定义属性 + 深浅双主题；`@supports` 为不支持 `backdrop-filter` 的浏览器降低层级；壁纸独立 img 元素 + `object-fit: cover` + 透明度变量；文字/强调色 token 化并满足 WCAG AA。
 - **数据兼容**：读取时做字段归一化（缺失补默认、非法值夹取 + 9 处旧字段迁移），支持历史版本数据平安迁移；IndexedDB 与 localStorage 双写双存，冲突按保存时间取新；加密开关对旧数据完全兼容（未启用时无感）；未来加密版本密文原样保留不破坏。
 - **移动端棋盘细节**：15 列盘使用 grid；`.game-board.big` 手机断点压缩格距与边距、格子 `min-height: 0` 保持方正 1:1；宽度 `min(97vw, 480px)` 保证不溢屏；扫雷用 `max(100%, 列数×26px)` + 横向滚动容器保证格子 ≥26px；棋盘格子为游戏固有热区（整盘须尽收眼底），其余全部 UI 触控目标 ≥44px。
 - **工程防线**：eslint@8（无注释空 catch 禁止）、零构建 TypeScript 类型检查（JSDoc + tsc --noEmit）、innerHTML 白名单审计（24 处赋值点全部验证）、契约测试（contract/behavior/state/innerhtml）、index.html 脚本单一真源（harness 自动解析）、`scripts/sync-sw.js` 自动同步 SW 清单并递增缓存版本。
-- **自动化测试**：jsdom + `node --test`（glob 全量）+ fake-indexeddb；覆盖存储、加密（含竞态/边界/未来版本韧性/派生缓存）、UI、全部模块、样式、动效、壁纸、移动端自动适配、性能、游戏引擎（胜负检测/禁手逻辑/AI 策略/六款游戏/Worker 行为）、交互质量回归（确认弹窗防叠、悔棋语义、终局锁定、棋盘压缩）、PWA、搜索、XSS 净化（含属性注入）、IndexedDB 双写与容量警示、持久化危机兜底、通知、对比度、CSS 变量契约、周报、本周报告，当前 **451 项全部通过**（`npm test` 连续两轮全绿）。
+- **自动化测试**：jsdom + `node --test`（glob 全量）+ fake-indexeddb；覆盖存储、加密（含竞态/边界/未来版本韧性/派生缓存）、UI、全部模块、样式、动效、壁纸、移动端自动适配、性能、游戏引擎（胜负检测/禁手逻辑/AI 策略/六款游戏/Worker 行为）、交互质量回归（确认弹窗防叠、悔棋语义、终局锁定、棋盘压缩）、PWA、搜索、XSS 净化（含属性注入）、IndexedDB 双写与容量警示、持久化危机兜底、通知、对比度、CSS 变量契约、周报、本周报告，当前 **487 项全部通过**（`npm test` 连续两轮全绿）。
 - **持续质量**：每轮改动后执行源码 `node --check` 语法检查、`npm run typecheck`（零构建类型检查）、`npm run lint` 与全量测试；改动脚本/入口后运行 `npm run sync-sw` 同步离线缓存清单。
