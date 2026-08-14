@@ -13,6 +13,16 @@ function cell(h, r, c) {
   return h.window.document.querySelector('.cell[data-r="' + r + '"][data-c="' + c + '"]');
 }
 
+/* 轮询等待条件成立（AI 落子为异步 setTimeout，固定 wait 在慢机器上会竞态失败） */
+async function waitFor(pred, what, timeoutMs = 3000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (pred()) return;
+    await wait(25);
+  }
+  throw new Error('waitFor 超时: ' + what);
+}
+
 test('QA：今日计划刷新/保存不重复渲染且不崩溃', () => {
   const h = boot();
   h.goto('today');
@@ -354,9 +364,9 @@ test('QA：AI 模式可连续悔棋多回合', async () => {
   h.goto('game');
   doc.querySelector('[data-pick="tictactoe"]').click();
   cell(h, 0, 0).click();
-  await wait(320);
+  await waitFor(() => h.window.__gamesDbg().game.moves === 2, 'AI 回应第一手');
   cell(h, 0, 1).click();
-  await wait(320);
+  await waitFor(() => h.window.__gamesDbg().game.moves === 4, 'AI 回应第二手');
   doc.querySelector('[data-act="undo"]').click();
   await wait(20);
   assert.equal(h.window.__gamesDbg().game.moves, 2, '第一次悔棋回到上一个思考点');
