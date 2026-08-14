@@ -365,7 +365,12 @@ test('QA：AI 模式可连续悔棋多回合', async () => {
   doc.querySelector('[data-pick="tictactoe"]').click();
   cell(h, 0, 0).click();
   await waitFor(() => h.window.__gamesDbg().game.moves === 2, 'AI 回应第一手');
-  cell(h, 0, 1).click();
+  const empty = Array.prototype.find.call(
+    doc.querySelectorAll('#gBoard .cell'),
+    el => !el.querySelector('.mk')
+  );
+  assert.ok(empty, 'AI 落子后应仍有空位');
+  empty.click();
   await waitFor(() => h.window.__gamesDbg().game.moves === 4, 'AI 回应第二手');
   doc.querySelector('[data-act="undo"]').click();
   await wait(20);
