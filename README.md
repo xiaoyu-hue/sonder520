@@ -12,6 +12,8 @@
 
 - 主站 1：https://sonder520.netlify.app/
 
+备注：主站1 因部署次数限制可能未同步最新版，请移步主站2和备用站。
+
 - 主站 2：https://sonder520.pages.dev/
 
 - 备用站：https://xiaoyu-hue.github.io/sonder520/
