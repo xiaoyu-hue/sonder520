@@ -278,3 +278,20 @@ test('锁定态 migrateToIdb 被拒绝：不得以明文空数据覆盖 IDB 密�
     delete globalThis.IDBKeyRange;
   }
 });
+
+test('加密态导入：importBackup 完成即落盘，不依赖调用方再等待 _encChain', async () => {
+  const { st, s } = seeded(['A1']);
+  await s.enableEncryption(PWD);
+  const before = st._data[KEY];
+  const st2 = S.defaultState();
+  st2.memos = [{ id: 'x1', text: '导入即落盘', time: '', archived: false }];
+  const r = await s.importBackup(JSON.stringify(st2));
+  assert.equal(r.ok, true, '导入应成功');
+  assert.notEqual(st._data[KEY], before, 'resolve 时落盘必须已更新（不许 fire-and-forget）');
+  const raw = JSON.parse(st._data[KEY]);
+  assert.equal(raw.e, 1, '落盘为密文格式');
+  assert.ok(!st._data[KEY].includes('导入即落盘'), '明文不得出现在落盘');
+  const s3 = S.createStore(st);
+  assert.equal(await s3.unlock(PWD), true, '新实例可解锁');
+  assert.equal(s3.state.memos[0].text, '导入即落盘', '导入数据已可恢复');
+});

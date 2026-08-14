@@ -976,13 +976,17 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     if (this.needsUnlock()) return Promise.resolve({ ok: false, error: '当前处于锁定态，请先解锁后再导入' });
     this.state = normalize(parsed);
     if (this._encKey) {
-      /* 加密解锁态：导入数据以当前密钥落盘，不得明文覆盖密文 */
+      /* 加密解锁态：导入数据以当前密钥落盘，不得明文覆盖密文。
+       * 必须返回落盘链：resolve 前保证持久化完成，防止调用方立即刷新丢数据。 */
+      var self = this;
       var encJson = JSON.stringify(this.state);
       this._lastJson = encJson;
-      this._encSave(encJson);
-    } else {
-      this.save();
+      return this._encSave(encJson).then(function () {
+        self._emitChange('all'); /* 导入覆盖全量数据：各页重绘 */
+        return { ok: true };
+      });
     }
+    this.save();
     this._emitChange('all'); /* 导入覆盖全量数据：各页重绘 */
     return Promise.resolve({ ok: true });
   };
@@ -1001,15 +1005,20 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
         if (!isPlainObject(parsed) || typeof parsed.version !== 'number') return { ok: false, error: '解密结果缺少必要字段' };
         self.state = normalize(parsed);
         if (self._encKey) {
-          /* 加密解锁态：导入数据以当前密钥落盘，保持密文不变量 */
+          /* 加密解锁态：导入数据以当前密钥落盘，保持密文不变量。
+           * 必须返回落盘链：导入是一次性操作，resolve 前保证持久化完成，
+           * 否则调用方立即刷新页面会丢失刚导入的数据（无法像普通 save 那样下次重试）。 */
           var encJson = JSON.stringify(self.state);
           self._lastJson = encJson;
-          self._encSave(encJson);
+          return self._encSave(encJson).then(function () {
+            self._emitChange('all');
+            return { ok: true };
+          });
         } else {
           self.save();
+          self._emitChange('all'); /* 导入覆盖全量数据：各页重绘 */
+          return Promise.resolve({ ok: true });
         }
-        self._emitChange('all'); /* 导入覆盖全量数据：各页重绘 */
-        return { ok: true };
       }).catch(function () {
         return { ok: false, error: '密码错误或备份已损坏，导入中止（原数据未动）' };
       });
