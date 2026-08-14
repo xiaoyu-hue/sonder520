@@ -290,7 +290,8 @@ body::after {
   .game-board.big .stone { width: 86%; height: 86%; }
 
   /* 扫雷手机端：格子保持 ≥26px 触控尺寸；大棋盘超出视口时横向滑动查看 */
-  .ms-board { width: max(100%, calc(var(--cols) * 26px)); min-width: 100%; }
+  /* 用 .ms-board-wrap .ms-board 压过基础规则 max-width:min(100%,540px)，否则困难棋盘被钳制回视口宽度 */
+  .ms-board-wrap .ms-board { width: max(100%, calc(var(--cols) * 26px)); min-width: 100%; max-width: none; }
   .ms-cell { min-height: 26px; }
 }
 
