@@ -35,9 +35,10 @@
         <span class="date" id="topDate"></span>
       </header>
       <div class="quota-bar" id="quotaBar" hidden role="alert">
-        <span class="qb-msg">⚠ 数据已达 <b class="qb-usage"></b>，接近浏览器 5MB 上限。请立即</span>
+        <span class="qb-msg" id="qbWarn">⚠ 数据已达 <b class="qb-usage"></b>，接近浏览器 5MB 上限。请立即</span>
+        <span class="qb-msg" id="qbFail" hidden>⚠ 本地存储写入失败，数据可能无法保存！请立即</span>
         <a href="#" id="qExport" class="qb-link">导出备份</a>
-        <span class="qb-msg">，或</span>
+        <span class="qb-msg" id="qbOr">，或</span>
         <a href="#" id="qMigrate" class="qb-link">迁移至 IndexedDB</a>
         <button class="small-btn" id="qClose" title="不再提醒" type="button">✕</button>
       </div>

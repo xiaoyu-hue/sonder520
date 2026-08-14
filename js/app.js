@@ -107,17 +107,41 @@
     quotaCheck();
   }
 
-  /* 存储接近上限（约 5MB）时顶部显示警示条：导出备份 / 迁移至 IndexedDB */
+  /* 存储接近上限（约 5MB）时顶部显示警示条：导出备份 / 迁移至 IndexedDB。
+   * 持久化危机（LS 写失败且 IDB 兜底失效，数据只存在内存）时升级为红色危机条：
+   * 只留导出入口，不写入 dismiss（无法一键永久关闭），任一侧恢复后自动消失。 */
   function quotaCheck() {
     var bar = document.getElementById('quotaBar');
     if (!bar) return;
-    if (!store.state.settings.quotaNoticeDismissed) {
-      if (store.isNearQuota()) {
+    var warn = /** @type {HTMLElement} */ (bar.querySelector('#qbWarn'));
+    var failMsg = /** @type {HTMLElement} */ (bar.querySelector('#qbFail'));
+    var orEl = /** @type {HTMLElement} */ (bar.querySelector('#qbOr'));
+    var migrate = /** @type {HTMLElement} */ (bar.querySelector('#qMigrate'));
+    var fail = store.hasPersistIssue();
+    if (fail || (!store.state.settings.quotaNoticeDismissed && store.isNearQuota())) {
+      if (fail) {
+        warn.hidden = true;
+        failMsg.hidden = false;
+        orEl.hidden = true;
+        migrate.hidden = true; /* LS 写失败时迁移无意义（IDB 本就在兜底） */
+        bar.classList.add('qb-fail');
+      } else {
+        warn.hidden = false;
+        failMsg.hidden = true;
+        orEl.hidden = false;
+        migrate.hidden = false;
+        bar.classList.remove('qb-fail');
         bar.querySelector('.qb-usage').textContent = (store.storageUsage() / 1048576).toFixed(1) + 'MB';
-        bar.hidden = false;
-        return;
       }
+      bar.hidden = false;
+      return;
     }
+    /* 恢复常态：还原切换过的元素状态 */
+    warn.hidden = false;
+    failMsg.hidden = true;
+    orEl.hidden = false;
+    migrate.hidden = false;
+    bar.classList.remove('qb-fail');
     bar.hidden = true;
   }
 
@@ -141,6 +165,11 @@
       });
     });
     bar.querySelector('#qClose').addEventListener('click', function () {
+      if (store.hasPersistIssue()) {
+        /* 写入失败是持续危机：不允许一键永久关闭（dismiss 不写入），仅此轮隐藏，下次渲染重现 */
+        bar.hidden = true;
+        return;
+      }
       store.dismissQuotaNotice();
       render();
     });

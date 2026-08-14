@@ -242,7 +242,7 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
   }
 
   /* ---------- Store ---------- */
-  /** @constructor @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _idbWrite: any, _lastJson: string, _rev: number, _encKey: any, _encSize: number, _hasEncSnapshot: Function, _idbEncLocked: boolean, _undo: any[], _pendingLocal: any, _localFlushHandle: any, _bus: any, _emitChange: Function }} */
+  /** @constructor @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _idbWrite: any, _lastJson: string, _rev: number, _encKey: any, _encSize: number, _hasEncSnapshot: Function, _idbEncLocked: boolean, _undo: any[], _pendingLocal: any, _localFlushHandle: any, _bus: any, _emitChange: Function, _persistFailed: boolean, _idbFailed: boolean, _lastPersistError: any }} */
   function Store(storage) {
     this._storage = storage || (typeof localStorage !== 'undefined' ? localStorage : null);
     /* SonderBus 数据变更广播总线（浏览器 window.SonderBus / 测试注入；缺省静默） */
@@ -263,6 +263,9 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     this._undo = []; /* P4c 删除撤销栈（内存态，不持久化）：{list,at,data} 或 {restore} */
     this._pendingLocal = undefined; /* 主快照待写（批量防抖：一次 idle 只落最新一份） */
     this._localFlushHandle = null;  /* 已调度的 requestIdleCallback 句柄（无 idle 时为 null） */
+    this._persistFailed = false;    /* localStorage 主快照最近一次写入失败（配额满等） */
+    this._idbFailed = false;        /* IndexedDB 兜底副本最近一次写入失败 */
+    this._lastPersistError = null;  /* 最近一次持久化错误（诊断用） */
   }
 
   /* P4c：删除撤销——记录删除条目（容量 10，超出丢最旧），undoRemove 恢复 */
@@ -361,8 +364,8 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     }
   };
 
-  /* 实际写 localStorage（权威快照；写满时忽略错误，IDB 副本兜底）。只写 _pendingLocal 最新一份 */
-  /** @this {{ _storage: any, _meta: any, _pendingLocal: any }} */
+  /* 实际写 localStorage（权威快照；写满时记失败标记，IDB 副本兜底）。只写 _pendingLocal 最新一份 */
+  /** @this {{ _storage: any, _meta: any, _pendingLocal: any, _persistFailed: boolean, _lastPersistError: any }} */
   Store.prototype._doLocalFlush = function () {
     if (this._pendingLocal === undefined) return;
     var json = this._pendingLocal;
@@ -370,7 +373,14 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     try {
       this._storage.setItem(STORAGE_KEY, json);
       this._storage.setItem(STORAGE_META_KEY, this._meta);
-    } catch (e) { /* 存储满等错误在此忽略，IDB 副本兜底 */ }
+      this._persistFailed = false;
+      this._lastPersistError = null;
+    } catch (e) {
+      /* 存储满（QuotaExceededError / NS_ERROR_DOM_QUOTA_REACHED）等错误：置失败标记。
+       * 数据仍在内存与 IDB 副本侧；若 IDB 也不可用则 hasPersistIssue() 指挥 UI 提示导出 */
+      this._persistFailed = true;
+      this._lastPersistError = e;
+    }
   };
 
   /* 立即执行待写快照并作废已调度的 idle 写入。加密启用/停用/回读验证等
@@ -388,13 +398,14 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
    * 只接受调用方显式传入的原始串（明文或密文格式原样落盘），extra 合并进 entry（如加密盐）。
    * undefined/null/空串一律跳过——绝不回退到内存 state 序列化：锁定态下内存是明文空
    * defaultState，回退写盘会把明文空数据写进 IDB，破坏密文兜底副本（loadIdb 空 IDB 回填路径）。 */
-  /** @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _idbWrite: any, _lastJson: string, _rev: number }} */
+  /** @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _idbWrite: any, _lastJson: string, _rev: number, _idbFailed: boolean }} */
   Store.prototype._idbWrite = function (json, extra) {
     if (!idbAvailable()) return;
     if (json === undefined || json === null || json === '') return;
     var useJson = json;
     var meta = this._meta || nowISO();
     var prev = this._idbPromise || Promise.resolve();
+    var self = this;
     this._idbPromise = prev.then(function () {
       return openIdb().then(function (db) {
         var entry = extra ? Object.assign({}, extra) : {};
@@ -402,8 +413,11 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
         entry.data = useJson;
         return idbPut(db, IDB_KEY, entry);
       });
+    }).then(function () {
+      self._idbFailed = false; /* 兜底副本写入成功：解除 IDB 侧失败标记 */
     }).catch(function (err) {
-      /* IDB 写入失败不影响主流程，但上报便于发现环境问题 */
+      /* IDB 写入失败不影响主流程（localStorage 仍兜底），但记失败标记并上报便于发现环境问题 */
+      self._idbFailed = true;
       try { console.error('[Sonder] IndexedDB 写入失败', err); } catch (e) { /* 忽略 */ }
     });
   };
@@ -544,6 +558,17 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
   };
   Store.prototype.isNearQuota = function () {
     return this.storageUsage() > QUOTA_SOFT_LIMIT;
+  };
+  /* 持久化健康：localStorage 主快照写入失败，且 IndexedDB 兜底副本也不可用或已失败时，
+   * 数据只存在于内存（刷新即丢）→ 返回 true。UI 据此显示"立即导出备份"危机警示条
+   * （区别于接近上限的温和提醒；危机不写 quotaNoticeDismissed，无法一键永久关闭）。
+   * 任一侧后续写入成功即自动复位。 */
+  Store.prototype.hasPersistIssue = function () {
+    return !!this._persistFailed && (!idbAvailable() || !!this._idbFailed);
+  };
+  /* 最近一次持久化错误对象（诊断用；无失败时为 null） */
+  Store.prototype.persistIssueDetail = function () {
+    return this._lastPersistError;
   };
   Store.prototype.dismissQuotaNotice = function () {
     this.state.settings.quotaNoticeDismissed = true;

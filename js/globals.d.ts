@@ -8,6 +8,8 @@ interface SonderStoreImpl {
   _rev: number;
   storageUsage(): number;
   isNearQuota(): boolean;
+  hasPersistIssue(): boolean;
+  persistIssueDetail(): Error | null;
   save(): boolean;
   flushPersist(): void;
   clearAll(): void;

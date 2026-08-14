@@ -203,6 +203,12 @@ body::after {
 [data-theme="dark"] .quota-bar { background: #4a3c1c; color: #f0d9a8; border-bottom-color: #6b5a2a; }
 [data-theme="dark"] .quota-bar .qb-link { color: #ffd98a; }
 [data-theme="dark"] .quota-bar .small-btn { background: rgba(240, 217, 168, .12); color: #f0d9a8; }
+/* 持久化危机态（写入失败，数据只存在内存）：红色强调，仅留导出入口 */
+.quota-bar.qb-fail { background: #f9d9c8; color: #7a2e12; border-bottom-color: #e6b29a; }
+.quota-bar.qb-fail .qb-link { color: #7a2e12; }
+.data-theme-dark .quota-bar.qb-fail,
+[data-theme="dark"] .quota-bar.qb-fail { background: #4a2416; color: #ffd2b8; border-bottom-color: #6b3a22; }
+[data-theme="dark"] .quota-bar.qb-fail .qb-link { color: #ffb98a; }
 .topbar .title {
   font-family: "STKaiti", "KaiTi", "楷体", serif;
   font-size: 17px; font-weight: 700; letter-spacing: 1px;

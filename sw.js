@@ -1,8 +1,8 @@
-/* Sonder Service Worker - Cache First（缓存优先）离线可用
+﻿/* Sonder Service Worker - Cache First（缓存优先）离线可用
  * 部署新版本时请递增 CACHE 版本号；sw 更新后会自动清理旧缓存。 */
 'use strict';
 
-var CACHE = 'sonder-v17';
+var CACHE = 'sonder-v18';
 
 var ASSETS = [
   './',
