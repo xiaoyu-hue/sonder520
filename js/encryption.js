@@ -41,16 +41,41 @@
   /* 全新随机 IV（12 字节）——每次加密必须重新生成 */
   function ivBytes() { return cr.getRandomValues(new Uint8Array(12)); }
 
-  /* PBKDF2(600k, SHA-256) 派生 AES-GCM-256 密钥，可导出便于测试盐/密码不同性 */
+  /* PBKDF2(600k, SHA-256) 派生 AES-GCM-256 密钥，可导出便于测试盐/密码不同性。
+   * 会话缓存：页面未刷新时相同 (密码, 盐, 迭代数) 只派第一次，不再重跑 60 万次迭代。
+   * 指纹 = SHA-256(密码字节 + 盐 + 迭代数)：毫秒级摘要即可命中；指纹不可还原密码。
+   * 密钥仅存内存闭包，随页面关闭释放。 */
+  var derivedKeyCache = { fp: null, it: 0, key: null };
+  function bytesEq(a, b) {
+    if (!a || !b || a.length !== b.length) return false;
+    for (var i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+    return true;
+  }
   function deriveKey(password, salt, iterations) {
     requireCrypto();
     var pw = new TextEncoder().encode(String(password));
     var it = typeof iterations === 'number' ? iterations : ITERATIONS;
-    return cr.subtle.importKey('raw', pw, 'PBKDF2', false, ['deriveKey']).then(function (base) {
-      return cr.subtle.deriveKey(
-        { name: 'PBKDF2', salt: salt, iterations: it, hash: 'SHA-256' },
-        base, ALGO, true, ['encrypt', 'decrypt']
-      );
+    var fpBuf = new Uint8Array(pw.length + salt.length + 4);
+    fpBuf.set(pw, 0);
+    fpBuf.set(salt, pw.length);
+    fpBuf[fpBuf.length - 4] = (it >>> 24) & 0xff;
+    fpBuf[fpBuf.length - 3] = (it >>> 16) & 0xff;
+    fpBuf[fpBuf.length - 2] = (it >>> 8) & 0xff;
+    fpBuf[fpBuf.length - 1] = it & 0xff;
+    return cr.subtle.digest('SHA-256', fpBuf).then(function (fpHash) {
+      var fp = new Uint8Array(fpHash);
+      if (derivedKeyCache.key !== null && derivedKeyCache.it === it && bytesEq(derivedKeyCache.fp, fp)) {
+        return derivedKeyCache.key;
+      }
+      return cr.subtle.importKey('raw', pw, 'PBKDF2', false, ['deriveKey']).then(function (base) {
+        return cr.subtle.deriveKey(
+          { name: 'PBKDF2', salt: salt, iterations: it, hash: 'SHA-256' },
+          base, ALGO, true, ['encrypt', 'decrypt']
+        );
+      }).then(function (key) {
+        derivedKeyCache = { fp: fp, it: it, key: key };
+        return key;
+      });
     });
   }
 

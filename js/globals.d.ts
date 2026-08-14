@@ -9,6 +9,7 @@ interface SonderStoreImpl {
   storageUsage(): number;
   isNearQuota(): boolean;
   save(): boolean;
+  flushPersist(): void;
   clearAll(): void;
   /* ---------- 任务 ---------- */
   addTask(data: SonderTaskInput): SonderTask;

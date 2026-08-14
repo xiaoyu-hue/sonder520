@@ -242,7 +242,7 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
   }
 
   /* ---------- Store ---------- */
-  /** @constructor @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _idbWrite: any, _lastJson: string, _rev: number, _encKey: any, _encSize: number, _hasEncSnapshot: Function, _idbEncLocked: boolean, _undo: any[] }} */
+  /** @constructor @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _idbWrite: any, _lastJson: string, _rev: number, _encKey: any, _encSize: number, _hasEncSnapshot: Function, _idbEncLocked: boolean, _undo: any[], _pendingLocal: any, _localFlushHandle: any }} */
   function Store(storage) {
     this._storage = storage || (typeof localStorage !== 'undefined' ? localStorage : null);
     var persisted = null;
@@ -259,6 +259,8 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     this._encSize = 0;
     this._idbEncLocked = false;
     this._undo = []; /* P4c 删除撤销栈（内存态，不持久化）：{list,at,data} 或 {restore} */
+    this._pendingLocal = undefined; /* 主快照待写（批量防抖：一次 idle 只落最新一份） */
+    this._localFlushHandle = null;  /* 已调度的 requestIdleCallback 句柄（无 idle 时为 null） */
   }
 
   /* P4c：删除撤销——记录删除条目（容量 10，超出丢最旧），undoRemove 恢复 */
@@ -327,16 +329,50 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
 
   function clone(o) { return deepClone(o); }
 
-  /* 同步写 localStorage（权威快照，永不阻塞正常流程；写满时忽略错误，IDB 兜底）。
+  /* 主快照 setItem 批量防抖：放入 requestIdleCallback 执行，页面空闲时统一落盘。
+   * 一次 idle 周期内多次 save 只写最新快照（_pendingLocal 覆盖），避免密集保存
+   * 反复序列化写 localStorage 阻塞主线程。无 requestIdleCallback 的环境
+   * （Node/测试/旧浏览器）同步落盘，保证存储一致性。
+   * 加密盐/壁纸等一次性关键 setItem 保持同步（正确性优先，非热路径）。
    * 可传入 save 已序列化的 json 避免二次 stringify。 */
-  /** @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _idbWrite: any, _lastJson: string, _rev: number }} */
+  /** @this {{ _storage: any, state: any, _meta: any, _pendingLocal: any, _localFlushHandle: any, _doLocalFlush: Function }} */
   Store.prototype._persistLocal = function (json) {
     if (!this._storage) return;
     this._meta = nowISO();
+    this._pendingLocal = json || JSON.stringify(this.state);
+    if (this._localFlushHandle !== null) return; /* 已调度 idle：仅更新待写内容（防抖合并） */
+    var self = this;
+    if (typeof globalThis.requestIdleCallback === 'function') {
+      this._localFlushHandle = globalThis.requestIdleCallback(function () {
+        self._localFlushHandle = null;
+        self._doLocalFlush();
+      }, { timeout: 900 });
+    } else {
+      this._doLocalFlush(); /* 无 idle API：同步落盘 */
+    }
+  };
+
+  /* 实际写 localStorage（权威快照；写满时忽略错误，IDB 副本兜底）。只写 _pendingLocal 最新一份 */
+  /** @this {{ _storage: any, _meta: any, _pendingLocal: any }} */
+  Store.prototype._doLocalFlush = function () {
+    if (this._pendingLocal === undefined) return;
+    var json = this._pendingLocal;
+    this._pendingLocal = undefined;
     try {
-      this._storage.setItem(STORAGE_KEY, json || JSON.stringify(this.state));
+      this._storage.setItem(STORAGE_KEY, json);
       this._storage.setItem(STORAGE_META_KEY, this._meta);
     } catch (e) { /* 存储满等错误在此忽略，IDB 副本兜底 */ }
+  };
+
+  /* 立即执行待写快照并作废已调度的 idle 写入。加密启用/停用/回读验证等
+   * 正确性关键路径调用（这些路径依赖落盘与后续读取在同一时机）。 */
+  /** @this {{ _storage: any, _localFlushHandle: any, _pendingLocal: any, _doLocalFlush: Function }} */
+  Store.prototype.flushPersist = function () {
+    if (this._localFlushHandle !== null) {
+      if (typeof globalThis.cancelIdleCallback === 'function') globalThis.cancelIdleCallback(this._localFlushHandle);
+      this._localFlushHandle = null;
+    }
+    if (this._pendingLocal !== undefined) this._doLocalFlush();
   };
 
   /* 异步写 IndexedDB。串行队列避免事务竞争；失败静默（localStorage 仍兜底）。
@@ -384,7 +420,7 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
   /* 加密落盘：AES-GCM 异步（微任务级，用户操作间隙完成）。
    * 串行队列保证加密按调用顺序落盘：encryptText 为异步，连续多次 save
    * 若不排队，后发起的加密可能先完成并覆盖落盘 → 旧状态覆盖新状态（丢最新变更）。 */
-  /** @this {{ _storage: any, _encKey: any, _encSize: number, _persistLocal: any, _idbWrite: any, _encChain: Promise }} */
+  /** @this {{ _storage: any, _encKey: any, _encSize: number, _persistLocal: any, _idbWrite: any, _encChain: Promise, flushPersist: Function }} */
   Store.prototype._encSave = function (json) {
     var self = this;
     if (!this._encKey || !Crypto) return Promise.resolve();
@@ -394,6 +430,7 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
         var payload = JSON.stringify({ e: 1, v: bundle.v, iv: bundle.iv, data: bundle.data });
         self._encSize = payload.length;
         self._persistLocal(payload);
+        self.flushPersist(); /* 加密落盘即时可见：enableEncryption 回读验证依赖 LS 已写入 */
         var salt = self._storage ? self._storage.getItem(STORAGE_SALT_KEY) : null;
         self._idbWrite(payload, salt ? { salt: salt } : {});
       });
@@ -405,7 +442,7 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
   };
 
   /* 启动时调用：优先从 IndexedDB 恢复（若更新）。返回 Promise<是否采用 IDB 数据> */
-  /** @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _idbWrite: any, _lastJson: string, _rev: number, save: Function, _encKey: any, _decryptParse: Function, _idbEncLocked: boolean }} */
+  /** @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _idbWrite: any, _lastJson: string, _rev: number, save: Function, _encKey: any, _decryptParse: Function, _idbEncLocked: boolean, flushPersist: Function }} */
   Store.prototype.loadIdb = function () {
     var self = this;
     if (!idbAvailable()) return Promise.resolve(false);
@@ -445,6 +482,7 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
           self._lastJson = JSON.stringify(self.state);
           self._rev++;
           self._persistLocal(idbData);
+          self.flushPersist(); /* IDB 恢复回写 localStorage：采用后立即可见 */
           self._idbWrite(idbData);
           return true;
         });
@@ -557,6 +595,7 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
       /* 兜底：把内存明文快照写回双存（若密文已部分落盘则覆盖为明文） */
       var fallback = JSON.stringify(self.state);
       self._persistLocal(fallback);
+      self.flushPersist(); /* 兜底明文必须立即可见，避免异常后停留半密文状态 */
       self._idbWrite(fallback);
       throw err;
     });
@@ -604,6 +643,7 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
           var plain = JSON.stringify(self.state);
           self._lastJson = plain;
           self._persistLocal(plain);
+          self.flushPersist(); /* 密文→明文切换必须即时完成 */
           self._idbWrite(plain);
           return true;
         });
