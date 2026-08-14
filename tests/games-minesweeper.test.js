@@ -173,7 +173,7 @@ test('扫雷 UI：进入视图，网格与难度齐全，剩余雷数显示', ()
   assert.equal(doc.querySelectorAll('.ms-cell').length, 81, '简单 9x9 共 81 格');
   assert.ok(doc.body.textContent.includes('剩余 10 雷'), '显示剩余雷数');
   assert.equal(doc.querySelectorAll('#msDiff option').length, 3, '三档难度');
-  assert.ok(doc.querySelector('#msFlagMode'), '有标记模式开关');
+  assert.equal(doc.querySelector('#msFlagMode'), null, '标记模式开关已移除');
   const d = h.window.__gamesDbg();
   assert.equal(d.mini.kind, 'minesweeper');
 });
@@ -190,11 +190,9 @@ test('扫雷 UI：翻格与插旗交互，踩雷结束并计入战绩', () => {
   cellAt(8, 8).click();
   assert.ok(doc.querySelectorAll('.ms-cell.open').length > 3, '右侧洪泛翻开');
   assert.equal(cellAt(0, 0).textContent, '', '左侧雷格未翻开');
-  doc.querySelector('#msFlagMode').click();
-  cellAt(0, 0).click();
-  assert.equal(cellAt(0, 0).textContent, '⚑', '标记模式插旗');
+  cellAt(0, 0).dispatchEvent(new h.window.MouseEvent('contextmenu', { bubbles: true, cancelable: true }));
+  assert.equal(cellAt(0, 0).textContent, '⚑', '右键/长按插旗');
   assert.ok(doc.body.textContent.includes('剩余 9 雷'), '剩余雷数减少');
-  doc.querySelector('#msFlagMode').click();
   cellAt(0, 4).click();
   assert.ok(doc.body.textContent.includes('踩到雷了'), '踩雷提示');
   assert.ok(doc.body.textContent.includes('负 1'), '战绩显示失败 1 次');
@@ -213,14 +211,16 @@ test('扫雷 UI：插旗标对全部雷 → 胜利并计入战绩（错旗不触
   function cellAt(r, c) {
     return doc.querySelector('.ms-cell[data-r="' + r + '"][data-c="' + c + '"]');
   }
-  doc.querySelector('#msFlagMode').click();
-  cellAt(1, 1).click();
+  function flagAt(r, c) {
+    cellAt(r, c).dispatchEvent(new h.window.MouseEvent('contextmenu', { bubbles: true, cancelable: true }));
+  }
+  flagAt(1, 1);
   assert.equal(h.window.__gamesDbg().mini.over, false, '插错旗不结束');
-  cellAt(1, 1).click();
-  cellAt(2, 2).click();
-  cellAt(5, 5).click();
+  flagAt(1, 1);
+  flagAt(2, 2);
+  flagAt(5, 5);
   assert.equal(h.window.__gamesDbg().mini.over, false, '旗数未满不判胜');
-  cellAt(7, 7).click();
+  flagAt(7, 7);
   assert.equal(h.window.__gamesDbg().mini.over, true, '3/3 雷标对即判胜');
   assert.equal(h.window.__gamesDbg().mini.won, true, '胜局');
   assert.ok(doc.body.textContent.includes('扫雷成功'), '页面显示胜利提示');

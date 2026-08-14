@@ -69,7 +69,6 @@
   };
   var MS_DEFAULT_DIFF = 'easy';
   var MS_LONG_PRESS_MS = 350;
-  var msFlagMode = false;
 
   function startMini(ctx, kind) {
     state.game = null;
@@ -79,7 +78,6 @@
       var diff = miniBest2('minesweeper', 'diff') || MS_DEFAULT_DIFF;
       var d = MS_DIFFS[diff] || MS_DIFFS[MS_DEFAULT_DIFF];
       state.mini = { kind: 'minesweeper', g: G.mineStart(d.rows, d.cols, d.mines), diff: diff };
-      msFlagMode = false;
     } else if (kind === 'idiom') {
       state.mini = { kind: 'idiom', g: G.idiomStart() };
     } else if (kind === 'brainteaser') {
@@ -229,7 +227,6 @@
       '<div class="card">' +
       '<div class="row" style="align-items:center;gap:10px;flex-wrap:wrap">' +
       '<span class="muted small">' + statusTxt + '</span>' +
-      '<label class="toggle small" style="margin-left:auto"><input type="checkbox" id="msFlagMode"' + (msFlagMode ? ' checked' : '') + '> ⚑ 标记模式' + '</label>' +
       '<span class="muted small">' + statsTxt + '</span>' +
       '</div>' +
       '<div class="ms-board-wrap" style="margin-top:12px">' +
@@ -240,7 +237,6 @@
       '</div>' +
       '</div>'
     );
-    msFlagChange(card, ctx);
     var board = card.querySelector('#msBoard');
     board.querySelectorAll('.ms-cell').forEach(function (cell) {
       bindMineCell(ctx, cell);
@@ -332,15 +328,6 @@ function histHtml(g) {
     return html;
   }
 
-  function msFlagChange(card, ctx) {
-    var cb = card.querySelector('#msFlagMode');
-    if (!cb) return;
-    cb.addEventListener('change', function () {
-      msFlagMode = cb.checked;
-      ctx.UI.toast(msFlagMode ? '标记模式已开启：点击格子将插旗' : '已切回翻开模式');
-    });
-  }
-
   function finishMinesweeper(ctx, won) {
     var rec = miniRec('minesweeper');
     rec.wins = (rec.wins || 0) + (won ? 1 : 0);
@@ -361,10 +348,6 @@ function histHtml(g) {
     if (g.over) return;
     var r = Number(cell.dataset.r), c = Number(cell.dataset.c);
     if (!isFinite(r) || !isFinite(c)) return;
-    if (msFlagMode) {
-      mineCellFlag(ctx, cell);
-      return;
-    }
     var res = G.mineReveal(g, r, c);
     if (!res.ok) { ctx.UI.toast(res.error, 'err'); return; }
     if (res.over) {
@@ -441,7 +424,6 @@ function histHtml(g) {
   function msRestart(ctx) {
     var d = MS_DIFFS[state.mini.diff] || MS_DIFFS[MS_DEFAULT_DIFF];
     state.mini = { kind: 'minesweeper', g: G.mineStart(d.rows, d.cols, d.mines), diff: state.mini.diff };
-    msFlagMode = false;
     render(ctx);
   }
 
