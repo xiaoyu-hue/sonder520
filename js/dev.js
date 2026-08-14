@@ -4,7 +4,7 @@
   var Pages = window.Pages = window.Pages || {};
   var S = window.SonderStore;
   var MD = window.SonderMarkdown;
-  var currentEl = null;
+  var currentEl = null, currentCtx = null;
   var tabState = 'projects';
 
   function render(ctx) {
@@ -159,9 +159,22 @@
 
   Pages.dev = {
     title: '开发工作',
-    render: function (container, ctx) { currentEl = container; render(ctx); },
+    render: function (container, ctx) { currentEl = container; currentCtx = ctx; render(ctx); },
     add: function (ctx) { openProject(ctx); }
   };
+
+  /* 数据变更自动重绘（SonderBus）：项目/笔记/片段/设置变更时仅当前路由为本页才刷新 */
+  (function () {
+    var bus = globalThis.SonderBus && globalThis.SonderBus.bus;
+    if (!bus) return;
+    ['/data/devProjects', '/data/devNotes', '/data/devSnippets', '/data/settings', '/data/all'].forEach(function (p) {
+      bus.on(p, function () {
+        if (currentEl && currentCtx && ((location.hash || '').replace(/^#\/?/, '').split('/')[0] === 'dev')) {
+          render(currentCtx);
+        }
+      });
+    });
+  })();
 
   /* ---------- 技术笔记（按更新时间倒序，Markdown 渲染） ---------- */
   function notesSection(ctx) {

@@ -3,7 +3,7 @@
   'use strict';
   var Pages = window.Pages = window.Pages || {};
   var S = window.SonderStore;
-  var currentEl = null;
+  var currentEl = null, currentCtx = null;
 
   /* ---------- 阅读计时（当前正在计时的书，会话结束才落账） ---------- */
   var timer = null; // { bookId, startTs }
@@ -281,11 +281,31 @@
 
   Pages.reading = {
     title: '阅读计划',
-    render: function (container, ctx) { currentEl = container; render(ctx); },
+    render: function (container, ctx) { currentEl = container; currentCtx = ctx; render(ctx); },
     add: function (ctx) { openBook(ctx); }
   };
   Pages.excerpts = {
     title: '我的书摘',
-    render: function (container, ctx) { renderExcerpts(container, ctx); }
+    render: function (container, ctx) { currentEl = container; currentCtx = ctx; renderExcerpts(container, ctx); }
   };
+
+  /* 数据变更自动重绘（SonderBus）：书籍/书摘/设置变更时仅当前路由为本页才刷新 */
+  (function () {
+    var bus = globalThis.SonderBus && globalThis.SonderBus.bus;
+    if (!bus) return;
+    ['/data/books', '/data/settings', '/data/all'].forEach(function (p) {
+      bus.on(p, function () {
+        if (currentEl && currentCtx && ((location.hash || '').replace(/^#\/?/, '').split('/')[0] === 'reading')) {
+          render(currentCtx);
+        }
+      });
+    });
+    ['/data/excerpts', '/data/settings', '/data/all'].forEach(function (p) {
+      bus.on(p, function () {
+        if (currentEl && currentCtx && ((location.hash || '').replace(/^#\/?/, '').split('/')[0] === 'excerpts')) {
+          renderExcerpts(currentEl, currentCtx);
+        }
+      });
+    });
+  })();
 })();

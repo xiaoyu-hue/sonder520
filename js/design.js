@@ -2,7 +2,7 @@
 (function () {
   'use strict';
   var Pages = window.Pages = window.Pages || {};
-  var currentEl = null;
+  var currentEl = null, currentCtx = null;
   var STAGES = ['构想', '进行', '定稿'];
 
   function render(ctx) {
@@ -95,7 +95,20 @@
 
   Pages.design = {
     title: '设计计划',
-    render: function (container, ctx) { currentEl = container; render(ctx); },
+    render: function (container, ctx) { currentEl = container; currentCtx = ctx; render(ctx); },
     add: function (ctx) { openDesign(ctx, 'idea'); }
   };
+
+  /* 数据变更自动重绘（SonderBus）：设计/设置变更时仅当前路由为本页才刷新 */
+  (function () {
+    var bus = globalThis.SonderBus && globalThis.SonderBus.bus;
+    if (!bus) return;
+    ['/data/designs', '/data/settings', '/data/all'].forEach(function (p) {
+      bus.on(p, function () {
+        if (currentEl && currentCtx && ((location.hash || '').replace(/^#\/?/, '').split('/')[0] === 'design')) {
+          render(currentCtx);
+        }
+      });
+    });
+  })();
 })();

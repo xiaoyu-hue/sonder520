@@ -115,4 +115,17 @@
     render: function (container, ctx) { currentEl = container; currentCtx = ctx; render(ctx); },
     add: function (ctx) { openAdd(ctx); }
   };
+
+  /* 数据变更自动重绘（SonderBus）：资讯/设置变更时仅当前路由为本页才刷新 */
+  (function () {
+    var bus = globalThis.SonderBus && globalThis.SonderBus.bus;
+    if (!bus) return;
+    ['/data/news', '/data/settings', '/data/all'].forEach(function (p) {
+      bus.on(p, function () {
+        if (currentEl && currentCtx && ((location.hash || '').replace(/^#\/?/, '').split('/')[0] === 'news')) {
+          render(currentCtx);
+        }
+      });
+    });
+  })();
 })();

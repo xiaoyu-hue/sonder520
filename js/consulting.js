@@ -246,4 +246,17 @@
     render: function (container, ctx) { currentEl = container; currentCtx = ctx; render(ctx); },
     add: function (ctx) { openClient(ctx); }
   };
+
+  /* 数据变更自动重绘（SonderBus）：客户/设置变更时仅当前路由为本页才刷新 */
+  (function () {
+    var bus = globalThis.SonderBus && globalThis.SonderBus.bus;
+    if (!bus) return;
+    ['/data/clients', '/data/settings', '/data/all'].forEach(function (p) {
+      bus.on(p, function () {
+        if (currentEl && currentCtx && ((location.hash || '').replace(/^#\/?/, '').split('/')[0] === 'consulting')) {
+          render(currentCtx);
+        }
+      });
+    });
+  })();
 })();

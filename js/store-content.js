@@ -10,14 +10,14 @@
   /* ====== 咨询工作 ====== */
   Store.prototype.addClient = function (d) {
     var c = { id: h.uid(), name: String(d.name || '').trim() || '未命名客户', contact: String(d.contact || ''), note: String(d.note || ''), projects: [], followups: [], income: [], createdAt: h.nowISO() };
-    this.state.clients.unshift(c); this.save(); return c;
+    this.state.clients.unshift(c); this.save(); this._emitChange('clients'); return c;
   };
   Store.prototype.updateClient = function (id, patch) {
     var c = h.find(this.state.clients, id); if (!c) return null;
     if (typeof patch.name === 'string') c.name = patch.name.trim() || c.name;
     if (typeof patch.contact === 'string') c.contact = patch.contact;
     if (typeof patch.note === 'string') c.note = patch.note;
-    this.save(); return c;
+    this.save(); this._emitChange('clients'); return c;
   };
   Store.prototype.removeClient = function (id) {
     var at = h.idxOf(this.state.clients, id);
@@ -26,11 +26,12 @@
       this._undoPush({ list: 'clients', at: at, data: clients[0] });
     }
     this.save();
+    this._emitChange('clients');
   };
   Store.prototype.addClientProject = function (clientId, d) {
     var c = h.find(this.state.clients, clientId); if (!c) return null;
     var pr = { id: h.uid(), name: String(d.name || '').trim() || '未命名项目', stage: d.stage || '进行中', note: String(d.note || '') };
-    c.projects.push(pr); this.save(); return pr;
+    c.projects.push(pr); this.save(); this._emitChange('clients'); return pr;
   };
   Store.prototype.updateClientProject = function (clientId, projId, patch) {
     var c = h.find(this.state.clients, clientId); if (!c) return null;
@@ -38,7 +39,7 @@
     if (typeof patch.name === 'string') pr.name = patch.name.trim() || pr.name;
     if (typeof patch.stage === 'string') pr.stage = patch.stage;
     if (typeof patch.note === 'string') pr.note = patch.note;
-    this.save(); return pr;
+    this.save(); this._emitChange('clients'); return pr;
   };
   Store.prototype.removeClientProject = function (clientId, projId) {
     var c = h.find(this.state.clients, clientId); if (!c) return;
@@ -51,11 +52,12 @@
       } });
     }
     this.save();
+    this._emitChange('clients');
   };
   Store.prototype.addClientFollowup = function (clientId, d) {
     var c = h.find(this.state.clients, clientId); if (!c) return null;
     var f = { id: h.uid(), date: d.date || h.todayStr(), note: String(d.note || ''), done: !!d.done };
-    c.followups.push(f); this.save(); return f;
+    c.followups.push(f); this.save(); this._emitChange('clients'); return f;
   };
   Store.prototype.updateClientFollowup = function (clientId, fuId, patch) {
     var c = h.find(this.state.clients, clientId); if (!c) return null;
@@ -63,7 +65,7 @@
     if (typeof patch.date === 'string') f.date = patch.date;
     if (typeof patch.note === 'string') f.note = patch.note;
     if (typeof patch.done === 'boolean') f.done = patch.done;
-    this.save(); return f;
+    this.save(); this._emitChange('clients'); return f;
   };
   Store.prototype.removeClientFollowup = function (clientId, fuId) {
     var c = h.find(this.state.clients, clientId); if (!c) return;
@@ -76,13 +78,14 @@
       } });
     }
     this.save();
+    this._emitChange('clients');
   };
   Store.prototype.addClientIncome = function (clientId, d) {
     var c = h.find(this.state.clients, clientId); if (!c) return null;
     var amt = Number(d.amount);
     if (isNaN(amt)) amt = 0;
     var inc = { id: h.uid(), date: d.date || h.todayStr(), amount: amt, note: String(d.note || '') };
-    c.income.push(inc); this.save(); return inc;
+    c.income.push(inc); this.save(); this._emitChange('clients'); return inc;
   };
   Store.prototype.updateClientIncome = function (clientId, incId, patch) {
     var c = h.find(this.state.clients, clientId); if (!c) return null;
@@ -90,7 +93,7 @@
     if (typeof patch.date === 'string') inc.date = patch.date;
     if (patch.amount !== undefined) { var a = Number(patch.amount); if (!isNaN(a)) inc.amount = a; }
     if (typeof patch.note === 'string') inc.note = patch.note;
-    this.save(); return inc;
+    this.save(); this._emitChange('clients'); return inc;
   };
   Store.prototype.removeClientIncome = function (clientId, incId) {
     var c = h.find(this.state.clients, clientId); if (!c) return;
@@ -103,6 +106,7 @@
       } });
     }
     this.save();
+    this._emitChange('clients');
   };
 
   /* ====== 阅读计划 ====== */
@@ -113,7 +117,7 @@
     var b = { id: h.uid(), title: String(d.title || '').trim() || '未命名书籍', author: String(d.author || ''), status: d.status || '想读', progress: pr, notes: [], readingMinutes: 0, readingLog: [], finishedAt: null, createdAt: h.nowISO() };
     /* 新建即标记已读完：自动记录完成日期 */
     if (b.status === '已读完' && !b.finishedAt) b.finishedAt = h.todayStr();
-    this.state.books.unshift(b); this.save(); return b;
+    this.state.books.unshift(b); this.save(); this._emitChange('books'); return b;
   };
   Store.prototype.updateBook = function (id, patch) {
     var b = h.find(this.state.books, id); if (!b) return null;
@@ -128,7 +132,7 @@
       var pr = Number(patch.progress);
       if (!isNaN(pr)) b.progress = Math.max(0, Math.min(100, pr));
     }
-    this.save(); return b;
+    this.save(); this._emitChange('books'); return b;
   };
   Store.prototype.removeBook = function (id) {
     var at = h.idxOf(this.state.books, id);
@@ -137,6 +141,7 @@
       this._undoPush({ list: 'books', at: at, data: books[0] });
     }
     this.save();
+    this._emitChange('books');
   };
   /* 阅读计时落账：minutes 为分钟数（浮点）。不足 1 分钟按 1 分钟计，写入当日会话日志（供周报）。 */
   Store.prototype.addReadingSession = function (bookId, minutes) {
@@ -144,7 +149,7 @@
     var m = Math.max(1, Math.ceil(Number(minutes) || 0));
     b.readingMinutes = (b.readingMinutes || 0) + m;
     b.readingLog.push({ date: h.todayStr(), minutes: m });
-    this.save(); return m;
+    this.save(); this._emitChange('books'); return m;
   };
 
   /* ====== 我的书摘 ====== */
@@ -153,7 +158,7 @@
     var text = String(d.text || '').trim();
     if (!text) return null;
     var ex = { id: h.uid(), bookId: d.bookId, bookTitle: b ? b.title : String(d.bookTitle || '未知书籍'), text: text, page: h.num0(d.page), time: h.nowISO() };
-    this.state.excerpts.unshift(ex); this.save(); return ex;
+    this.state.excerpts.unshift(ex); this.save(); this._emitChange('excerpts'); return ex;
   };
   Store.prototype.removeExcerpt = function (id) {
     var at = h.idxOf(this.state.excerpts, id);
@@ -162,11 +167,12 @@
       this._undoPush({ list: 'excerpts', at: at, data: exs[0] });
     }
     this.save();
+    this._emitChange('excerpts');
   };
   Store.prototype.addBookNote = function (bookId, text) {
     var b = h.find(this.state.books, bookId); if (!b) return null;
     var n = { id: h.uid(), time: h.nowISO(), text: String(text || '').trim() };
-    b.notes.push(n); this.save(); return n;
+    b.notes.push(n); this.save(); this._emitChange('books'); return n;
   };
   Store.prototype.removeBookNote = function (bookId, noteId) {
     var b = h.find(this.state.books, bookId); if (!b) return;
@@ -179,12 +185,13 @@
       } });
     }
     this.save();
+    this._emitChange('books');
   };
 
   /* ====== 看新闻计划 ====== */
   Store.prototype.addNews = function (d) {
     var n = { id: h.uid(), title: String(d.title || '').trim() || '未命名资讯', url: String(d.url || ''), source: String(d.source || ''), tags: (Array.isArray(d.tags) ? d.tags.slice() : []), status: d.status || 'unread', note: String(d.note || ''), time: h.nowISO() };
-    this.state.news.unshift(n); this.save(); return n;
+    this.state.news.unshift(n); this.save(); this._emitChange('news'); return n;
   };
   Store.prototype.updateNews = function (id, patch) {
     var n = h.find(this.state.news, id); if (!n) return null;
@@ -194,7 +201,7 @@
     if (Array.isArray(patch.tags)) n.tags = patch.tags.slice();
     if (typeof patch.status === 'string') n.status = patch.status;
     if (typeof patch.note === 'string') n.note = patch.note;
-    this.save(); return n;
+    this.save(); this._emitChange('news'); return n;
   };
   Store.prototype.removeNews = function (id) {
     var at = h.idxOf(this.state.news, id);
@@ -203,12 +210,13 @@
       this._undoPush({ list: 'news', at: at, data: news[0] });
     }
     this.save();
+    this._emitChange('news');
   };
 
   /* ====== 设计计划 ====== */
   Store.prototype.addDesign = function (d) {
     var x = { id: h.uid(), type: d.type === 'project' ? 'project' : 'idea', title: String(d.title || '').trim() || '未命名', link: String(d.link || ''), category: String(d.category || ''), note: String(d.note || ''), stage: d.stage || '构想', time: h.nowISO() };
-    this.state.designs.unshift(x); this.save(); return x;
+    this.state.designs.unshift(x); this.save(); this._emitChange('designs'); return x;
   };
   Store.prototype.updateDesign = function (id, patch) {
     var x = h.find(this.state.designs, id); if (!x) return null;
@@ -218,7 +226,7 @@
     if (typeof patch.link === 'string') x.link = patch.link;
     if (typeof patch.note === 'string') x.note = patch.note;
     if (typeof patch.stage === 'string') x.stage = patch.stage;
-    this.save(); return x;
+    this.save(); this._emitChange('designs'); return x;
   };
   Store.prototype.removeDesign = function (id) {
     var at = h.idxOf(this.state.designs, id);
@@ -227,6 +235,7 @@
       this._undoPush({ list: 'designs', at: at, data: ds[0] });
     }
     this.save();
+    this._emitChange('designs');
   };
 
   /* ====== 娱乐游戏 ====== */
@@ -254,11 +263,13 @@
     };
     this.state.gameRecords.unshift(r);
     this.save();
+    this._emitChange('gameRecords');
     return r;
   };
   Store.prototype.clearGameRecords = function () {
     this.state.gameRecords = [];
     this.save();
+    this._emitChange('gameRecords');
   };
 
   /* 单人小游戏纪录（guessnum/minesweeper/idiom/brainteaser 的 best/diff/right/wrong 等）：
@@ -273,6 +284,7 @@
     Object.keys(patch || {}).forEach(function (k) { o[k] = patch[k]; });
     this.state.miniRecords[kind] = o;
     this.save();
+    this._emitChange('miniRecords');
     return this.getMiniRecord(kind);
   };
 });

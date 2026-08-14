@@ -13,6 +13,7 @@
     var m = { id: h.uid(), text: String(text || '').trim(), time: h.nowISO(), archived: false };
     this.state.memos.unshift(m);
     this.save();
+    this._emitChange('memos');
     return m;
   };
   Store.prototype.updateMemo = function (id, patch) {
@@ -22,6 +23,7 @@
     if (patch.archived === true) m.archived = true;
     if (patch.archived === false) m.archived = false;
     this.save();
+    this._emitChange('memos');
     return m;
   };
   Store.prototype.removeMemo = function (id) {
@@ -31,6 +33,7 @@
       this._undoPush({ list: 'memos', at: at, data: memos[0] });
     }
     this.save();
+    this._emitChange('memos');
   };
 
   /* ====== 今日计划 ====== */
@@ -47,6 +50,7 @@
     };
     this.state.tasks.push(t);
     this.save();
+    this._emitChange('tasks');
     return t;
   };
   Store.prototype.updateTask = function (id, patch) {
@@ -61,6 +65,7 @@
       t.doneAt = patch.done ? h.nowISO() : null;
     }
     this.save();
+    this._emitChange('tasks');
     return t;
   };
   Store.prototype.removeTask = function (id) {
@@ -70,6 +75,7 @@
       this._undoPush({ list: 'tasks', at: at, data: tasks[0] });
     }
     this.save();
+    this._emitChange('tasks');
   };
   Store.prototype.reorderTask = function (id, dir) {
     var idx = h.idxOf(this.state.tasks, id);
@@ -79,6 +85,7 @@
     var tmp = arr[idx]; arr[idx] = arr[swap]; arr[swap] = tmp;
     for (var i = 0; i < arr.length; i++) arr[i].order = i;
     this.save();
+    this._emitChange('tasks');
     return true;
   };
 });

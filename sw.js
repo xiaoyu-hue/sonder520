@@ -2,13 +2,14 @@
  * 部署新版本时请递增 CACHE 版本号；sw 更新后会自动清理旧缓存。 */
 'use strict';
 
-var CACHE = 'sonder-v15';
+var CACHE = 'sonder-v16';
 
 var ASSETS = [
   './',
   './index.html',
   './css/style.css',
   './js/encryption.js',
+  './js/event-bus.js',
   './js/store.js',
   './js/store-tasks.js',
   './js/store-media.js',

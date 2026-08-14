@@ -960,6 +960,19 @@ function histHtml(g) {
     }
   };
 
+  /* 数据变更自动重绘（SonderBus）：战绩/设置变更时仅当前路由为本页才刷新（对局中不打断） */
+  (function () {
+    var bus = globalThis.SonderBus && globalThis.SonderBus.bus;
+    if (!bus) return;
+    ['/data/gameRecords', '/data/miniRecords', '/data/settings', '/data/all'].forEach(function (p) {
+      bus.on(p, function () {
+        if (currentEl && currentCtx && !busy && ((location.hash || '').replace(/^#\/?/, '').split('/')[0] === 'game')) {
+          render(currentCtx);
+        }
+      });
+    });
+  })();
+
   /* 测试/调试钩子：只读快照，对正常运行无害 */
   window.__gamesDbg = function () {
     var g = state.game;

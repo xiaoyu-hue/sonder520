@@ -3,6 +3,7 @@
   'use strict';
   var Pages = window.Pages = window.Pages || {};
   var S = window.SonderStore;
+  var currentEl = null, currentCtx = null;
 
   function greeting() {
     var h = new Date().getHours();
@@ -15,6 +16,7 @@
 
   function render(container, ctx) {
     var UI = ctx.UI, store = ctx.store;
+    currentEl = container; currentCtx = ctx;
     var sum = store.summarize();
     var day = S.todayStr();
     /* 每日金句位置：优先展示当天随机一条「我的书摘」（附书名页码），无摘抄则展示金句库 */
@@ -100,4 +102,18 @@
   }
 
   Pages.home = { title: '首页总览', render: render };
+
+  /* 数据变更自动重绘（SonderBus）：总览页依赖全部模块，订阅全量数据 */
+  (function () {
+    var bus = globalThis.SonderBus && globalThis.SonderBus.bus;
+    if (!bus) return;
+    bus.on('/data/*', function () {
+      var h = (location.hash || '').replace(/^#\/?/, '');
+      var clean = h.split('/')[0];
+      /* 空 hash 或 home 路由即首页（currentPageKey 语义） */
+      if (currentEl && currentCtx && (clean === '' || clean === 'home')) {
+        render(currentEl, currentCtx);
+      }
+    });
+  })();
 })();

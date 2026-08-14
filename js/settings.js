@@ -3,7 +3,7 @@
   'use strict';
   var Pages = window.Pages = window.Pages || {};
   var S = window.SonderStore;
-  var currentEl = null;
+  var currentEl = null, currentCtx = null;
 
   function render(ctx) {
     var container = currentEl, store = ctx.store, UI = ctx.UI;
@@ -443,6 +443,19 @@
 
   Pages.settings = {
     title: '数据与设置',
-    render: function (container, ctx) { currentEl = container; render(ctx); }
+    render: function (container, ctx) { currentEl = container; currentCtx = ctx; render(ctx); }
   };
+
+  /* 数据变更自动重绘（SonderBus）：设置变更时仅当前路由为本页才刷新 */
+  (function () {
+    var bus = globalThis.SonderBus && globalThis.SonderBus.bus;
+    if (!bus) return;
+    ['/data/settings', '/data/all'].forEach(function (p) {
+      bus.on(p, function () {
+        if (currentEl && currentCtx && ((location.hash || '').replace(/^#\/?/, '').split('/')[0] === 'settings')) {
+          render(currentCtx);
+        }
+      });
+    });
+  })();
 })();

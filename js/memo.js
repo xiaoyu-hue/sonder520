@@ -2,7 +2,7 @@
 (function () {
   'use strict';
   var Pages = window.Pages = window.Pages || {};
-  var currentEl = null;
+  var currentEl = null, currentCtx = null;
 
   function fmt(t) {
     var d = new Date(t);
@@ -28,7 +28,7 @@
 
   function render(container, ctx) {
     var UI = ctx.UI, store = ctx.store;
-    currentEl = container;
+    currentEl = container; currentCtx = ctx;
     container.innerHTML = '';
     container.appendChild(UI.el(
       '<div class="hbar">' +
@@ -89,4 +89,17 @@
   }
 
   Pages.memo = { title: '快速备忘', render: render, add: function (ctx) { openAdd(ctx); } };
+
+  /* 数据变更自动重绘（SonderBus）：备忘/设置变更时仅当前路由为本页才刷新 */
+  (function () {
+    var bus = globalThis.SonderBus && globalThis.SonderBus.bus;
+    if (!bus) return;
+    ['/data/memos', '/data/settings', '/data/all'].forEach(function (p) {
+      bus.on(p, function () {
+        if (currentEl && currentCtx && ((location.hash || '').replace(/^#\/?/, '').split('/')[0] === 'memo')) {
+          render(currentEl, currentCtx);
+        }
+      });
+    });
+  })();
 })();

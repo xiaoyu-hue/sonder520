@@ -242,9 +242,11 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
   }
 
   /* ---------- Store ---------- */
-  /** @constructor @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _idbWrite: any, _lastJson: string, _rev: number, _encKey: any, _encSize: number, _hasEncSnapshot: Function, _idbEncLocked: boolean, _undo: any[], _pendingLocal: any, _localFlushHandle: any }} */
+  /** @constructor @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _idbWrite: any, _lastJson: string, _rev: number, _encKey: any, _encSize: number, _hasEncSnapshot: Function, _idbEncLocked: boolean, _undo: any[], _pendingLocal: any, _localFlushHandle: any, _bus: any, _emitChange: Function }} */
   function Store(storage) {
     this._storage = storage || (typeof localStorage !== 'undefined' ? localStorage : null);
+    /* SonderBus 数据变更广播总线（浏览器 window.SonderBus / 测试注入；缺省静默） */
+    this._bus = (globalThis.SonderBus && globalThis.SonderBus.bus) ? globalThis.SonderBus.bus : null;
     var persisted = null;
     if (this._storage) {
       try { persisted = JSON.parse(this._storage.getItem(STORAGE_KEY)); }
@@ -280,7 +282,14 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
       arr.splice(Math.min(u.at, arr.length), 0, u.data);
     }
     this.save();
+    this._emitChange(u.list || 'all'); /* 撤销恢复：广播受影响数据 */
     return u.data || true;
+  };
+
+  /* SonderBus 数据变更广播：集合方法在 save() 后调用（list 为数据键名）。
+   * 无 bus（测试/降级）时静默；页面模块据此自动重绘。 */
+  Store.prototype._emitChange = function (list) {
+    if (this._bus) this._bus.emit('/data/' + list);
   };
 
   /* 主快照是否为密文（未解锁时据此判定"需要解锁"）。
@@ -442,7 +451,7 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
   };
 
   /* 启动时调用：优先从 IndexedDB 恢复（若更新）。返回 Promise<是否采用 IDB 数据> */
-  /** @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _idbWrite: any, _lastJson: string, _rev: number, save: Function, _encKey: any, _decryptParse: Function, _idbEncLocked: boolean, flushPersist: Function }} */
+  /** @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _idbWrite: any, _lastJson: string, _rev: number, save: Function, _encKey: any, _decryptParse: Function, _idbEncLocked: boolean, flushPersist: Function, _emitChange: Function }} */
   Store.prototype.loadIdb = function () {
     var self = this;
     if (!idbAvailable()) return Promise.resolve(false);
@@ -484,6 +493,7 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
           self._persistLocal(idbData);
           self.flushPersist(); /* IDB 恢复回写 localStorage：采用后立即可见 */
           self._idbWrite(idbData);
+          self._emitChange('all'); /* 恢复采用：全量数据替换，各页重绘 */
           return true;
         });
       });
@@ -538,6 +548,7 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
   Store.prototype.dismissQuotaNotice = function () {
     this.state.settings.quotaNoticeDismissed = true;
     this.save();
+    this._emitChange('settings');
   };
   Store.prototype.setQuotaNoticeDismissed = function (v) {
     this.state.settings.quotaNoticeDismissed = !!v;
@@ -559,6 +570,7 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
   };
   Store.prototype.lock = function () {
     this._encKey = null;
+    this._emitChange('all'); /* 锁定：全页重绘进入解锁界面 */
   };
   /* 启用加密：自检锁 → 派生密钥 → 全量密文落盘 → 回读验证。
    * 任何一步失败即中止，旧明文快照与内存数据原样保留。 */
@@ -584,6 +596,7 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
         return self.readSnapshot('local').then(function (dec) {
           if (!dec || !dec.settings || !isPlainObject(dec.settings)) throw new Error('加密回读验证失败');
           if (dec.tasks.length !== self.state.tasks.length) throw new Error('加密回读数据不一致，已中止');
+          self._emitChange('all'); /* 加密状态切换：全页重绘 */
           return true;
         });
       });
@@ -617,7 +630,10 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
           self._rev++;
           self._idbEncLocked = false;
           /* 回填双存：解锁即保证 localStorage 与 IDB 都是最新密文快照 */
-          return self._encSave(self._lastJson).then(function () { return true; });
+          return self._encSave(self._lastJson).then(function () {
+            self._emitChange('all'); /* 解锁完成：全页重绘 */
+            return true;
+          });
         }).catch(function () { self._encKey = null; return false; });
       }).catch(function () { self._encKey = null; return false; });
     });
@@ -645,6 +661,7 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
           self._persistLocal(plain);
           self.flushPersist(); /* 密文→明文切换必须即时完成 */
           self._idbWrite(plain);
+          self._emitChange('all'); /* 加解密切换：全页重绘反映加密状态 */
           return true;
         });
       });
@@ -709,6 +726,7 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
   Store.prototype.clearAll = function () {
     this.state = defaultState();
     this.save();
+    this._emitChange('all'); /* 清空全量数据：各页重绘 */
   };
 
 
@@ -940,6 +958,7 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     } else {
       this.save();
     }
+    this._emitChange('all'); /* 导入覆盖全量数据：各页重绘 */
     return Promise.resolve({ ok: true });
   };
   Store.prototype._importEncBackup = function (pkg, password) {
@@ -964,6 +983,7 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
         } else {
           self.save();
         }
+        self._emitChange('all'); /* 导入覆盖全量数据：各页重绘 */
         return { ok: true };
       }).catch(function () {
         return { ok: false, error: '密码错误或备份已损坏，导入中止（原数据未动）' };
