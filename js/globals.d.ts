@@ -156,6 +156,7 @@ interface SonderHelpers {
   clampOpacity(v: number): number;
   normalize(state: any): any;
   num0(v: any): number;
+  hashStr(s: string): number;
   STORAGE_WALLPAPER_KEY: string;
 }
 
@@ -171,6 +172,7 @@ interface SonderUI {
   sanitizeUrl(u: unknown): string;
   el(html: string): HTMLElement;
   toast(msg: string, type?: string, action?: { label: string; onClick: () => void }): void;
+  copyText(text: string): void;
   confirmBox(message: string, okText?: string): Promise<boolean>;
   alertBox(message: string, confirmText?: string): void;
   formModal(opts: SonderFormOptions): HTMLElement;

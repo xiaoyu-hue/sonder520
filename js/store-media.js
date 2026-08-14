@@ -9,7 +9,7 @@
 
   /* ====== 自媒体 ====== */
   var STAT_FIELDS = ['views', 'likes', 'comments', 'favorites'];
-  function num0(v) { var n = Number(v); return isNaN(n) ? 0 : Math.max(0, n); }
+  var num0 = h.num0;
   function postFactory(d) {
     var p = {
       id: h.uid(), title: String(d.title || '').trim() || '未命名内容',

@@ -12,10 +12,10 @@
     return w;
   };
 
+  /* HTML 转义：实现收敛在 markdown.js（SonderMarkdown.esc），此处仅委托；
+   * markdown.js 在 index.html 中先于任何渲染调用加载，运行时可安全引用。 */
   function esc(s) {
-    return String(s === null || s === undefined ? '' : s)
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    return window.SonderMarkdown.esc(s);
   }
 
   /* 通用净化函数：所有用户输入展示前统一走这里，杜绝 XSS。
@@ -241,6 +241,27 @@
     return ov;
   }
 
+  /* 一键复制：Clipboard API 优先，execCommand 兜底（原 dev.js/settings.js 各自实现已收敛至此） */
+  function copyText(text) {
+    function fallback() {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.cssText = 'position:fixed;opacity:0;top:0';
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand('copy'); toast('已复制'); } catch (e) { toast('复制失败，请手动选择', 'err'); }
+      document.body.removeChild(ta);
+    }
+    if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+      navigator.clipboard.writeText(text).then(function () {
+        toast('已复制');
+      }).catch(fallback);
+      return;
+    }
+    fallback();
+  }
+
   function emptyState(text, actionLabel, actionFn) {
     var d = el('<div class="empty"><div class="big">🗂</div><div>' + esc(text) + '</div></div>');
     if (actionLabel) {
@@ -251,5 +272,5 @@
     return d;
   }
 
-  return { esc: esc, sanitize: sanitize, sanitizeUrl: sanitizeUrl, el: el, toast: toast, confirmBox: confirmBox, alertBox: alertBox, formModal: formModal, emptyState: emptyState };
+  return { esc: esc, sanitize: sanitize, sanitizeUrl: sanitizeUrl, el: el, toast: toast, copyText: copyText, confirmBox: confirmBox, alertBox: alertBox, formModal: formModal, emptyState: emptyState };
 });

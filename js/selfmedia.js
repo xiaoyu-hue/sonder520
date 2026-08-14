@@ -21,7 +21,7 @@
   function writeTags(tags) {
     return (tags || []).map(function (t) { return '<span class="tag">' + currentCtx.UI.esc(t) + '</span>'; }).join('');
   }
-  function num0(v) { var n = Number(v); return isNaN(n) ? 0 : Math.max(0, n); }
+  var num0 = S._h.num0;
 
   function openAdd(ctx, target) {
     ctx.UI.formModal({

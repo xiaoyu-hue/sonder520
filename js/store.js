@@ -1153,7 +1153,7 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
       uid: uid, nowISO: nowISO, todayStr: todayStr, fmtDate: fmtDate,
       deepClone: deepClone, isPlainObject: isPlainObject, find: find, idxOf: idxOf,
       normalizePriority: normalizePriority, clampOpacity: clampOpacity, normalize: normalize,
-      num0: num0, STORAGE_WALLPAPER_KEY: STORAGE_WALLPAPER_KEY
+      num0: num0, hashStr: hashStr, STORAGE_WALLPAPER_KEY: STORAGE_WALLPAPER_KEY
     }
   };
   return api;

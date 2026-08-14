@@ -275,7 +275,7 @@
       '</div>'
     );
     card.querySelector('[data-copy]').onclick = function () {
-      copyText(ctx, s.code);
+      ctx.UI.copyText(s.code);
     };
     card.querySelector('[data-sedit]').onclick = function () { openSnippet(ctx, s); };
     card.querySelector('[data-sdel]').onclick = function () {
@@ -301,26 +301,5 @@
         return true;
       }
     });
-  }
-
-  /* 一键复制：Clipboard API 优先，execCommand 兜底 */
-  function copyText(ctx, text) {
-    function fallback() {
-      var ta = document.createElement('textarea');
-      ta.value = text;
-      ta.setAttribute('readonly', '');
-      ta.style.cssText = 'position:fixed;opacity:0;top:0';
-      document.body.appendChild(ta);
-      ta.select();
-      try { document.execCommand('copy'); ctx.UI.toast('已复制'); } catch (e) { ctx.UI.toast('复制失败，请手动选择', 'err'); }
-      document.body.removeChild(ta);
-    }
-    if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
-      navigator.clipboard.writeText(text).then(function () {
-        ctx.UI.toast('已复制');
-      }).catch(fallback);
-      return;
-    }
-    fallback();
   }
 })();

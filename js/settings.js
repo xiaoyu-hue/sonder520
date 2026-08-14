@@ -354,28 +354,9 @@
     });
     card.querySelector('#weeklyCopy').addEventListener('click', function () {
       var text = card.querySelector('.weekly-text').textContent || '';
-      copyText(text);
+      UI.copyText(text);
     });
     return card;
-  }
-
-  function copyText(text) {
-    var UI = window.UI;
-    function fb() {
-      var ta = document.createElement('textarea');
-      ta.value = text;
-      ta.setAttribute('readonly', '');
-      ta.style.cssText = 'position:fixed;opacity:0;top:0';
-      document.body.appendChild(ta);
-      ta.select();
-      try { document.execCommand('copy'); UI.toast('已复制'); } catch (e) { UI.toast('复制失败，请手动选择', 'err'); }
-      document.body.removeChild(ta);
-    }
-    if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
-      navigator.clipboard.writeText(text).then(function () { UI.toast('已复制'); }).catch(fb);
-      return;
-    }
-    fb();
   }
 
   function openEnableEnc(ctx) {

@@ -1,11 +1,12 @@
-/* quotes.js - 每日金句库：按日期做种子选取，同一天稳定、0 点后换新。浏览器/Node 通用 */
+/* quotes.js - 每日金句库：按日期做种子选取，同一天稳定、0 点后换新。浏览器/Node 通用
+ * hashStr 实现收敛在 store.js（SonderStore._h.hashStr），此处注入复用。 */
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) {
-    module.exports = factory();
+    module.exports = factory(require('./store.js')._h.hashStr);
   } else {
-    root.SonderQuotes = factory();
+    root.SonderQuotes = factory(root.SonderStore._h.hashStr);
   }
-})(typeof self !== 'undefined' ? self : this, function () {
+})(typeof self !== 'undefined' ? self : this, function (hashStr) {
   'use strict';
 
   var QUOTES = [
@@ -50,13 +51,6 @@
     '问渠那得清如许？为有源头活水来。',
     '日出江花红胜火，春来江水绿如蓝。'
   ];
-
-  /* 字符串哈希（DJB2），用于把日期稳定映射到金句索引 */
-  function hashStr(s) {
-    var h = 5381, i;
-    for (i = 0; i < s.length; i++) h = ((h << 5) + h) + s.charCodeAt(i);
-    return Math.abs(h);
-  }
 
   /* 取某天的金句；dateStr 形如 'YYYY-MM-DD'，缺省取今天 */
   function quoteOfDay(dateStr) {
