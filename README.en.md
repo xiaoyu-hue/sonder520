@@ -52,11 +52,11 @@ Source code: https://github.com/xiaoyu-hue/sonder520
 
 - Design: inspiration collection + design projects and phases
 
-- Games: Tic-Tac-Toe / Gomoku (AI duel with 3 difficulties, or two-player, undo, resign, auto records) + Guess the Number / Minesweeper / Guess the Idiom (中文) / Brain Teasers (中文) — all records merged into match history
+- Games: Tic-Tac-Toe / Gomoku (AI duel with 3 difficulties, or two-player, undo, resign, auto records; AI moves run in a Web Worker so the board never freezes) + Guess the Number / Minesweeper / Guess the Idiom (中文) / Brain Teasers (中文) — all records merged into match history
 
 - Data & Settings: theme (follows system, overridable), wallpaper upload/opacity, animation fps (60/90/120), module toggles, stats, export/import backup, encryption switch, weekly report generator, desktop notifications, migrate to IndexedDB
 
-- Reliability: PWA offline, dual storage (localStorage + IndexedDB + optional encryption), encryption resilience (no plaintext writes while locked, future-version ciphertext preserved untouched), warning bar when storage exceeds 4.5 MB, global search, XSS sanitization everywhere (incl. attribute injection), error reporting with graceful shell degradation
+- Reliability: PWA offline, dual storage (localStorage + IndexedDB + optional encryption), encryption resilience (no plaintext writes while locked, future-version ciphertext preserved untouched), warning bar when storage exceeds 4.5 MB, red crisis bar (export-only) when both storage backends fail, global search, XSS sanitization everywhere (incl. attribute injection), error reporting with graceful shell degradation
 
 - Note: Chinese-cultural content (daily quotes, Idiom & Brain Teaser games) intentionally stays in Chinese — translating them would lose the flavor.
 
@@ -114,7 +114,7 @@ Notes:
 
 - Pure HTML/CSS/vanilla JS — zero build/run dependencies, no npm install needed to use the app.
 
-- Run all tests: npm test (currently 423 passing, covering storage/encryption (incl. races & future-version resilience)/UI/all modules/styles/animations/wallpaper/mobile adaptation/perf/game engines/interaction regressions/PWA/search/XSS (incl. attribute injection)/contrast/IndexedDB/notifications).
+- Run all tests: npm test (currently 451 passing, covering storage/encryption (incl. races & future-version resilience)/UI/all modules/styles/animations/wallpaper/mobile adaptation/perf/game engines/interaction regressions/PWA/search/XSS (incl. attribute injection)/contrast/IndexedDB/notifications/Web Worker/crisis fallback).
 
 - Type check (zero-build): npm run typecheck (JSDoc + tsc --noEmit, contracts locked in globals.d.ts).
 
