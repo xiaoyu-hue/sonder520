@@ -37,6 +37,8 @@ test('scripts: sw.js ASSETS 与 index.html 静态资源一致（无新增无移�
   let m;
   while ((m = re.exec(INDEX))) expect.push('./' + (m[1] || m[2]));
   expect.push('./manifest.json', './img/wallpaper.jpg', './assets/icon.svg');
+  /* 与 scripts/sync-sw.js 的 EXTRA 保持一致的拷贝（运行时按需加载、不进 index.html 的资产） */
+  expect.push('./js/game-worker.js');
   const expectUnique = [...new Set(expect)];
   const actual = swAssets();
   assert.deepEqual(actual, expectUnique, 'sw.js ASSETS 应与 index.html 同步（改动后请运行 npm run sync-sw）');

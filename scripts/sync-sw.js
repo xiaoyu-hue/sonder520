@@ -9,6 +9,9 @@ const root = path.join(__dirname, '..');
 const indexPath = path.join(root, 'index.html');
 const swPath = path.join(root, 'sw.js');
 
+/* 运行时按需加载、不进 index.html script 列表的资产（如 Web Worker），仍须预缓存 */
+const EXTRA = ['./js/game-worker.js'];
+
 const html = fs.readFileSync(indexPath, 'utf8');
 const sw = fs.readFileSync(swPath, 'utf8');
 
@@ -18,6 +21,7 @@ function parseAssets() {
   let m;
   while ((m = re.exec(html))) files.push('./' + (m[1] || m[2]));
   files.push('./manifest.json', './img/wallpaper.jpg', './assets/icon.svg');
+  EXTRA.forEach(f => files.push(f));
   return [...new Set(files)];
 }
 

@@ -16,7 +16,9 @@
     "SonderMarkdown": "readonly",
     "SonderCrypto": "readonly",
     "SonderGames": "readonly",
-    "SonderQuotes": "readonly"
+    "SonderQuotes": "readonly",
+    "importScripts": "readonly",
+    "self": "readonly"
   },
   "rules": {
     "no-console": "off",

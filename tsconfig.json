@@ -14,5 +14,6 @@
     "forceConsistentCasingInFileNames": true,
     "types": ["node"]
   },
-  "include": ["js/**/*.js", "js/**/*.d.ts"]
+  "include": ["js/**/*.js", "js/**/*.d.ts"],
+  "exclude": ["js/game-worker.js"]
 }

@@ -10,6 +10,10 @@
   var state = { game: null, mode: 'ai', playerStone: 'X', difficulty: 'normal', mini: null };
   var busy = false;
   var aiTimer = null;
+  /* 五子棋 AI Worker：承载耗时计算，避免阻塞主线程（无 Worker 环境自动回退同步计算，行为与旧版一致） */
+  var aiWorker = null;
+  var aiSeq = 0; /* 递增序号：悔棋/重开/切换时作废在途 AI 回复；同时用作 worker 消息 id */
+  var aiWaitCtx = null; /* 等待 worker 回复期间的 ctx 快照（onerror/兜底使用） */
   var confirmOpen = false;
 
   var DIFF_LABEL = { easy: '简单', normal: '普通', hard: '困难', mid: '中等' };
@@ -731,6 +735,8 @@ function histHtml(g) {
   /* ---------- 对局操作 ---------- */
   function startGame(ctx, kind) {
     if (aiTimer) { clearTimeout(aiTimer); aiTimer = null; }
+    aiSeq++; /* 作废在途 worker 计算（重开/切换） */
+    aiWaitCtx = null;
     state.game = G.createGame(kind);
     busy = false;
     render(ctx);
@@ -748,11 +754,17 @@ function histHtml(g) {
 
   function aiThink(ctx) {
     var g = state.game;
-    if (!g || g.over || aiTimer) return; /* P5a：重入守卫——render 恢复路径与落子路径可能各自调度，已挂起时直接跳过 */
+    if (!g || g.over || aiTimer || aiWaitCtx) return; /* P5a：重入守卫——render 恢复路径与落子路径可能各自调度，已挂起时直接跳过 */
     busy = true;
     var st = document.querySelector('#gStatus');
     if (st) st.textContent = statusText();
     var delay = g.moves.length === 0 ? 320 : 220;
+    /* 五子棋：优先交给 Worker 异步计算（结构化克隆投递，不阻塞主线程）；失败自动回退同步 */
+    if (g.kind === 'gomoku' && ensureAiWorker()) {
+      aiWaitCtx = ctx;
+      aiWorker.postMessage({ id: ++aiSeq, game: g, stone: aiStone(), diff: state.difficulty });
+      return;
+    }
     aiTimer = setTimeout(function () {
       aiTimer = null;
       busy = false;
@@ -767,6 +779,58 @@ function histHtml(g) {
     }, delay);
   }
 
+  /* ---------- 五子棋 AI Worker ---------- */
+  function ensureAiWorker() {
+    if (aiWorker) return true;
+    if (typeof Worker === 'undefined') return false;
+    try {
+      var w = new Worker('js/game-worker.js');
+      w.onmessage = onAiWorkerMsg;
+      w.onerror = function () {
+        aiWorker = null;
+        fallbackSyncAi();
+      };
+      aiWorker = w;
+      return true;
+    } catch (e) {
+      aiWorker = null;
+      return false;
+    }
+  }
+
+  /* worker 回复落子：id 与当前 aiSeq 不一致即过期（悔棋/重开/切换），直接丢弃 */
+  function onAiWorkerMsg(e) {
+    var d = e && e.data;
+    if (!d || d.id !== aiSeq) return;
+    aiSeq++; /* 本回复已消费，后续同 id 消息视为过期 */
+    aiTimer = null;
+    busy = false;
+    var g = state.game;
+    if (!g || g.over || g.turn !== aiStone()) return;
+    if (!document.getElementById('gStatus')) return; /* 越页守卫：不劫持当前页面，切回时重新调度 */
+    var mv = d.mv;
+    if (!mv || typeof mv.r !== 'number' || typeof mv.c !== 'number') { fallbackSyncAi(); return; }
+    var ctx = aiWaitCtx;
+    aiWaitCtx = null;
+    var res = G.place(g, mv.r, mv.c);
+    render(ctx);
+    if (res.winner || res.draw) recordEnd(ctx);
+  }
+
+  /* worker 异常/超时兜底：同步重算落子（保证 AI 对局不卡死） */
+  function fallbackSyncAi() {
+    var ctx = aiWaitCtx;
+    aiWaitCtx = null;
+    aiTimer = null;
+    busy = false;
+    if (!ctx || !state.game || state.game.kind !== 'gomoku' || state.game.over || state.game.turn !== aiStone()) return;
+    if (!document.getElementById('gStatus')) return;
+    var mv = G.gomokuAiMove(state.game, aiStone(), state.difficulty);
+    var res = G.place(state.game, mv.r, mv.c);
+    render(ctx);
+    if (res.winner || res.draw) recordEnd(ctx);
+  }
+
     /* 悔棋：
    * 仅对局进行中可用（终局后禁止）。
    * AI 模式 - 撤回己方与 AI 各一步回到玩家思考点，可连续悔多步；
@@ -779,6 +843,8 @@ function histHtml(g) {
     if (busy) {
       clearTimeout(aiTimer);
       aiTimer = null;
+      aiSeq++; /* 作废在途 worker 回复（AI 思考中悔棋） */
+      aiWaitCtx = null;
       busy = false;
     }
     if (!g.moves.length) { UI.toast('暂无落子可悔', 'err'); return; }
@@ -808,6 +874,8 @@ function histHtml(g) {
     if (busy) {
       clearTimeout(aiTimer);
       aiTimer = null;
+      aiSeq++; /* 作废在途 worker 回复（AI 思考中认输） */
+      aiWaitCtx = null;
       busy = false;
     }
     if (!g.moves.length) { UI.toast('还没落子，先下一手吧', 'err'); return; }
@@ -984,7 +1052,8 @@ function histHtml(g) {
       game: g && { kind: g.kind, turn: g.turn, moves: g.moves.length, over: g.over, winner: g.winner },
       mini: state.mini && (state.mini.kind === 'guessnum'
         ? { kind: 'guessnum', target: state.mini.g.target, attempts: state.mini.g.attempts.length, over: state.mini.g.over, won: state.mini.g.won }
-        : { kind: state.mini.kind, over: state.mini.g.over, won: state.mini.g.won, revealed: state.mini.g.revealed, flagged: state.mini.g.flagged, boardReady: !!state.mini.g.board, rows: state.mini.g.rows, cols: state.mini.g.cols, mines: state.mini.g.mines })
+        : { kind: state.mini.kind, over: state.mini.g.over, won: state.mini.g.won, revealed: state.mini.g.revealed, flagged: state.mini.g.flagged, boardReady: !!state.mini.g.board, rows: state.mini.g.rows, cols: state.mini.g.cols, mines: state.mini.g.mines }),
+      worker: !!aiWorker
     };
   };
   /* 测试钩子：注入确定的猜数字答案（仅测试用） */

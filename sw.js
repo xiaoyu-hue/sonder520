@@ -2,7 +2,7 @@
  * 部署新版本时请递增 CACHE 版本号；sw 更新后会自动清理旧缓存。 */
 'use strict';
 
-var CACHE = 'sonder-v16';
+var CACHE = 'sonder-v17';
 
 var ASSETS = [
   './',
@@ -35,7 +35,8 @@ var ASSETS = [
   './js/app.js',
   './manifest.json',
   './img/wallpaper.jpg',
-  './assets/icon.svg'
+  './assets/icon.svg',
+  './js/game-worker.js'
 ];
 
 /* install：预缓存全部资源，立即接管 */
