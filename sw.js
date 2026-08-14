@@ -60,10 +60,27 @@ self.addEventListener('activate', function (e) {
   );
 });
 
-/* fetch：Cache First —— 命中缓存直接返回；
- * 未命中回源并写入缓存；离线时导航请求回退到首页缓存副本。 */
+/* fetch：导航请求（页面）Network First —— 有网先拿新版并回写缓存，刷新即更新；
+ * 静态资源 Cache First —— 命中缓存直接返回；未命中回源并写入缓存；
+ * 离线时导航请求回退到首页缓存副本。 */
 self.addEventListener('fetch', function (e) {
   if (e.request.method !== 'GET') return;
+  if (e.request.mode === 'navigate') {
+    e.respondWith(
+      fetch(e.request).then(function (res) {
+        if (res && res.ok) {
+          var copy = res.clone();
+          caches.open(CACHE).then(function (c) { c.put(e.request, copy); });
+        }
+        return res;
+      }).catch(function () {
+        return caches.match('./index.html').then(function (hit) {
+          return hit || Response.error();
+        });
+      })
+    );
+    return;
+  }
   e.respondWith(
     caches.match(e.request).then(function (hit) {
       if (hit) return hit;

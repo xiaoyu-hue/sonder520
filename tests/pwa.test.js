@@ -37,6 +37,13 @@ test('PWA：Service Worker 采用 Cache First 且离线可回退首页', () => {
   assert.ok(sw.includes('skipWaiting') && sw.includes('clients.claim'), '更新后应尽快接管');
 });
 
+test('PWA：导航请求走 Network First（刷新即拿新版，离线回退缓存首页）', () => {
+  assert.ok(sw.includes("e.request.mode === 'navigate'"), '应区分导航请求');
+  assert.ok(sw.includes('fetch(e.request).then(function (res) {'), '导航应优先回源');
+  assert.ok(sw.includes("caches.match('./index.html').then"), '导航离线应回退首页缓存');
+  assert.ok(sw.includes('Response.error()'), '兜底错误响应');
+});
+
 test('PWA：旧版本缓存会被自动清理', () => {
   assert.ok(sw.includes('filter(function (k) { return k !== CACHE; })'), '应过滤并清理旧版本缓存');
   assert.ok(sw.includes('caches.delete(k)'), '应删除旧缓存');
