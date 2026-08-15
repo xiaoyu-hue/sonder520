@@ -114,7 +114,7 @@ Notes:
 
 - Pure HTML/CSS/vanilla JS — zero build/run dependencies, no npm install needed to use the app.
 
-- Run all tests: npm test (currently 488 passing, covering storage/encryption (incl. races & future-version resilience)/UI/all modules/styles/animations/wallpaper/mobile adaptation/perf/game engines/interaction regressions/PWA/search/XSS (incl. attribute injection)/contrast/IndexedDB/notifications/Web Worker/crisis fallback).
+- Run all tests: npm test (currently 505 passing, covering storage/encryption (incl. races & future-version resilience)/UI/all modules/styles/animations/wallpaper/mobile adaptation/perf/game engines/interaction regressions/PWA/search/XSS (incl. attribute injection)/contrast/IndexedDB/notifications/Web Worker/crisis fallback/motion-layer contracts & behavior).
 
 - Type check (zero-build): npm run typecheck (JSDoc + tsc --noEmit, contracts locked in globals.d.ts).
 
