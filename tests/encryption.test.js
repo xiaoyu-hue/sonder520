@@ -56,6 +56,26 @@ test('IV 与盐长度与格式：IV 12 字节、盐 16 字节、bundle 结构完
   assert.equal(C.saltBytes().length, 16);
 });
 
+test('Web Crypto 缺失时 saltBytes/ivBytes 抛清晰错误而非裸 TypeError', () => {
+  /* 模块顶部 cr 在 require 时捕获 globalThis.crypto；临时删除并清 require 缓存以模拟无 Web Crypto 环境 */
+  const g = globalThis;
+  const saved = undefined;
+  let setterWorked = false;
+  try {
+    Object.defineProperty(g, 'crypto', { value: undefined, configurable: true });
+    setterWorked = true;
+  } catch (e) { /* 只读属性：跳过低版本 Node 场景 */ }
+  if (setterWorked) {
+    const encPath = require.resolve('../js/encryption.js');
+    delete require.cache[encPath];
+    const C2 = require(encPath);
+    assert.throws(() => C2.saltBytes(), /不支持 Web Crypto/, 'saltBytes 应抛友好错误');
+    assert.throws(() => C2.ivBytes(), /不支持 Web Crypto/, 'ivBytes 应抛友好错误');
+    delete require.cache[encPath];
+    Object.defineProperty(g, 'crypto', { configurable: true, value: saved });
+  }
+});
+
 test('错误密码解密必须抛错', async () => {
   const k1 = await C.deriveKey(PWD, new Uint8Array([7, 7, 7]));
   const k2 = await C.deriveKey(PWD2, new Uint8Array([7, 7, 7]));

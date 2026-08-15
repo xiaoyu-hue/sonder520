@@ -168,7 +168,7 @@
       var lt = null;
       chip.addEventListener('touchstart', function (e) {
         lt = { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY, on: false };
-        chip._ltTimer = setTimeout(function () { lt.on = true; chip._origin = chip.parentNode; chip.classList.add('dragging'); }, 380);
+        chip._ltTimer = setTimeout(function () { lt.on = true; chip.classList.add('dragging'); }, 380);
       }, { passive: true });
       chip.addEventListener('touchmove', function (e) {
         if (!lt || !lt.on) return;

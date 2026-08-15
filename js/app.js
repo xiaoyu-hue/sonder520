@@ -304,7 +304,6 @@
   }
 
   window.__sonderHooks.lockNow = function () { showLockScreen(); };
-  window.__sonderHooks.unlockNow = function () { if (lockScreenEl) lockScreenEl.hidden = true; };
 
   /* 顶栏全局“＋”新建：调用当前页面的 openAdd() */
   document.getElementById('btnQuickMemo').addEventListener('click', function () {

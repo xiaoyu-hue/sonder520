@@ -79,6 +79,8 @@ test('worker：非法请求一律回 error 且不崩溃', () => {
   assert.equal(s.posts[s.posts.length - 1].error, 'bad-request', '缺 game 应拒绝');
   s.fire({});
   assert.equal(s.posts[s.posts.length - 1].id, -1, '缺 id 回执 -1');
+  s.fire({ id: 6, game: { kind: 'gomoku', size: 15, board: [[]], turn: 'X', moves: [] }, stone: 'Z' });
+  assert.equal(s.posts[s.posts.length - 1].error, 'bad-request', '非法棋子值应拒绝');
 });
 
 /* ---------- games.js 集成：假 Worker ---------- */

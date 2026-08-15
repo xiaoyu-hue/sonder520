@@ -295,3 +295,31 @@ test('加密态导入：importBackup 完成即落盘，不依赖调用方再等�
   assert.equal(await s3.unlock(PWD), true, '新实例可解锁');
   assert.equal(s3.state.memos[0].text, '导入即落盘', '导入数据已可恢复');
 });
+
+test('轻量密文探测：needsUnlock 语义与 JSON.parse 一致（save 热路径优化不回归）', () => {
+  /* 本站密文 payload 固定格式 {"e":1,...}，探测用正则免全量 parse。以下覆盖判定边界 */
+  const st = memStorage();
+  st.setItem(KEY, JSON.stringify({ memos: [{ id: 'a', text: '明文', time: '', archived: false }], tasks: [] }));
+  let s = S.createStore(st);
+  assert.equal(s.needsUnlock(), false, '普通明文快照不应判定锁定');
+  /* 密文标准格式 */
+  st.setItem(KEY, '{"e":1,"v":"sonder-enc-v1","iv":"abc","data":"xyz"}');
+  s = S.createStore(st);
+  assert.equal(s.needsUnlock(), true, '密文快照应判定锁定');
+  /* 未来版本密文：v 不同但 e:1 仍在 → 同样判定锁定（韧性不回归） */
+  st.setItem(KEY, '{"e":1,"v":"sonder-enc-v2","iv":"abc","data":"xyz"}');
+  s = S.createStore(st);
+  assert.equal(s.needsUnlock(), true, 'v2 密文应判定锁定');
+  /* 空白容忍（防御手写/压缩工具产生的空格） */
+  st.setItem(KEY, '{ "e" : 1 , "v" : "sonder-enc-v1" , "iv" : "a" , "data" : "b" }');
+  s = S.createStore(st);
+  assert.equal(s.needsUnlock(), true, '带空白密文应判定锁定');
+  /* 顶层 e 非 1（明文数据防御：绝不误判） */
+  st.setItem(KEY, JSON.stringify({ e: 0, memos: [] }));
+  s = S.createStore(st);
+  assert.equal(s.needsUnlock(), false, 'e 非 1 不应判定锁定');
+  /* 顶层首个键是 e 值非数字字符串（如普通数据键恰好以 e 开头——实际键集无 e，防御性验证正则不误伤） */
+  st.setItem(KEY, JSON.stringify({ email: 'a@b.c', memos: [] }));
+  s = S.createStore(st);
+  assert.equal(s.needsUnlock(), false, 'email 键不得误判为密文');
+});

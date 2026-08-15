@@ -37,9 +37,9 @@
   }
 
   /* 随机盐（16 字节）——严禁硬编码，随数据存储 */
-  function saltBytes() { return cr.getRandomValues(new Uint8Array(16)); }
+  function saltBytes() { return requireCrypto().getRandomValues(new Uint8Array(16)); }
   /* 全新随机 IV（12 字节）——每次加密必须重新生成 */
-  function ivBytes() { return cr.getRandomValues(new Uint8Array(12)); }
+  function ivBytes() { return requireCrypto().getRandomValues(new Uint8Array(12)); }
 
   /* PBKDF2(600k, SHA-256) 派生 AES-GCM-256 密钥，可导出便于测试盐/密码不同性。
    * 会话缓存：页面未刷新时相同 (密码, 盐, 迭代数) 只派第一次，不再重跑 60 万次迭代。

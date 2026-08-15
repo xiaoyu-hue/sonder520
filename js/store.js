@@ -305,14 +305,15 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
 
   /* 主快照是否为密文（未解锁时据此判定"需要解锁"）。
    * 只看加密标记 e===1：未知/未来版本（v !== ENC_FORMAT）同样认定加密 → 走锁定流，
-   * 防止旧客户端把新密文当明文解析、normalize 清空数据后明文覆盖（不可逆丢失） */
+   * 防止旧客户端把新密文当明文解析、normalize 清空数据后明文覆盖（不可逆丢失）。
+   * 轻量探测：本站密文 payload 恒以 {"e":1 开头（store._encSave 固定格式），
+   * 用正则判定避免每次 needsUnlock 全量 JSON.parse 主快照（save 热路径，未加密用户每写必走）。 */
   Store.prototype._hasEncSnapshot = function () {
     if (!this._storage) return false;
     try {
       var raw = this._storage.getItem(STORAGE_KEY);
       if (!raw) return false;
-      var parsed = JSON.parse(raw);
-      return !!(parsed && parsed.e === 1);
+      return /^\s*\{\s*"e"\s*:\s*1[\s,}]/.test(raw);
     } catch (e) { return false; }
   };
   Store.prototype._encSalt = function () {

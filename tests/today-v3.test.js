@@ -1,7 +1,7 @@
 'use strict';
 const { test } = require('node:test');
 const assert = require('node:assert');
-const { boot } = require('./harness.js');
+const { boot, waitFor } = require('./harness.js');
 const S = require('../js/store.js');
 const wait = ms => new Promise(r => setTimeout(r, ms));
 
@@ -188,6 +188,25 @@ test('专注：进行中再次点击任务提示已有专注，结束后可重�
   assert.equal(dbg.focusOpen(), false, '手动结束应关闭悬浮窗');
   dbg.startFocus(ctx, t2.id, 60);
   assert.ok(h.window.document.querySelector('#focusFloat'), '结束后应可重新开启');
+  dbg.stopFocus();
+});
+
+test('专注：倒计时按真实时钟计算，不因 tick 延迟累积漂移', async () => {
+  const h = boot();
+  h.goto('today');
+  const t = addSeedTask(h, '漂移测试', 'p1');
+  const dbg = h.window.__todayDbg;
+  const ctx = h.window.__sonderHooks.ctx;
+  /* 3 秒专注：deadline 语义下剩余秒 = ceil((deadline - now)/1000)，
+   * 每次 tick 从真实时钟重算——即使 tick 被事件循环延迟，剩余也不会被重复扣减 */
+  dbg.startFocus(ctx, t.id, 3);
+  assert.equal(dbg.focusLeft(), 3, '开始即满额');
+  await wait(1100);
+  assert.equal(dbg.focusLeft(), 2, '约 1 秒后剩余 2（ceil，不提前扣成 1）');
+  await wait(1000);
+  assert.equal(dbg.focusLeft(), 1, '约 2 秒后剩余 1');
+  await waitFor(() => dbg.focusOpen() === false, '满 3 秒应自动结束关闭悬浮窗');
+  assert.equal(dbg.focusLeft(), 0, '结束后剩余归零');
   dbg.stopFocus();
 });
 

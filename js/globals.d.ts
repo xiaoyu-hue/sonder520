@@ -505,7 +505,6 @@ interface SonderHooks {
   idbReady: Promise<boolean>;
   todayReminder?: () => void;
   lockNow?: () => void;
-  unlockNow?: () => void;
   /* 测试专用钩子（__SONDER_TEST__ 门闩后注入，生产环境不存在） */
   ctx?: SonderCtx;
   Pages?: Record<string, SonderPage>;

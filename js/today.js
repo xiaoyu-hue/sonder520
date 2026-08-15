@@ -158,7 +158,7 @@
 
   /* ---------- 🍅 专注倒计时（25 分钟，悬浮窗 + 到时浏览器通知） ---------- */
   var FOCUS_DEFAULT = 25 * 60;
-  var focusEl = null, focusTimer = null, focusLeft = 0, focusTotal = 0, focusTitle = '';
+  var focusEl = null, focusTimer = null, focusLeft = 0, focusTotal = 0, focusTitle = '', focusDeadline = 0;
   function mmss(s) {
     var m = Math.floor(Math.max(0, s) / 60), t = Math.max(0, s) % 60;
     return (m < 10 ? '0' : '') + m + ':' + (t < 10 ? '0' : '') + t;
@@ -168,6 +168,9 @@
     var t = ctx.store.state.tasks.find(function (x) { return x.id === taskId; });
     focusTotal = (typeof seconds === 'number' && seconds > 0) ? Math.round(seconds) : FOCUS_DEFAULT;
     focusLeft = focusTotal;
+    /* 按真实时钟计算截止时刻，tick 时重算剩余秒数——吸收 setTimeout 累积漂移，
+     * 长专注（25 分钟 × 1500 tick）不因事件循环延迟而越走越慢 */
+    focusDeadline = Date.now() + focusTotal * 1000;
     focusTitle = t ? t.title : '';
     focusEl = ctx.UI.el(
       '<div id="focusFloat" class="focus-float" role="status" aria-live="polite">' +
@@ -185,8 +188,8 @@
   }
   function focusTick(ctx) {
     if (!focusEl) return;
+    focusLeft = Math.max(0, Math.ceil((focusDeadline - Date.now()) / 1000));
     if (focusLeft <= 0) { finishFocus(ctx); return; }
-    focusLeft -= 1;
     var t = focusEl.querySelector('#ffTime');
     if (t) t.textContent = mmss(focusLeft);
     focusTimer = setTimeout(function () { focusTick(ctx); }, 1000);

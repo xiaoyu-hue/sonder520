@@ -13,7 +13,8 @@ importScripts('games-logic.js');
 self.addEventListener('message', function (e) {
   var d = e.data || {};
   var g = self.SonderGames;
-  if (!g || !d.game || d.game.kind !== 'gomoku' || !d.stone || typeof d.id !== 'number') {
+  if (!g || !d.game || d.game.kind !== 'gomoku' || !d.stone || typeof d.id !== 'number' ||
+      (d.stone !== 'X' && d.stone !== 'O')) {
     self.postMessage({ id: typeof d.id === 'number' ? d.id : -1, error: 'bad-request' });
     return;
   }
