@@ -203,6 +203,15 @@ interface SonderFormOptions {
   onSubmit?: (values: Record<string, string>) => boolean | string | void;
 }
 
+/* 动态交互层（js/motion.js）：墨点涟漪 / 页面墨染过渡 / 统计数字滚数 */
+interface SonderMotionApi {
+  transit(): void;
+  afterRender(container?: HTMLElement): void;
+  countUp(el: HTMLElement, target: number, suffix?: string): void;
+  motionDisabled(): boolean;
+  init(): void;
+}
+
 interface SonderErrorEntry {
   time: string;
   type: string;
@@ -420,6 +429,7 @@ interface Window {
   SonderGamesView: SonderGamesViewApi;
   SonderQuotes: { quoteOfDay(dateStr: string): string; quotes: string[] };
   UI: SonderUI;
+  MOTION: SonderMotionApi;
   __sonderHooks: SonderHooks;
   __SONDER_TEST__?: boolean;
   __sonderErrors: { list: SonderErrorEntry[]; readonly total: number; clear(): void; report(errOrMsg: string | Error, type?: string): void };

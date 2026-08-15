@@ -104,6 +104,7 @@
     applyWallpaper();
     applyFrame();
     page.render(container, ctx);
+    if (window.MOTION) window.MOTION.afterRender(container);
     quotaCheck();
   }
 
@@ -175,7 +176,7 @@
     });
   }
 
-  function onHash() { render(); }
+  function onHash() { render(); if (window.MOTION) window.MOTION.transit(); }
 
   /* 测试钩子（对正常运行无害）。生产必需字段常驻；仅测试用字段置于 __SONDER_TEST__ 门闩后，
    * 正常访问无法取到内部实例（ctx/Pages 等），杜绝误用与注入面。 */

@@ -66,3 +66,23 @@ test('行为：Toast 动效样式由 JS 驱动，仍可出现与收回', async (
   await new Promise(r => setTimeout(r, 2700));
   assert.equal(window.document.querySelector('#toastWrap .toast'), null, 'toast 未按时消失');
 });
+
+test('动态层：墨点涟漪有独立关键帧、样式与固定定位节点', () => {
+  assert.ok(css.includes('@keyframes inkRipple'), '缺 inkRipple 关键帧');
+  assert.ok(css.includes('.ink-ripple'), '缺 .ink-ripple 节点规则');
+  assert.ok(/\.ink-ripple[^{]*\{[^}]*pointer-events:\s*none/.test(css), '涟漪应不拦截交互');
+  assert.ok(css.includes('--ink-ripple'), '应定义 --ink-ripple 墨色（分主题）');
+});
+
+test('动态层：页面墨染过渡遮罩有独立关键帧、样式', () => {
+  assert.ok(css.includes('@keyframes inkTransit'), '缺 inkTransit 关键帧');
+  assert.ok(css.includes('.ink-transit'), '缺 .ink-transit 遮罩规则');
+  assert.ok(/\.ink-transit[^{]*\{[^}]*pointer-events:\s*none/.test(css), '过渡遮罩应不拦截交互');
+});
+
+test('动态层：统计卡光泽扫过（sheen）', () => {
+  assert.ok(css.includes('@keyframes sheenSweep'), '缺 sheenSweep 关键帧');
+  assert.ok(css.includes('.rank-card::after'), '统计卡缺光泽层 ::after');
+  assert.ok(css.includes('.rank-card:hover::after'), '悬停时缺光泽扫过触发');
+  assert.ok(css.includes('--sheen'), '应定义 --sheen 光泽色（分主题）');
+});

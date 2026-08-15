@@ -324,7 +324,7 @@
       '</div>' +
       '<div class="row" style="margin-top:14px"><span class="small muted">今日任务完成率</span>' +
       '<div class="progress grow"><i style="width:' + rate + '%"></i></div>' +
-      '<span class="small">' + rate + '%</span></div></div>';
+      '<span class="small rate-num">' + rate + '%</span></div></div>';
     return UI.el(html);
   }
   function statBox(label, num, sub) {

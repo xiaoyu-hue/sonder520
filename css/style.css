@@ -39,6 +39,8 @@
   --huaqing: #3b4a6b;         /* 花青 */
   --prio-soft: #a8a297;       /* 淡墨（低优先级圆点） */
 
+  --ink-ripple: rgba(40, 30, 20, 0.16);  /* 点击墨点晕色（浅色纸面） */
+  --sheen: rgba(255, 255, 255, 0.26);    /* 统计卡光泽扫过（浅色纸面） */
   --shadow: 0 14px 44px rgba(40, 30, 20, 0.22), inset 0 1px 0 var(--border-hi);
   --radius: 20px;
   --wallpaper-opacity: 0.4;   /* 壁纸透明度默认 40%（js 按设置覆盖） */
@@ -68,6 +70,8 @@
   --warn-text: #e2b27e;
   --ok-text: #6fbfa3;
   --accent-text: #f08a63;
+  --ink-ripple: rgba(232, 226, 216, 0.12); /* 深色墨黑山水：以亮墨为晕色 */
+  --sheen: rgba(255, 255, 255, 0.08);
   --shadow: 0 14px 44px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.12);
   --wallpaper-opacity: 0.4;
 }
@@ -617,6 +621,45 @@ input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border-radius
     transition-duration: .001s !important;
   }
 }
+
+/* ---------- 动态交互层：墨点涟漪 / 页面墨染过渡 / 统计卡光泽 ----------
+ * 由 js/motion.js 驱动注入与门控（reduced-motion / data-frame=60 下 JS 侧静默降级，
+ * CSS 侧 [data-frame="60"] 全局覆盖亦将其压至瞬态，双保险）
+ * 涟漪与过渡遮罩均 pointer-events: none，不拦截任何交互 */
+@keyframes inkRipple {
+  0% { transform: scale(.2); opacity: .9; }
+  100% { transform: scale(14); opacity: 0; }
+}
+.ink-ripple {
+  position: fixed; width: 14px; height: 14px; margin: -7px 0 0 -7px;
+  border-radius: 50%; pointer-events: none; z-index: 9999;
+  background: radial-gradient(circle at 50% 50%, var(--ink-ripple), transparent 66%);
+  animation: inkRipple .55s var(--ease) forwards;
+}
+@keyframes inkTransit {
+  0% { opacity: 0; }
+  35% { opacity: 1; }
+  100% { opacity: 0; }
+}
+.ink-transit {
+  position: fixed; inset: 0; pointer-events: none; z-index: 80;
+  background: radial-gradient(560px 400px at 50% 42%, rgba(50, 40, 30, 0.20), transparent 68%);
+  animation: inkTransit .3s var(--ease) forwards;
+}
+[data-theme="dark"] .ink-transit {
+  background: radial-gradient(560px 400px at 50% 42%, rgba(232, 226, 216, 0.10), transparent 68%);
+}
+@keyframes sheenSweep {
+  from { transform: translateX(-130%); }
+  to { transform: translateX(130%); }
+}
+.rank-card::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit;
+  pointer-events: none; overflow: hidden;
+  background: linear-gradient(115deg, transparent 32%, var(--sheen) 50%, transparent 68%);
+  transform: translateX(-130%);
+}
+.rank-card:hover::after { animation: sheenSweep .8s var(--ease); }
 
 /* =============================================================
    动画帧率档位：120=满速原版（无覆盖规则）
