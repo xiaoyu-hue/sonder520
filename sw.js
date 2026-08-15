@@ -1,8 +1,10 @@
 ﻿/* Sonder Service Worker - Cache First（缓存优先）离线可用
- * 部署新版本时请递增 CACHE 版本号；sw 更新后会自动清理旧缓存。 */
+ * 部署新版本时请递增 CACHE 版本号；sw 更新后会自动清理旧缓存。
+ * ASSET_SIG 由 npm run sync-sw 写入：清单内任一文件内容变化的指纹（sha256 前 12 位），
+ * 内容变了而版本没升说明部署流程漏跑 sync-sw。 */
 'use strict';
 
-var CACHE = 'sonder-v23';
+var CACHE = 'sonder-v24';
 
 var ASSETS = [
   './',
@@ -41,6 +43,7 @@ var ASSETS = [
   './assets/icon.svg',
   './js/game-worker.js'
 ];
+var ASSET_SIG = '53e51b917c80';
 
 /* install：预缓存全部资源，立即接管 */
 self.addEventListener('install', function (e) {

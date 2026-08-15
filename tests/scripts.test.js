@@ -69,8 +69,22 @@ test('scripts: sync-sw 脚本存在且可运行（只读校验不生效）', () 
 test('scripts: sync-sw 支持 --force 强制递增（清单未变时也可刷新旧缓存）', () => {
   const src = read('scripts/sync-sw.js');
   assert.ok(src.includes("'--force'"), 'sync-sw 应解析 --force 参数');
-  assert.ok(src.includes('curBlock === newBlock && !force'), '清单未变且无 --force 时才跳过');
-  assert.ok(src.includes('curBlock !== newBlock || force'), '--force 应在清单未变时也递增 CACHE 版本');
+  assert.ok(src.includes('!listChanged && !sigChanged && !force'), '清单与指纹均未变且无 --force 时才跳过');
+  assert.ok(src.includes('listChanged || sigChanged || force'), '--force 应在无变化时也递增 CACHE 版本');
+});
+
+test('scripts: sw.js 含内容指纹 ASSET_SIG（sha256 前 12 位）', () => {
+  const m = /var ASSET_SIG = '([0-9a-f]{12})'/.exec(SW);
+  assert.ok(m, 'sw.js 应含 12 位十六进制 ASSET_SIG（改动后请运行 npm run sync-sw）');
+});
+
+test('scripts: sync-sw 对清单文件内容计算指纹（任一文件内容变化即升版）', () => {
+  const src = read('scripts/sync-sw.js');
+  assert.ok(src.includes('createHash'), 'sync-sw 应使用 crypto 哈希');
+  assert.ok(src.includes('ASSET_SIG'), 'sync-sw 应写入 ASSET_SIG');
+  assert.ok(src.includes('sigChanged'), '内容指纹变化应参与升版判定');
+  assert.ok(src.includes('listChanged'), '清单变化应参与升版判定');
+  assert.ok(src.includes("f.replace(/^\\.\\//, '')"), '指纹应基于文件实际内容而非路径');
 });
 
 test('scripts: CSP meta 存在且与当前资源形态兼容', () => {
