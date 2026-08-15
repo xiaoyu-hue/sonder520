@@ -221,13 +221,15 @@
     }
   }
 
-  /* 测试/调试钩子：只读快照 + 可控起停，对正常运行无害 */
-  window.__todayDbg = {
-    startFocus: function (ctx, taskId, seconds) { startFocus(ctx, taskId, seconds); },
-    stopFocus: function () { stopFocus(currentCtx || { UI: window.UI }, true); },
-    focusLeft: function () { return focusLeft; },
-    focusOpen: function () { return !!focusEl; }
-  };
+  /* 测试/调试钩子：只读快照 + 可控起停。门闩 __SONDER_TEST__：仅测试进程暴露，生产不挂载 */
+  if (window.__SONDER_TEST__) {
+    window.__todayDbg = {
+      startFocus: function (ctx, taskId, seconds) { startFocus(ctx, taskId, seconds); },
+      stopFocus: function () { stopFocus(currentCtx || { UI: window.UI }, true); },
+      focusLeft: function () { return focusLeft; },
+      focusOpen: function () { return !!focusEl; }
+    };
+  }
 
   Pages.today = { title: '今日计划', render: render, add: function (ctx) { openAdd(ctx); } };
 

@@ -28,7 +28,7 @@ test('index.html 顺序引入所有 js 且路径正确', () => {
     'dev.js', 'consulting.js', 'reading.js', 'news.js', 'design.js', 'games-logic.js', 'games.js',
     'settings.js', 'app.js'];
   order.forEach(f => {
-    const tag = '<script src="js/' + f + '"></script>';
+    const tag = '<script src="js/' + f + '" defer></script>';
     assert.ok(html.includes(tag), '缺少引入: ' + f);
   });
 });

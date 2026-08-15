@@ -195,6 +195,14 @@
         }
         lt = null;
       });
+      /* touchcancel：来电/系统手势打断时同样清理拖拽态，防止 chip 永久卡在 fixed 定位 */
+      chip.addEventListener('touchcancel', function () {
+        clearTimeout(chip._ltTimer);
+        chip.style.position = '';
+        chip.classList.remove('dragging');
+        grid.querySelectorAll('.cal-day.drop-target').forEach(function (d) { d.classList.remove('drop-target'); });
+        lt = null;
+      });
     });
     grid.querySelectorAll('.cal-day[data-date]').forEach(function (day) {
       day.addEventListener('dragover', function (e) { e.preventDefault(); });

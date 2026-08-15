@@ -271,13 +271,15 @@
     });
   }
 
-  /* 测试/调试钩子（对正常运行无害） */
-  window.__readingDbg = {
-    timerOn: timerOn,
-    elapsedSecs: elapsedSecs,
-    startTimer: function (ctx, bookId) { startTimer(ctx, bookId); },
-    stopTimer: function (ctx) { stopTimer(ctx); }
-  };
+  /* 测试/调试钩子。门闩 __SONDER_TEST__：仅测试进程暴露，生产不挂载 */
+  if (window.__SONDER_TEST__) {
+    window.__readingDbg = {
+      timerOn: timerOn,
+      elapsedSecs: elapsedSecs,
+      startTimer: function (ctx, bookId) { startTimer(ctx, bookId); },
+      stopTimer: function (ctx) { stopTimer(ctx); }
+    };
+  }
 
   Pages.reading = {
     title: '阅读计划',

@@ -8,7 +8,7 @@ const root = path.join(__dirname, '..');
 /* 脚本清单唯一真源 = index.html 中的 <script src="js/..."> 出现顺序 */
 function parseIndexScripts() {
   const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
-  const re = /<script src="js\/([^"]+)"><\/script>/g;
+  const re = /<script src="js\/([^"]+)"[^>]*><\/script>/g;
   const out = [];
   let m;
   while ((m = re.exec(html))) out.push(m[1]);

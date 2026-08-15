@@ -138,7 +138,7 @@
     } else {
       var prev = contentSig();
       location.hash = module;
-      waitRendered(prev, q); /* 渲染就绪后高亮（替代固定 80ms，消除快慢机器竞态） */
+      waitRendered(prev, q, module); /* 渲染就绪后高亮（替代固定 80ms，消除快慢机器竞态） */
     }
   }
 
@@ -147,13 +147,15 @@
     return c ? c.textContent : '';
   }
 
-  /* 轮询 #content 内容变化：hash 切换后新页面渲染完成（文本签名变化）即高亮，1s 超时兜底 */
-  function waitRendered(prev, q) {
+  /* 轮询 #content 内容变化：hash 切换后新页面渲染完成（文本签名变化）即高亮，1s 超时兜底。
+   * 导航失效守卫：等待期间用户又切到其他页面（module 与发起时不同）则静默放弃，不高亮错页。 */
+  function waitRendered(prev, q, module) {
     var t0 = Date.now();
     var timer = setInterval(function () {
-      if (contentSig() !== prev || Date.now() - t0 > 1000) {
+      var gone = (location.hash.replace(/^#\/?/, '') !== module);
+      if (contentSig() !== prev || gone || Date.now() - t0 > 1000) {
         clearInterval(timer);
-        flashInPage(q);
+        if (!gone) flashInPage(q);
       }
     }, 40);
   }

@@ -2,6 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'nonce-sw'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; media-src 'self'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#f2efe6">
   <meta name="color-scheme" content="light dark">
@@ -55,36 +56,36 @@
   <div id="toastWrap"></div>
   <div id="overlayRoot"></div>
 
-  <script src="js/encryption.js"></script>
-  <script src="js/event-bus.js"></script>
-  <script src="js/store-stats.js"></script>
+  <script src="js/encryption.js" defer></script>
+  <script src="js/event-bus.js" defer></script>
+  <script src="js/store-stats.js" defer></script>
 
-  <script src="js/store.js"></script>
-  <script src="js/store-report.js"></script>
-  <script src="js/store-tasks.js"></script>
-  <script src="js/store-media.js"></script>
-  <script src="js/store-content.js"></script>
-  <script src="js/store-settings.js"></script>
-  <script src="js/ui.js"></script>
-  <script src="js/error-guard.js"></script>
-  <script src="js/search.js"></script>
-  <script src="js/quotes.js"></script>
-  <script src="js/markdown.js"></script>
-  <script src="js/home.js"></script>
-  <script src="js/today.js"></script>
-  <script src="js/memo.js"></script>
-  <script src="js/selfmedia.js"></script>
-  <script src="js/dev.js"></script>
-  <script src="js/consulting.js"></script>
-  <script src="js/reading.js"></script>
-  <script src="js/news.js"></script>
-  <script src="js/design.js"></script>
-  <script src="js/games-logic.js"></script>
-  <script src="js/games-view.js"></script>
-  <script src="js/games.js"></script>
-  <script src="js/settings.js"></script>
-  <script src="js/app.js"></script>
-  <script>
+  <script src="js/store.js" defer></script>
+  <script src="js/store-report.js" defer></script>
+  <script src="js/store-tasks.js" defer></script>
+  <script src="js/store-media.js" defer></script>
+  <script src="js/store-content.js" defer></script>
+  <script src="js/store-settings.js" defer></script>
+  <script src="js/ui.js" defer></script>
+  <script src="js/error-guard.js" defer></script>
+  <script src="js/search.js" defer></script>
+  <script src="js/quotes.js" defer></script>
+  <script src="js/markdown.js" defer></script>
+  <script src="js/home.js" defer></script>
+  <script src="js/today.js" defer></script>
+  <script src="js/memo.js" defer></script>
+  <script src="js/selfmedia.js" defer></script>
+  <script src="js/dev.js" defer></script>
+  <script src="js/consulting.js" defer></script>
+  <script src="js/reading.js" defer></script>
+  <script src="js/news.js" defer></script>
+  <script src="js/design.js" defer></script>
+  <script src="js/games-logic.js" defer></script>
+  <script src="js/games-view.js" defer></script>
+  <script src="js/games.js" defer></script>
+  <script src="js/settings.js" defer></script>
+  <script src="js/app.js" defer></script>
+  <script nonce="sw">
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', function () {
         navigator.serviceWorker.register('./sw.js').catch(function () {});

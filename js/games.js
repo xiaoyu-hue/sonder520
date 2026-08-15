@@ -761,6 +761,7 @@ function histHtml(g) {
 
   /* worker 异常/超时兜底：同步重算落子（保证 AI 对局不卡死） */
   function fallbackSyncAi() {
+    aiSeq++; /* 结构性作废在途 worker 回复：兜底落子后旧 id 消息即使到达也会被 id 守卫丢弃，杜绝双落子 */
     var ctx = aiWaitCtx;
     aiWaitCtx = null;
     aiTimer = null;
@@ -964,7 +965,8 @@ function histHtml(g) {
     });
   })();
 
-  /* 测试/调试钩子：只读快照，对正常运行无害 */
+  /* 测试/调试钩子：只读快照 + 可控注入。门闩 __SONDER_TEST__：仅测试进程暴露（harness 在脚本加载前注入），生产不挂载 */
+  if (window.__SONDER_TEST__) {
   window.__gamesDbg = function () {
     var g = state.game;
     return {
@@ -1014,7 +1016,7 @@ function histHtml(g) {
     s.mines = mineList.length; /* 以实盘为准 */
     render(currentCtx);
   };
-/* 测试钩子：注入确定的猜成语答案（仅测试用） */
+  /* 测试钩子：注入确定的猜成语答案（仅测试用） */
   window.__gamesDbg.setIdiomAnswer = function (a) {
     if (state.mini && state.mini.kind === 'idiom') state.mini.g.answer = a;
   };
@@ -1025,4 +1027,5 @@ function histHtml(g) {
       state.mini.g.accepted = (accepted || []).slice();
     }
   };
+  }
 })();

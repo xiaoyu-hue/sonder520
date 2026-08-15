@@ -20,9 +20,9 @@ const sw = fs.readFileSync(swPath, 'utf8');
 
 function parseAssets() {
   const files = ['./', './index.html'];
-  const re = /(?:<script src="([^"]+)">|href="(css\/[^"]+\.css)")/g;
+  const re = /(?:href="(css\/[^"]+\.css)"|<script src="([^"]+)"[^>]*>)/g;
   let m;
-  while ((m = re.exec(html))) files.push('./' + (m[1] || m[2]));
+  while ((m = re.exec(html))) files.push('./' + (m[2] || m[1]));
   files.push('./manifest.json', './img/wallpaper.jpg', './assets/icon.svg');
   EXTRA.forEach(f => files.push(f));
   return [...new Set(files)];

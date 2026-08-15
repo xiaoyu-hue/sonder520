@@ -277,7 +277,7 @@ body::after {
   .hbar { gap: 8px; }
   .hbar input, .hbar select, .hbar .tool { flex: 1; min-width: 0; font-size: 16px; }
   .field input, .field select, .field textarea { font-size: 16px; }
-  .modal { width: 100%; max-height: 82dvh; }
+  .modal { width: 100%; max-height: 82vh; max-height: 82dvh; }
   .overlay { padding: 10px; align-items: flex-end; }
   .overlay .modal { animation: popUpIn .28s var(--ease); }
   .st-row { grid-template-columns: 1fr; }

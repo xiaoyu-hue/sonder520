@@ -274,6 +274,7 @@
                 return store.importBackup(text, v.pwd).then(function (r) {
                   if (!r.ok) { throw new Error(r.error); }
                   UI.toast('加密备份已恢复');
+                  e.target.value = ''; /* 重置文件框：否则重导同一文件不触发 change */
                   hooks.render('settings');
                   return true;
                 });
@@ -282,7 +283,7 @@
             return;
           }
           store.importBackup(text).then(function (res) {
-            if (res.ok) { UI.toast('备份已恢复'); hooks.render('settings'); }
+            if (res.ok) { UI.toast('备份已恢复'); e.target.value = ''; hooks.render('settings'); }
             else { UI.toast(res.error, 'err'); e.target.value = ''; }
           });
         };
