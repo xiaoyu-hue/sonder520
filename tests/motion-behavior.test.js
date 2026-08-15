@@ -4,6 +4,7 @@
 const { test } = require('node:test');
 const assert = require('node:assert');
 const { boot, waitFor } = require('./harness.js');
+const wait = ms => new Promise(r => setTimeout(r, ms));
 
 function clickAt(window, node, x, y) {
   node.dispatchEvent(new window.MouseEvent('click', {
@@ -91,4 +92,19 @@ test('数字滚数：60 档直接呈现终值（无中间态）', () => {
   c.innerHTML = '<div class="rank-card"><div class="num">88</div></div>';
   window.MOTION.afterRender(c);
   assert.equal(c.querySelector('.num').textContent, '88', '60 档应直接终值');
+});
+
+test('总线联动：SonderBus 数据变更重绘后数字重新滚数（空窗修复）', async () => {
+  const h = boot();
+  h.goto('home');
+  const gameNum = () => h.window.document.querySelector('.rank-card[data-go="game"] .num');
+  /* goto 的 location.hash 赋值会异步派发 hashchange→onHash→render→滚数；
+   * 先等待该噪音完成（滚数结束、数字稳定），否则总线滚动会与 hash 重绘叠加、测试失真 */
+  await wait(550);
+  assert.equal(gameNum().textContent, '0', 'hash 噪音稳定后游戏统计为 0，实际: ' + gameNum().textContent);
+  /* 保存一条战绩：home 经 SonderBus 全量重绘（不走路由 render），数字应重新滚数（0→1 中间态） */
+  h.store.addGameRecord({ kind: 'gomoku', mode: 'ai', player: 'X', winner: 'X', byResign: false });
+  await wait(150);
+  assert.equal(gameNum().textContent, '0', '重绘后应处于滚数中间态（总线联动触发滚数），实际: ' + gameNum().textContent);
+  await waitFor(() => gameNum().textContent === '1', '最终应滚至 1');
 });

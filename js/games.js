@@ -741,13 +741,13 @@ function histHtml(g) {
     aiSeq++; /* 本回复已消费，后续同 id 消息视为过期 */
     if (aiTimer) { clearTimeout(aiTimer); aiTimer = null; } /* 取消在看守的 watchdog */
     busy = false;
+    var ctx = aiWaitCtx;
+    aiWaitCtx = null; /* P6a：先消费等待上下文再执行守卫——越页/换局回复不得残留 aiWaitCtx，否则切回时 aiThink 重入守卫永久阻塞 AI */
     var g = state.game;
     if (!g || g.over || g.turn !== aiStone()) return;
-    if (!document.getElementById('gStatus')) return; /* 越页守卫：不劫持当前页面，切回时重新调度 */
+    if (!document.getElementById('gStatus')) return; /* 越页守卫：不劫持当前页面，切回时 render 恢复路径重新调度 */
     var mv = d.mv;
     if (!mv || typeof mv.r !== 'number' || typeof mv.c !== 'number') { fallbackSyncAi(); return; }
-    var ctx = aiWaitCtx;
-    aiWaitCtx = null;
     var res = G.place(g, mv.r, mv.c);
     render(ctx);
     if (res.winner || res.draw) recordEnd(ctx);
@@ -783,6 +783,20 @@ function histHtml(g) {
     var g = state.game, UI = ctx.UI;
     if (!g) return;
     if (g.over) { UI.toast('对局已结束，不能悔棋', 'err'); return; }
+    if (!g.moves.length) {
+      /* P6b：AI 思考窗口期（AI 先手开局/思考中）空盘悔棋——先复位在途 AI 状态再刷新，
+       * 否则状态条停在「思考中」且 AI 永不落子（点击被 turn 守卫吞掉，对局卡死） */
+      if (busy) {
+        clearTimeout(aiTimer);
+        aiTimer = null;
+        aiSeq++; /* 作废在途 worker 回复 */
+        aiWaitCtx = null;
+        busy = false;
+      }
+      UI.toast('暂无落子可悔', 'err');
+      render(ctx);
+      return;
+    }
     if (busy) {
       clearTimeout(aiTimer);
       aiTimer = null;
@@ -790,7 +804,6 @@ function histHtml(g) {
       aiWaitCtx = null;
       busy = false;
     }
-    if (!g.moves.length) { UI.toast('暂无落子可悔', 'err'); return; }
     if (state.mode === 'pvp') {
       var last = g.moves[g.moves.length - 1];
       var asker = playerName(last.p);
@@ -814,6 +827,19 @@ function histHtml(g) {
   function resignGame(ctx) {
     var g = state.game, UI = ctx.UI;
     if (!g || g.over) return;
+    if (!g.moves.length) {
+      /* P6c：AI 思考窗口期（AI 先手开局）空盘认输——同 P6b，先复位再刷新，对局不得卡死 */
+      if (busy) {
+        clearTimeout(aiTimer);
+        aiTimer = null;
+        aiSeq++; /* 作废在途 worker 回复 */
+        aiWaitCtx = null;
+        busy = false;
+      }
+      UI.toast('还没落子，先下一手吧', 'err');
+      render(ctx);
+      return;
+    }
     if (busy) {
       clearTimeout(aiTimer);
       aiTimer = null;
@@ -821,7 +847,6 @@ function histHtml(g) {
       aiWaitCtx = null;
       busy = false;
     }
-    if (!g.moves.length) { UI.toast('还没落子，先下一手吧', 'err'); return; }
     askConfirm(ctx, state.mode === 'ai' ? '确定认输？本局判给 AI 获胜' : '确定认输？本局判给对面获胜', '认输').then(function (ok) {
       if (ok !== true) return;
       var w = G.resign(g, state.mode === 'ai' ? state.playerStone : 'X');

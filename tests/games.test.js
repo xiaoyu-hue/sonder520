@@ -412,3 +412,45 @@ test('P3e：旧版独立 localStorage 纪录首次进入时一次性迁移并入
   h.goto('game');
   assert.equal(h.store.state.miniRecords.guessnum.best, 3, '二次进入不应重复迁移或覆盖已有纪录');
 });
+
+/* ---------- 全面审计修复：AI 思考窗口期操作不残留状态（对局不得卡死） ---------- */
+
+function aiFirstTtt(h) {
+  const firstSel = h.window.document.querySelector('#gFirst');
+  firstSel.value = 'O';
+  firstSel.dispatchEvent(new h.window.Event('change', { bubbles: true }));
+}
+
+test('修复：AI 先手开局思考中悔棋，状态条复位且 AI 重新应手（不卡死）', async () => {
+  const h = boot();
+  h.goto('game');
+  h.window.document.querySelector('[data-pick="tictactoe"]').click();
+  aiFirstTtt(h);                    /* 玩家执后：AI 执 X 先手，思考窗口打开 */
+  assert.equal(h.window.__gamesDbg().game.turn, 'X', 'AI 应先手');
+  assert.equal(h.window.__gamesDbg().busy, true, 'AI 先手应处于思考中');
+  h.window.document.querySelector('[data-act="undo"]').click();   /* 空盘悔棋 */
+  await wait(30);
+  const t0 = Date.now();
+  while (Date.now() - t0 < 2000 && h.window.document.querySelectorAll('.cell .mk').length === 0) await wait(25);
+  assert.equal(h.window.document.querySelectorAll('.cell .mk').length, 1, 'AI 应重新应手继续对局（不得永久卡死）');
+  assert.equal(h.window.__gamesDbg().busy, false, 'AI 落子后 busy 必须复位');
+  const stTxt = h.window.document.querySelector('#gStatus').textContent;
+  assert.ok(!stTxt.includes('思考中'), '状态条不得停留在思考中，实际: ' + stTxt);
+});
+
+test('修复：AI 先手开局思考中认输，状态条复位且对局不卡死', async () => {
+  const h = boot();
+  h.goto('game');
+  h.window.document.querySelector('[data-pick="tictactoe"]').click();
+  aiFirstTtt(h);
+  assert.equal(h.window.__gamesDbg().busy, true, 'AI 先手应处于思考中');
+  h.window.document.querySelector('[data-act="resign"]').click();
+  await wait(30);
+  assert.ok(!h.window.document.querySelector('[data-act="yes"]'), '空盘认输不应弹确认框');
+  const t0 = Date.now();
+  while (Date.now() - t0 < 2000 && h.window.document.querySelectorAll('.cell .mk').length === 0) await wait(25);
+  assert.equal(h.window.document.querySelectorAll('.cell .mk').length, 1, 'AI 应重新应手继续对局（不得永久卡死）');
+  assert.equal(h.window.__gamesDbg().busy, false, 'AI 落子后 busy 必须复位');
+  const stTxt = h.window.document.querySelector('#gStatus').textContent;
+  assert.ok(!stTxt.includes('思考中'), '状态条不得停留在思考中，实际: ' + stTxt);
+});

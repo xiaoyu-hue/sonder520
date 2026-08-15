@@ -47,7 +47,11 @@
     rippleAt(e.clientX, e.clientY);
   }
 
+  var inited = false;
+  /* 幂等：模块双载/热重入时防重复注册点击监听 */
   function init() {
+    if (inited) return;
+    inited = true;
     document.addEventListener('click', onDocClick, false);
   }
 
@@ -107,7 +111,22 @@
 
   init();
 
-init();
+  /* 总线联动：store 数据变更经 SonderBus 广播后，页面模块走私有 render 直写终值
+   * （不经 app.render 管道），数字不会自动滚数。此处订阅 /data/* 补一轮滚数，
+   * 节流 60ms 合并密集变更（如批量记录），命中整页内容区。 */
+  var busTimer = null;
+  (function () {
+    var bus = globalThis.SonderBus && globalThis.SonderBus.bus;
+    if (!bus) return;
+    bus.on('/data/*', function () {
+      if (motionDisabled()) return;
+      clearTimeout(busTimer);
+      busTimer = setTimeout(function () {
+        var c = document.getElementById('content');
+        if (c) afterRender(c);
+      }, 60);
+    });
+  })();
 
   return { transit: transit, afterRender: afterRender, countUp: countUp, motionDisabled: motionDisabled, init: init };
 });

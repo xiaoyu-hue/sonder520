@@ -203,3 +203,25 @@ test('游戏：worker 超时兜底落子后，迟到回复被守卫丢弃', asyn
   assert.equal(gomokuStone(h), 1, '迟到回复不得再落子');
   assert.ok(!cell(h, 1, 1).querySelector('.stone'), '(1,1) 应仍为空');
 });
+
+test('修复：AI 思考中切走页面，越页回复后 aiWaitCtx 必须清空（切回不卡死）', async () => {
+  const h = boot();
+  h.window.Worker = FakeWorker;
+  h.goto('game');
+  h.window.document.querySelector('[data-pick="gomoku"]').click();
+  cell(h, 7, 7).click();            /* X → worker 投递，busy=true / aiWaitCtx 置位 */
+  const w = FakeWorker.last;
+  const id = w.sent[0].id;
+  h.goto('home');                   /* 切走页面：在途回复将命中越页守卫 */
+  w.fire({ id: id, mv: { r: 8, c: 8 } });   /* 正常回复，但页面已不在 */
+  await wait(30);
+  assert.equal(h.window.__gamesDbg().busy, false, '越页回复后 busy 必须复位');
+  h.goto('game');                   /* 切回：恢复路径应重新调度 AI（aiWaitCtx 不得残留） */
+  const t0 = Date.now();
+  while (Date.now() - t0 < 2000 && w.sent.length < 2) await wait(25);
+  assert.equal(w.sent.length, 2, '切回后应重新投递 AI 计算，实际 ' + w.sent.length + ' 条');
+  const id2 = w.sent[1].id;
+  w.fire({ id: id2, mv: { r: 8, c: 8 } });
+  await wait(30);
+  assert.ok(cell(h, 8, 8).querySelector('.stone.w'), '新一轮回复应正常落子');
+});
