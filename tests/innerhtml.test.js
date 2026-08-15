@@ -22,7 +22,7 @@ const MANUAL_REVIEW = {
   'dev.js:109': '纯字面量（暂无任务占位）',
   'dev.js:111': 'bindTaskButtons：t.title 过 UI.esc，t.id 为 uid() 生成',
   'home.js:49': '多行数组拼接：greeting()/lastMemo/quoteHtml/rankCard 插值均过 UI.esc，汇总数字为数值型',
-  'search.js:120': 'html 变量在 renderGroup 内构建：label/text/sub 均过 UI.esc，module 为内部注册表常量',
+  'search.js:129': 'html 变量在 renderGroup 内构建：label/text/sub 均过 UI.esc，module 为内部注册表常量',
   'selfmedia.js:250': '多行拼接：p.title 过 UI.esc，pills/legend/rows 均为数值与常量色值，miniLine 只输出数字',
   'today.js:87': 'html 由 section() 构建：t.title/note/priority 与 pr.label 均过 esc，t.id 为 uid() 生成',
   'ui.js:38': 'UI.el 框架入口（innerHTML 接收调用方已转义字符串），调用方由本清单约束'

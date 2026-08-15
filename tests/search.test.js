@@ -118,6 +118,20 @@ test('搜索：Escape 关闭面板', () => {
   assert.ok(h.$('#gsearchPanel').hidden, 'Esc 应关闭面板');
 });
 
+test('搜索：同查询重复触发不重建面板（结果缓存，_rev 未变直接复用；数据变化后自动失效）', () => {
+  const h = boot({ seed: seed() });
+  type(h, '水墨');
+  const item = h.$('#gsearchPanel .gsearch-item');
+  assert.ok(item, '首轮应有结果');
+  type(h, '水墨');
+  assert.strictEqual(h.$('#gsearchPanel .gsearch-item'), item, '同查询同版本重复输入不应重建面板节点');
+  const hooks = h.window.__sonderHooks;
+  hooks.store.addTask({ title: '再写一篇水墨教程', note: '', date: '2026-08-10', priority: '低' });
+  type(h, '水墨');
+  const items = h.$('#gsearchPanel').querySelectorAll('.gsearch-item');
+  assert.ok(items.length >= 2, '数据版本变化后同查询应重新过滤并含新增条目');
+});
+
 test('搜索：书摘与游戏战绩同样可检索、可跳转', () => {
   const sd = seed();
   sd.excerpts = [

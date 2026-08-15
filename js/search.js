@@ -81,11 +81,20 @@
     return idxCache.index;
   }
 
+  /* 结果缓存：同查询 + 同数据版本（_rev）且面板可见时直接复用，略过全量过滤与面板重建
+   * （输入法组词/焦点/重复触发等高频路径；数据变化 _rev 失效自动重建，不引入过期结果） */
+  var resCache = { q: '', rev: -1 };
+
   function onInput() {
     var q = currentQuery();
     var qs = terms(q);
     if (!qs.length) { hidePanel(); return; }
+    var hooks = window.__sonderHooks;
+    var store = hooks && hooks.store;
+    var rev = store ? store._rev : -1;
+    if (panel && !panel.hidden && resCache.q === q && resCache.rev === rev) return;
     var hits = getIndex().filter(function (r) { return matches(r.text, qs); });
+    resCache = { q: q, rev: rev };
     showPanel(qs, hits);
   }
 
