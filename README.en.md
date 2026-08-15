@@ -8,13 +8,13 @@ A privacy-first personal work & life management app. Pure HTML/CSS/vanilla JS �
 
 ## Live Sites
 
-- Primary 1: https://sonder520.netlify.app/
+Recommended (auto-deployed from git, always in sync):
 
-- Primary 2: https://sonder520.pages.dev/
+- Primary: https://sonder520.pages.dev/
 
 - Backup: https://xiaoyu-hue.github.io/sonder520/
 
-All three sites stay in sync — open any one of them.
+A legacy site exists but may be out of date (not recommended): https://sonder520.netlify.app/ (limited deployments).
 
 > Data lives in each device's browser (localStorage + IndexedDB) and is independent between devices. To move data between devices use "Data & Settings → Export Backup / Import Restore".
 
@@ -114,7 +114,7 @@ Notes:
 
 - Pure HTML/CSS/vanilla JS — zero build/run dependencies, no npm install needed to use the app.
 
-- Run all tests: npm test (currently 487 passing, covering storage/encryption (incl. races & future-version resilience)/UI/all modules/styles/animations/wallpaper/mobile adaptation/perf/game engines/interaction regressions/PWA/search/XSS (incl. attribute injection)/contrast/IndexedDB/notifications/Web Worker/crisis fallback).
+- Run all tests: npm test (currently 488 passing, covering storage/encryption (incl. races & future-version resilience)/UI/all modules/styles/animations/wallpaper/mobile adaptation/perf/game engines/interaction regressions/PWA/search/XSS (incl. attribute injection)/contrast/IndexedDB/notifications/Web Worker/crisis fallback).
 
 - Type check (zero-build): npm run typecheck (JSDoc + tsc --noEmit, contracts locked in globals.d.ts).
 

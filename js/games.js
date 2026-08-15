@@ -1,8 +1,12 @@
-/* games.js - 娱乐游戏：井字棋 & 五子棋（AI 对决 / 双人对弈，悔棋 / 认输 / 战绩） */
+/* games.js - 娱乐游戏：井字棋 & 五子棋（AI 对决 / 双人对弈，悔棋 / 认输 / 战绩）
+ * 视图纯函数（diffOptions/resultHtml/mineCellsHtml/idiomResult/brainResult/onLine/战绩文案）
+ * 已迁至 games-view.js（window.SonderGamesView，须先于本文件加载），本文件仅保留
+ * 页面交互、事件绑定、AI Worker 调度与战绩读写。 */
 (function () {
   'use strict';
   var Pages = window.Pages = window.Pages || {};
   var G = window.SonderGames;
+  var V = window.SonderGamesView;
 
   var currentEl = null, currentCtx = null;
   var ctxRef = { store: null }; /* 最近一次 render 的 store 引用（小游戏纪录统一读写 store） */
@@ -17,15 +21,7 @@
   var WORKER_TIMEOUT = 3000; /* worker 回复最大等待：超过即视为挂起，走同步兜底防死锁 */
   var confirmOpen = false;
 
-  var DIFF_LABEL = { easy: '简单', normal: '普通', hard: '困难' };
   var KIND_NAME = { tictactoe: '井字棋', gomoku: '五子棋', guessnum: '🎯 猜数字', minesweeper: '💣 扫雷', idiom: '📖 猜成语', brainteaser: '🧠 脑筋急转弯' };
-  function diffOptions(sel) {
-    var s = '';
-    ['easy', 'normal', 'hard'].forEach(function (d) {
-      s += '<option value="' + d + '"' + (sel === d ? ' selected' : '') + '>' + DIFF_LABEL[d] + '</option>';
-    });
-    return s;
-  }
 
   /* 统一确认框：防连点/叠加（同一时刻只允许一个弹窗），返回 Promise<boolean>。
    * 已有弹窗时新请求被忽略并提示，避免用户"点了没反应"。 */
@@ -160,7 +156,7 @@
       '<button class="btn primary" id="mgGo" type="button" style="min-height:44px">猜！</button>' +
       '</div>' +
       '<div class="mg-hist" id="mgHist" role="status" aria-live="polite">' + histHtml(g) + '</div>' +
-      (g.over ? '<div class="mg-result" id="mgResult">' + resultHtml(g, state.mini.newBest) + '</div>' : '') +
+      (g.over ? '<div class="mg-result" id="mgResult">' + V.resultHtml(g, state.mini.newBest) + '</div>' : '') +
       '<div class="row" style="margin-top:12px">' +
       '<button class="btn" data-mact="again" type="button" style="min-height:44px">🔄 再来一局</button>' +
       '</div>' +
@@ -235,7 +231,7 @@
       '<span class="muted small">' + statsTxt + '</span>' +
       '</div>' +
       '<div class="ms-board-wrap" style="margin-top:12px">' +
-      '<div class="ms-board" id="msBoard" style="--cols:' + g.cols + ';grid-template-columns:repeat(' + g.cols + ',1fr)" role="grid" aria-label="扫雷雷区">' + mineCellsHtml(g, ctx.UI) + '</div>' +
+      '<div class="ms-board" id="msBoard" style="--cols:' + g.cols + ';grid-template-columns:repeat(' + g.cols + ',1fr)" role="grid" aria-label="扫雷雷区">' + V.mineCellsHtml(g, ctx.UI) + '</div>' +
       '</div>' +
       '<div class="row" style="margin-top:12px">' +
       '<button class="btn" data-mact="again" type="button" style="min-height:44px">🔄 再来一局</button>' +
@@ -281,56 +277,6 @@ function histHtml(g) {
         '<span class="mg-hint ' + cls + '">' + label + '</span></div>';
     });
     return '<div style="margin-top:10px">' + rows + '</div>';
-  }
-
-  function resultHtml(g, isNewBest) {
-    if (g.won) {
-      return '🎉 猜中了！用了 <b>' + g.attempts.length + '</b> 次' + (isNewBest ? '，新纪录！' : '');
-    }
-    return '机会用完了，答案是 <b>' + g.target + '</b>，下次加油！';
-  }
-
-  function mineCellsHtml(g, UI) {
-    if (!g.board) {
-      var empty = '';
-      for (var i = 0; i < g.rows * g.cols; i++) {
-        var er = Math.floor(i / g.cols), ec = i % g.cols;
-        /* P5a：首次插旗不布雷，暂存旗位仍需渲染 */
-        var pf = g.pendingFlags && g.pendingFlags[er + ',' + ec];
-        var pfInner = pf ? '⚑' : '';
-        var pfLabel = pf ? '已标记' : '未翻开';
-        empty += '<button type="button" class="ms-cell' + (pf ? ' flagged' : '') + '" data-r="' + er + '" data-c="' + ec + '" ' +
-          'aria-label="第' + (er + 1) + '行第' + (ec + 1) + '列，' + pfLabel + '" style="min-height:28px">' + pfInner + '</button>';
-      }
-      return empty;
-    }
-    var html = '';
-    for (var r = 0; r < g.rows; r++) {
-      for (var c = 0; c < g.cols; c++) {
-        var cell = g.board[r][c];
-        var inner = '', cls = 'ms-cell';
-        var label;
-        if (cell.flagged && g.over && !cell.mine) {
-          inner = '⚑'; cls += ' flagged wrong-flag';
-          label = '插旗错误';
-        } else if (g.over && cell.mine && !cell.flagged) {
-          inner = '💥'; cls += ' mined';
-          label = '雷';
-        } else if (cell.flagged) {
-          inner = '⚑'; cls += ' flagged';
-          label = '已标记';
-        } else if (cell.revealed) {
-          if (cell.mine) { inner = '💥'; label = '雷'; }
-          else if (cell.adj) { inner = cell.adj; cls += ' n' + cell.adj; label = '数字 ' + cell.adj; }
-          else { cls += ' open'; label = '空白格'; }
-        } else {
-          label = '未翻开';
-        }
-        html += '<button type="button" class="' + cls + '" data-r="' + r + '" data-c="' + c + '" ' +
-          'aria-label="第' + (r + 1) + '行第' + (c + 1) + '列，' + label + '" style="min-height:28px">' + inner + '</button>';
-      }
-    }
-    return html;
   }
 
   function finishMinesweeper(ctx, won) {
@@ -463,7 +409,7 @@ function histHtml(g) {
         '<button class="btn primary" id="idmGo" type="button" style="min-height:44px">提交</button>' +
         '</div>') +
       '<div class="idm-tip">' + tips + '</div>' +
-      (g.over ? '<div class="mg-result" id="idmResult">' + idiomResult(g) + '</div>' : '') +
+      (g.over ? '<div class="mg-result" id="idmResult">' + V.idiomResult(g) + '</div>' : '') +
       '<div class="row" style="margin-top:12px">' +
       '<button class="btn" data-mact="again" type="button" style="min-height:44px">🔄 换一题</button>' +
       '</div>' +
@@ -501,11 +447,6 @@ function histHtml(g) {
     return wrap;
   }
 
-  function idiomResult(g) {
-    if (g.correct) return '🎉 答对了！就是「' + window.UI.esc(g.answer) + '」';
-    return '答案是「<b>' + window.UI.esc(g.answer) + '</b>」，下次再战！';
-  }
-
   /* -------- 脑筋急转弯 -------- */
   function brainView(ctx) {
     var UI = ctx.UI, g = state.mini.g;
@@ -533,7 +474,7 @@ function histHtml(g) {
         '<button class="btn primary" id="brainGo" type="button" style="min-height:44px">提交</button>' +
         '<button class="btn" id="brainGiveup" type="button" style="min-height:44px">看答案</button>' +
         '</div>') +
-      (g.over ? '<div class="mg-result" id="brainResult">' + brainResult(g) + '</div>' : '') +
+      (g.over ? '<div class="mg-result" id="brainResult">' + V.brainResult(g) + '</div>' : '') +
       '<div class="row" style="margin-top:12px">' +
       '<button class="btn" data-mact="again" type="button" style="min-height:44px">🔄 换一题</button>' +
       '</div>' +
@@ -580,11 +521,6 @@ function histHtml(g) {
     return wrap;
   }
 
-  function brainResult(g) {
-    if (g.correct) return '🎉 答对了！就是「' + window.UI.esc(g.accepted[0]) + '」';
-    return '答案：「<b>' + window.UI.esc(g.accepted[0]) + '</b>」——脑筋急转弯嘛，别想太复杂～';
-  }
-
   /* ---------- 游戏选择 ---------- */
   function pickView(ctx) {
     var UI = ctx.UI;
@@ -593,7 +529,7 @@ function histHtml(g) {
       '<div class="card" style="margin-bottom:14px">' +
       '<div class="row">' +
       '<span class="muted" style="margin-right:12px;white-space:nowrap">AI 难度</span>' +
-      '<select id="gDiffPick" title="AI 难度档位">' + diffOptions(state.difficulty) + '</select>' +
+      '<select id="gDiffPick" title="AI 难度档位">' + V.diffOptions(state.difficulty) + '</select>' +
       '<span class="muted small" style="margin-left:auto">困难 AI 更会进攻与布防</span>' +
       '</div>' +
       '</div>' +
@@ -661,7 +597,7 @@ function histHtml(g) {
           '<option value="X"' + (state.playerStone === 'X' ? ' selected' : '') + '>执先（' + sym('X') + '）</option>' +
           '<option value="O"' + (state.playerStone === 'O' ? ' selected' : '') + '>执后（' + sym('O') + '）</option>' +
           '</select>' +
-          '<select id="gDiff" title="AI 难度档位">' + diffOptions(state.difficulty) + '</select>'
+          '<select id="gDiff" title="AI 难度档位">' + V.diffOptions(state.difficulty) + '</select>'
         : '') +
       '<button class="btn" data-act="new" type="button">新开局</button>' +
       '</div>'
@@ -676,7 +612,7 @@ function histHtml(g) {
       if (v === 'X') { inner = g.kind === 'tictactoe' ? '<span class="mk x">✕</span>' : '<span class="stone b"></span>'; }
       else if (v === 'O') { inner = g.kind === 'tictactoe' ? '<span class="mk o">◯</span>' : '<span class="stone w"></span>'; }
       if (v && g.moves.length && g.moves[g.moves.length - 1].r === r && g.moves[g.moves.length - 1].c === c) cls += ' last';
-      if (g.winLine && onLine(g.winLine, r, c)) cls += ' win';
+      if (g.winLine && V.onLine(g.winLine, r, c)) cls += ' win';
       cells += '<button type="button" class="' + cls + '" data-r="' + r + '" data-c="' + c + '" aria-label="第' + (r + 1) + '行第' + (c + 1) + '列">' + inner + '</button>';
     }
     var boardWrap = UI.el(
@@ -716,11 +652,6 @@ function histHtml(g) {
       });
     });
     return wrap;
-  }
-
-  function onLine(line, r, c) {
-    for (var i = 0; i < line.length; i++) if (line[i][0] === r && line[i][1] === c) return true;
-    return false;
   }
 
   function statusText() {
@@ -975,25 +906,6 @@ function histHtml(g) {
     render(ctx);
   }
 
-  function resultText(r) {
-    if (r.winner === 'draw') return '平局';
-    if (r.mode === 'pvp') return r.winner === r.player ? '玩家1胜' : '玩家2胜';
-    if (r.mode === 'solo') return r.winner === r.player ? '你胜' : '你负';
-    return r.winner === r.player ? '你胜' : 'AI胜';
-  }
-  function resultPill(r) {
-    if (r.winner === 'draw') return 'mid';
-    return r.winner === r.player ? 'lo' : 'hi';
-  }
-  function shortDate(d) {
-    return String(d || '').slice(5);
-  }
-  function diffBadge(r) {
-    if (r.mode === 'pvp' || !r.difficulty) return '';
-    var label = DIFF_LABEL[r.difficulty] || r.difficulty;
-    return '<span class="small muted" style="margin-left:8px;white-space:nowrap">' + window.UI.esc(label) + '</span>';
-  }
-
   function recordsArea(ctx) {
     var UI = ctx.UI, recs = ctx.store.state.gameRecords;
     var box = UI.el('<div></div>');
@@ -1006,10 +918,10 @@ function histHtml(g) {
         card.appendChild(UI.el(
           '<div class="list-item">' +
           '<div class="grow">' +
-          '<div class="title">' + UI.esc(kindName({ kind: r.kind })) + ' · ' + (r.mode === 'ai' ? 'AI 对决' : (r.mode === 'solo' ? '单人挑战' : '双人对弈')) + diffBadge(r) + '</div>' +
-          '<div class="sub">' + UI.esc(shortDate(r.date)) + (r.byResign ? ' · 认输' : '') + (r.note ? ' · ' + UI.esc(r.note) : '') + '</div>' +
+          '<div class="title">' + UI.esc(kindName({ kind: r.kind })) + ' · ' + (r.mode === 'ai' ? 'AI 对决' : (r.mode === 'solo' ? '单人挑战' : '双人对弈')) + V.diffBadge(r) + '</div>' +
+          '<div class="sub">' + UI.esc(V.shortDate(r.date)) + (r.byResign ? ' · 认输' : '') + (r.note ? ' · ' + UI.esc(r.note) : '') + '</div>' +
           '</div>' +
-          '<span class="pill ' + resultPill(r) + '">' + resultText(r) + '</span>' +
+          '<span class="pill ' + V.resultPill(r) + '">' + V.resultText(r) + '</span>' +
           '</div>'
         ));
       });

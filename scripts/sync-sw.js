@@ -1,9 +1,12 @@
 /* sync-sw.js - 从 index.html 自动同步 sw.js 的 ASSETS 预缓存清单
  * 用法：node scripts/sync-sw.js（或 npm run sync-sw）
+ * 附加：--force 强制递增一次 CACHE 版本（清单未变化时也递增，用于主动刷新旧缓存）
  * index.html 是脚本/样式清单的唯一真源；本脚本检测到清单变化时自动递增 CACHE 版本。 */
 'use strict';
 const fs = require('node:fs');
 const path = require('node:path');
+
+const force = process.argv.includes('--force');
 
 const root = path.join(__dirname, '..');
 const indexPath = path.join(root, 'index.html');
@@ -36,7 +39,7 @@ if (start < 0 || end < 0) {
 const curBlock = sw.slice(start, end + 2);
 const newBlock = 'var ASSETS = [\n' + list.map(f => "  '" + f + "'").join(',\n') + '\n];';
 
-if (curBlock === newBlock) {
+if (curBlock === newBlock && !force) {
   console.log('sw.js ASSETS 已是最新（共 ' + list.length + ' 项），无需改动');
   process.exit(0);
 }
@@ -44,12 +47,11 @@ if (curBlock === newBlock) {
 let next = sw.slice(0, start) + newBlock + sw.slice(end + 2);
 const verRe = /var CACHE = 'sonder-v(\d+)'/;
 const vm = verRe.exec(next);
-if (vm) {
+if (vm && (curBlock !== newBlock || force)) {
+  next = next.replace(verRe, 'var CACHE = \'sonder-v' + (Number(vm[1]) + 1) + '\'');
   const bumps = list.filter(f => curBlock.indexOf("'" + f + "'") < 0);
-  if (bumps.length) {
-    next = next.replace(verRe, 'var CACHE = \'sonder-v' + (Number(vm[1]) + 1) + '\'');
-    console.log('CACHE 版本已递增 sonder-v' + vm[1] + ' -> sonder-v' + (Number(vm[1]) + 1) + '（新增: ' + bumps.join(', ') + '）');
-  }
+  const reason = force && !bumps.length ? '（--force 强制刷新）' : '';
+  console.log('CACHE 版本已递增 sonder-v' + vm[1] + ' -> sonder-v' + (Number(vm[1]) + 1) + (reason || '（新增: ' + bumps.join(', ') + '）'));
 }
 fs.writeFileSync(swPath, next);
 console.log('sw.js ASSETS 已同步（共 ' + list.length + ' 项）');

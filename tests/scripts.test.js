@@ -65,3 +65,10 @@ test('scripts: sync-sw 脚本存在且可运行（只读校验不生效）', () 
   const pkg = JSON.parse(read('package.json'));
   assert.equal(pkg.scripts['sync-sw'], 'node scripts/sync-sw.js', 'npm run sync-sw 应指向同步脚本');
 });
+
+test('scripts: sync-sw 支持 --force 强制递增（清单未变时也可刷新旧缓存）', () => {
+  const src = read('scripts/sync-sw.js');
+  assert.ok(src.includes("'--force'"), 'sync-sw 应解析 --force 参数');
+  assert.ok(src.includes('curBlock === newBlock && !force'), '清单未变且无 --force 时才跳过');
+  assert.ok(src.includes('curBlock !== newBlock || force'), '--force 应在清单未变时也递增 CACHE 版本');
+});

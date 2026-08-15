@@ -6,7 +6,7 @@ const path = require('node:path');
 const root = path.join(__dirname, '..');
 
 const css = fs.readFileSync(path.join(root, 'css', 'style.css'), 'utf8');
-const storeJs = fs.readFileSync(path.join(root, 'js', 'store.js'), 'utf8');
+const storeStatsJs = fs.readFileSync(path.join(root, 'js', 'store-stats.js'), 'utf8');
 const selfmediaJs = fs.readFileSync(path.join(root, 'js', 'selfmedia.js'), 'utf8');
 
 test('主题：浅色(宣纸)与深色(墨黑)双主题变量齐备', () => {
@@ -64,7 +64,7 @@ test('图表配色使用国画颜料色系（花青/朱砂/赭石/石绿）', ()
     assert.ok(selfmediaJs.includes(c), 'selfmedia 缺色 ' + c);
   });
   ['#3b4a6b', '#b0723f', '#2e7d63', '#a8a297'].forEach(c => {
-    assert.ok(storeJs.includes(c), 'store 缺色 ' + c);
+    assert.ok(storeStatsJs.includes(c), 'store-stats 缺色 ' + c);
   });
 });
 

@@ -2,8 +2,10 @@
  * 兼容浏览器(<script> 暴露 window.SonderStore)与 Node(module.exports)。
  * 测试通过在 Node 中注入内存 storage 来验证全部数据逻辑。
  *
- * 文件结构（核心 + 领域扩展）：
- *   store.js          核心：构造/持久化/加密/导入导出/汇总 + 共享 helper（api 导出）
+* 文件结构（核心 + 领域扩展）：
+ *   store.js          核心：构造、持久化、加密/导入导出 + 共享 helper（api 导出）
+ *   store-stats.js    纯函数统计/聚合层（任务分组、自媒体/开发/阅读统计、CSV 等，无 Store 依赖）
+ *   store-report.js   Store.prototype.summarize / buildWeeklyReport（计算委托 store-stats）
  *   store-tasks.js    快速备忘 + 今日计划
  *   store-media.js    自媒体 + 开发工作 + 技术笔记/代码片段
  *   store-content.js  咨询 + 阅读/书摘 + 新闻 + 设计 + 游戏记录
@@ -14,6 +16,8 @@
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) {
     var api = factory();
+    var Stats = require('./store-stats.js');
+    require('./store-report.js')(api.Store, Stats);
     require('./store-tasks.js')(api.Store, api._h);
     require('./store-media.js')(api.Store, api._h);
     require('./store-content.js')(api.Store, api._h);
@@ -24,6 +28,11 @@
   }
 })(typeof self !== 'undefined' ? self : this, function () {
   'use strict';
+
+  /* 统计纯函数层（浏览器：window.SonderStats 须先于本文件加载；Node：require('./store-stats.js')） */
+  var Stats = (typeof window !== 'undefined' && window.SonderStats) ||
+    (typeof module === 'object' && typeof require === 'function' ? require('./store-stats.js') : null);
+  var num0 = Stats.num0;
 
   var STORAGE_KEY = 'sonder_data_v1';
   var STORAGE_META_KEY = 'sonder_meta_v1';
@@ -337,8 +346,6 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
   Store.prototype.needsUnlock = function () {
     return this._encKey ? false : (this._hasEncSnapshot() || !!this._idbEncLocked);
   };
-
-  function clone(o) { return deepClone(o); }
 
   /* 主快照 setItem 批量防抖：放入 requestIdleCallback 执行，页面空闲时统一落盘。
    * 一次 idle 周期内多次 save 只写最新快照（_pendingLocal 覆盖），避免密集保存
@@ -753,197 +760,6 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     this._emitChange('all'); /* 清空全量数据：各页重绘 */
   };
 
-
-  /* 纯函数：对任务先按今天日期分组。today 形如 'YYYY-MM-DD' */
-  function groupTasks(tasks, today) {
-    today = today || todayStr();
-    var nowList = [], overdue = [], upcoming = [], done = [];
-    tasks.forEach(function (t) {
-      if (t.done) { done.push(clone(t)); return; }
-      var d = t.date || today;
-      if (d < today) overdue.push(clone(t));
-      else if (d === today) nowList.push(clone(t));
-      else upcoming.push(clone(t));
-    });
-    nowList.sort(function (a, b) { return (a.order || 0) - (b.order || 0); });
-    overdue.sort(function (a, b) { return a.date < b.date ? -1 : 1; });
-    upcoming.sort(function (a, b) { return a.date < b.date ? -1 : 1; });
-    done.sort(function (a, b) { return (a.doneAt || '') > (b.doneAt || '') ? -1 : 1; });
-    return { now: nowList, overdue: overdue, upcoming: upcoming, done: done };
-  }
-
-  /* 今日完成率：统计日期为 today 的任务完成占比（供今日计划环形进度条） */
-  function todayProgress(tasks, today) {
-    today = today || todayStr();
-    var list = tasks.filter(function (t) { return String(t.date || today) === today; });
-    var done = list.filter(function (t) { return t.done; }).length;
-    return { done: done, total: list.length, pct: list.length ? Math.round((done / list.length) * 100) : 0 };
-  }
-
-  /* ====== 自媒体 ====== */
-  var STAT_FIELDS = ['views', 'likes', 'comments', 'favorites'];
-  function num0(v) { var n = Number(v); return isNaN(n) ? 0 : Math.max(0, n); }
-  function filterPosts(posts, opts) {
-    opts = opts || {};
-    var tag = opts.tag, status = opts.status;
-    return posts.filter(function (p) {
-      if (tag && p.tags.indexOf(tag) < 0) return false;
-      if (status && p.status !== status) return false;
-      return true;
-    }).map(clone);
-  }
-  function collectTags(posts) {
-    var set = {};
-    posts.forEach(function (p) { p.tags.forEach(function (t) { set[t] = true; }); });
-    return Object.keys(set).sort();
-  }
-  /* 已发布内容的统计数据汇总（供图表）。只统计 status === 'published'。 */
-  function publishedStats(posts) {
-    var published = posts.filter(function (p) { return p.status === 'published'; }).map(function (p) {
-      return {
-        id: p.id, title: p.title,
-        views: num0(p.views), likes: num0(p.likes),
-        comments: num0(p.comments), favorites: num0(p.favorites)
-      };
-    });
-    var sums = { views: 0, likes: 0, comments: 0, favorites: 0 };
-    var max = { views: 0, likes: 0, comments: 0, favorites: 0 };
-    published.forEach(function (p) {
-      STAT_FIELDS.forEach(function (f) { sums[f] += p[f]; if (p[f] > max[f]) max[f] = p[f]; });
-    });
-    var sorted = published.slice().sort(function (a, b) { return b.views - a.views; });
-    return { count: published.length, sums: sums, max: max, posts: sorted };
-  }
-  /* 最近 N 篇已发布选题（按发布日倒序，无发布日按创建时间），供折线图 */
-  function recentPublished(posts, n) {
-    n = (typeof n === 'number' && n > 0) ? n : 5;
-    var pub = posts.filter(function (p) { return p.status === 'published'; })
-      .map(function (p) {
-        return { id: p.id, title: p.title, views: num0(p.views), likes: num0(p.likes), publishDate: p.publishDate || '', createdAt: p.createdAt || '' };
-      });
-    pub.sort(function (a, b) {
-      var ka = a.publishDate || String(a.createdAt || '').slice(0, 10);
-      var kb = b.publishDate || String(b.createdAt || '').slice(0, 10);
-      return ka > kb ? -1 : (ka < kb ? 1 : 0);
-    });
-    return pub.slice(0, n);
-  }
-
-  /* 导出 CSV - 含字段转义 */
-  function toCSV(posts) {
-    var header = ['标题', '平台', '账号', '标签', '状态', '发布日期', '备注'];
-    var rows = [header];
-    posts.forEach(function (p) {
-      rows.push([
-        p.title, p.platform, p.account, p.tags.join(' | '),
-        p.status, p.publishDate || '', p.note || ''
-      ]);
-    });
-    function esc(v) {
-      v = String(v === null || v === undefined ? '' : v);
-      /* 防公式注入：以 = + - @ 开头的字段在 Excel/WPS 会被当公式执行，前置单引号转为文本 */
-      if (/^[=+\-@]/.test(v)) v = "'" + v;
-      if (/[",\r\n]/.test(v)) v = '"' + v.replace(/"/g, '""') + '"';
-      return v;
-    }
-    return rows.map(function (row) {
-      return row.map(esc).join(',');
-    }).join('\n');
-  }
-
-  /* ====== 开发工作 ====== */
-  function devProgress(p) {
-    var total = p.tasks.length;
-    var done = p.tasks.filter(function (t) { return t.done; }).length;
-    return { total: total, done: done, percent: total ? Math.round((done / total) * 100) : 0 };
-  }
-
-  function sortNotesByUpdate(items) {
-    return items.slice().sort(function (a, b) {
-      var ka = a.updatedAt || a.createdAt || '';
-      var kb = b.updatedAt || b.createdAt || '';
-      return ka > kb ? -1 : (ka < kb ? 1 : 0);
-    });
-  }
-
-  function excerptsByBook(excerpts) {
-    var byTime = function (a, b) { return a.time < b.time ? 1 : (a.time > b.time ? -1 : 0); };
-    var groups = [];
-    excerpts.slice().sort(byTime).forEach(function (x) {
-      var g = null;
-      for (var i = 0; i < groups.length; i++) if (groups[i].bookId === x.bookId) { g = groups[i]; break; }
-      if (!g) {
-        g = { bookId: x.bookId, bookTitle: x.bookTitle || '未知书籍', items: [] };
-        groups.push(g);
-      }
-      g.items.push({ id: x.id, text: x.text, page: x.page, time: x.time });
-    });
-    return groups;
-  }
-  /* 首页「每日金句」位置：有摘抄时按日期种子随机挑一条（当天稳定、隔天换新）；无摘抄返回 null */
-  function hashStr(s) {
-    var h = 5381, i;
-    for (i = 0; i < s.length; i++) h = ((h << 5) + h) + s.charCodeAt(i);
-    return Math.abs(h);
-  }
-  function dailyExcerpt(excerpts, dateStr) {
-    if (!Array.isArray(excerpts) || !excerpts.length) return null;
-    var sorted = excerpts.slice().sort(function (a, b) { return a.time < b.time ? -1 : (a.time > b.time ? 1 : 0); });
-    var d = String(dateStr || todayStr());
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) d = todayStr();
-    var x = sorted[hashStr(d + '|excerpt') % sorted.length];
-    return { text: x.text, bookTitle: x.bookTitle || '未知书籍', page: num0(x.page) };
-  }
-  function booksByStatus(books) {
-    var out = { '想读': [], '在读': [], '已读完': [] };
-    books.forEach(function (b) {
-      var key = b.status in out ? b.status : '想读';
-      out[key].push(clone(b)); // 正在看
-    });
-    return out;
-  }
-
-  /* 阅读统计：书籍总数 + 按状态分布 + 阅读进度区间分布 */
-  var PROG_BUCKETS = [
-    { label: '未开始', min: 0, max: 0, color: '#a8a297' },
-    { label: '前期 1-33%', min: 1, max: 33, color: '#b0723f' },
-    { label: '中期 34-66%', min: 34, max: 66, color: '#3b4a6b' },
-    { label: '后期 67-99%', min: 67, max: 99, color: '#7a5e9e' },
-    { label: '已完成 100%', min: 100, max: 100, color: '#2e7d63' }
-  ];
-  function readingStats(books) {
-    var want = 0, reading = 0, finished = 0, readingSum = 0, progressSum = 0;
-    var buckets = PROG_BUCKETS.map(function () { return 0; });
-    books.forEach(function (b) {
-      var pr = Number(b.progress);
-      if (isNaN(pr)) pr = 0;
-      progressSum += pr;
-      if (b.status === '已读完') finished++;
-      else if (b.status === '在读') { reading += 1; readingSum += pr; }
-      else want++;
-      var bi = 0;
-      for (var i = PROG_BUCKETS.length - 1; i >= 0; i--) {
-        if (pr >= PROG_BUCKETS[i].min) { bi = i; break; }
-      }
-      buckets[bi]++;
-    });
-    var statusArr = [
-      { label: '想读', count: want, color: '#a8a297' },
-      { label: '在读', count: reading, color: '#3b4a6b' },
-      { label: '已读完', count: finished, color: '#2e7d63' }
-    ].filter(function (s) { return s.count > 0; });
-    return {
-      total: books.length,
-      want: want, reading: reading, finished: finished,
-      avgReading: reading ? Math.round(readingSum / reading) : 0,
-      avgAll: books.length ? Math.round(progressSum / books.length) : 0,
-      byStatus: statusArr,
-      buckets: PROG_BUCKETS.map(function (b, i) { return { label: b.label, color: b.color, count: buckets[i] }; })
-    };
-  }
-
-  var moduleKeysList = [{ key: 'today', label: '今日计划' }, { key: 'memo', label: '快速备忘' }, { key: 'selfmedia', label: '自媒体' }, { key: 'dev', label: '开发工作' }, { key: 'consulting', label: '咨询工作' }, { key: 'reading', label: '阅读计划' }, { key: 'news', label: '看新闻计划' }, { key: 'design', label: '设计计划' }, { key: 'game', label: '娱乐游戏' }];
-
   /* ====== 导出 / 导入 ======
    * 明文模式：导出完整明文 JSON（同步字符串）。
    * 加密模式：导出密文备份包 { format, salt, iv, data }（不包含密码；导入需密码），异步 Promise。 */
@@ -1024,103 +840,8 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     });
   };
 
-  /* ====== 统计汇总（首页 + 数据页） ====== */
-  Store.prototype.summarize = function () {
-    var st = this.state;
-    var tasksAll = st.tasks;
-    var grouped = groupTasks(tasksAll, todayStr());
-    var today = todayStr();
-    var doneToday = tasksAll.filter(function (t) {
-      if (!t.done || !t.doneAt) return false;
-      return fmtDate(new Date(t.doneAt)) === today;
-    }).length;
-    var posts = st.posts;
-    var pendingFollowups = 0;
-    st.clients.forEach(function (c) { c.followups.forEach(function (f) { if (!f.done) pendingFollowups++; }); });
-    return {
-      date: todayStr(),
-      tasks: {
-        total: tasksAll.length,
-        doneToday: doneToday,
-        remaining: grouped.now.length + grouped.overdue.length + grouped.upcoming.length,
-        current: grouped.now.length,
-        overdue: grouped.overdue.length
-      },
-      selfmedia: { total: posts.length, pending: filterPosts(posts, { status: 'queue' }).length + filterPosts(posts, { status: 'draft' }).length },
-      dev: { total: st.devProjects.length, active: st.devProjects.filter(function (p) { return devProgress(p).percent < 100; }).length },
-      consulting: { total: st.clients.length, followups: pendingFollowups },
-      reading: { total: st.books.length, reading: st.books.filter(function (b) { return b.status === '在读'; }).length },
-      news: { total: st.news.length, unread: st.news.filter(function (n) { return n.status !== 'read'; }).length },
-      design: { total: st.designs.length, active: st.designs.filter(function (x) { return x.type === 'project' && x.stage !== '定稿'; }).length },
-      game: {
-        total: st.gameRecords.length,
-        wins: st.gameRecords.filter(function (r) { return r.winner !== 'draw' && r.winner === r.player; }).length,
-        draws: st.gameRecords.filter(function (r) { return r.winner === 'draw'; }).length
-      }
-    };
-  };
-
-  /* ====== 本周周报（周一 ~ 周日） ====== */
-  Store.prototype.buildWeeklyReport = function (now) {
-    var st = this.state;
-    var d = now ? new Date(now) : new Date();
-    var dw = d.getDay();
-    var offset = dw === 0 ? -6 : 1 - dw;
-    var mon = new Date(d.getFullYear(), d.getMonth(), d.getDate() + offset);
-    var keyOf = function (x) {
-      return x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0');
-    };
-    var startKey = keyOf(mon);
-    var end = new Date(mon);
-    end.setDate(end.getDate() + 7);
-    var endKey = keyOf(end);
-    var inWeek = function (k) { return k >= startKey && k < endKey; };
-    var weekKey = function (v) { return String(v || '').slice(0, 10); };
-
-    var tasksTotal = 0, tasksDone = 0;
-    st.tasks.forEach(function (t) {
-      if (inWeek(weekKey(t.date))) { tasksTotal++; if (t.done) tasksDone++; }
-    });
-    var readingMinutes = 0;
-    (st.books || []).forEach(function (b) {
-      var log = b.readingLog || [];
-      if (Array.isArray(log)) {
-        /* 会话日志形态：[{date, minutes}]，同日多条逐条累加 */
-        log.forEach(function (s) {
-          if (s && s.date && inWeek(weekKey(s.date))) readingMinutes += (Number(s.minutes) || 0);
-        });
-      } else {
-        /* 兼容旧对象形态 {dateKey: minutes} */
-        Object.keys(log).forEach(function (k) { if (inWeek(k)) readingMinutes += log[k]; });
-      }
-    });
-    var memos = 0;
-    (st.memos || []).forEach(function (m) {
-      if (inWeek(weekKey(m.time))) memos++;
-    });
-    var topics = 0;
-    (st.posts || []).forEach(function (p) {
-      if (inWeek(weekKey(p.publishDate || p.date || p.createdAt))) topics++;
-    });
-    var rate = tasksTotal ? Math.round((tasksDone / tasksTotal) * 100) : 0;
-    var endIncl = keyOf(new Date(mon.getFullYear(), mon.getMonth(), mon.getDate() + 6));
-    var text = [
-      '本周周报（' + startKey + ' ~ ' + endIncl + '）',
-      '',
-      '• 本周计划任务 ' + tasksTotal + ' 条，完成 ' + tasksDone + ' 条（完成率 ' + rate + '%）',
-      '• 阅读 ' + readingMinutes + ' 分钟',
-      '• 随手记 ' + memos + ' 条',
-      '• 新增自媒体选题 ' + topics + ' 个',
-      '',
-      '—— Sonder 自动生成'
-    ].join('\n');
-    return {
-      start: startKey, end: endIncl, tasksTotal: tasksTotal, tasksDone: tasksDone,
-      rate: rate, readingMinutes: readingMinutes, memos: memos, topics: topics, text: text
-    };
-  };
-
-  /* 独立工具导出（供模块与测试使用） */
+  /* 独立工具导出（供模块与测试使用）。纯函数统计/汇总（groupTasks/readingStats/summarize 等）
+   * 已迁至 store-stats.js / store-report.js，此处代理导出以保持既有调用面不变。 */
   var api = {
     Store: Store,
     createStore: function (storage) { return new Store(storage); },
@@ -1132,28 +853,28 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     todayStr: todayStr,
     uid: uid,
     nowISO: nowISO,
-    groupTasks: groupTasks,
-    todayProgress: todayProgress,
+    groupTasks: Stats.groupTasks,
+    todayProgress: Stats.todayProgress,
     normalizePriority: normalizePriority,
-    filterPosts: filterPosts,
-    collectTags: collectTags,
-    publishedStats: publishedStats,
-    recentPublished: recentPublished,
-    toCSV: toCSV,
-    booksByStatus: booksByStatus,
-    excerptsByBook: excerptsByBook,
-    dailyExcerpt: dailyExcerpt,
-    readingStats: readingStats,
-    devProgress: devProgress,
-    sortNotesByUpdate: sortNotesByUpdate,
+    filterPosts: Stats.filterPosts,
+    collectTags: Stats.collectTags,
+    publishedStats: Stats.publishedStats,
+    recentPublished: Stats.recentPublished,
+    toCSV: Stats.toCSV,
+    booksByStatus: Stats.booksByStatus,
+    excerptsByBook: Stats.excerptsByBook,
+    dailyExcerpt: Stats.dailyExcerpt,
+    readingStats: Stats.readingStats,
+    devProgress: Stats.devProgress,
+    sortNotesByUpdate: Stats.sortNotesByUpdate,
     normalize: normalize,
-    moduleList: moduleKeysList,
-    /* 领域文件（store-tasks/media/content/settings）可用的 core 私有 helper 白名单 */
+    moduleList: Stats.moduleKeysList,
+    /* 领域文件（store-tasks/media/content/settings/report）可用的 core 私有 helper 白名单 */
     _h: {
       uid: uid, nowISO: nowISO, todayStr: todayStr, fmtDate: fmtDate,
       deepClone: deepClone, isPlainObject: isPlainObject, find: find, idxOf: idxOf,
       normalizePriority: normalizePriority, clampOpacity: clampOpacity, normalize: normalize,
-      num0: num0, hashStr: hashStr, STORAGE_WALLPAPER_KEY: STORAGE_WALLPAPER_KEY
+      num0: Stats.num0, hashStr: Stats.hashStr, STORAGE_WALLPAPER_KEY: STORAGE_WALLPAPER_KEY
     }
   };
   return api;

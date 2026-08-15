@@ -374,6 +374,30 @@ interface SonderSummarize {
   game: { total: number; wins: number; draws: number };
 }
 
+/* store-stats.js 暴露的纯函数统计/聚合层（原 store.js 内实现，拆出后签名不变） */
+interface SonderStatsFactory {
+  fmtDate(d: Date): string;
+  todayStr(): string;
+  num0(v: any): number;
+  hashStr(s: string): number;
+  groupTasks(tasks: SonderTask[], today?: string): SonderTaskGroups;
+  todayProgress(tasks: SonderTask[], today?: string): { done: number; total: number; pct: number };
+  STAT_FIELDS: string[];
+  filterPosts(posts: SonderPost[], opts?: { tag?: string; status?: string }): SonderPost[];
+  collectTags(posts: SonderPost[]): string[];
+  publishedStats(posts: SonderPost[]): SonderPublishedStats;
+  recentPublished(posts: SonderPost[], n?: number): Array<{ id: string; title: string; views: number; likes: number; publishDate: string; createdAt: string }>;
+  toCSV(posts: SonderPost[]): string;
+  devProgress(p: SonderDevProject): { total: number; done: number; percent: number };
+  sortNotesByUpdate<T extends { updatedAt?: string; createdAt?: string }>(items: T[]): T[];
+  excerptsByBook(excerpts: SonderExcerpt[]): Array<{ bookId: string; bookTitle: string; items: Array<{ id: string; text: string; page: number; time: string }> }>;
+  dailyExcerpt(excerpts: SonderExcerpt[], dateStr?: string): { text: string; bookTitle: string; page: number } | null;
+  booksByStatus(books: SonderBook[]): SonderStatusBuckets;
+  PROG_BUCKETS: Array<{ label: string; min: number; max: number; color: string }>;
+  readingStats(books: SonderBook[]): SonderReadingStats;
+  moduleKeysList: Array<{ key: string; label: string }>;
+}
+
 interface SonderStatusBuckets { '想读': SonderBook[]; '在读': SonderBook[]; '已读完': SonderBook[]; }
 interface SonderReadingStats {
   total: number;
@@ -389,9 +413,11 @@ interface SonderReadingStats {
 interface Window {
   Pages: Record<string, SonderPage>;
   SonderStore: SonderStoreFactory;
+  SonderStats: SonderStatsFactory;
   SonderMarkdown: { render(src: string): string; esc(s: unknown): string };
   SonderCrypto: SonderCryptoApi;
   SonderGames: SonderGamesApi;
+  SonderGamesView: SonderGamesViewApi;
   SonderQuotes: { quoteOfDay(dateStr: string): string; quotes: string[] };
   UI: SonderUI;
   __sonderHooks: SonderHooks;
@@ -449,6 +475,20 @@ interface SonderGamesApi {
   BRAIN_POOL: string[];
 }
 
+interface SonderGamesViewApi {
+  DIFF_LABEL: Record<string, string>;
+  diffOptions(sel: string): string;
+  resultHtml(g: any, isNewBest: boolean): string;
+  mineCellsHtml(g: any, UI: SonderUI): string;
+  idiomResult(g: any): string;
+  brainResult(g: any): string;
+  onLine(line: Array<[number, number]>, r: number, c: number): boolean;
+  resultText(r: any): string;
+  resultPill(r: any): string;
+  shortDate(d: string): string;
+  diffBadge(r: any): string;
+}
+
 interface SonderHooks {
   store: SonderStoreImpl;
   render(route: string): void;
@@ -467,3 +507,4 @@ interface SonderHooks {
 
 /* 部分代码直接裸用全局名（非 window. 前缀），声明为全局变量 */
 declare var SonderStore: SonderStoreFactory;
+declare var SonderStats: SonderStatsFactory;

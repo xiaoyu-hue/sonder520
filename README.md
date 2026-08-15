@@ -10,15 +10,13 @@
 
 ## 在线访问
 
-- 主站 1：https://sonder520.netlify.app/
+推荐优先访问以下两个站点（Git 推送自动部署，始终同步最新版）：
 
-备注：主站1 因部署次数限制可能未同步最新版，请移步主站2和备用站。
-
-- 主站 2：https://sonder520.pages.dev/
+- 主站：https://sonder520.pages.dev/
 
 - 备用站：https://xiaoyu-hue.github.io/sonder520/
 
-三个站点内容同步更新，任选一个打开即可。
+另外还有历史主站（可能滞后）：https://sonder520.netlify.app/（因部署次数限制未同步最新，不推荐使用）。
 
 > 数据存于各设备浏览器 localStorage，设备间相互独立；多设备数据迁移请用「数据与设置 → 导出备份 / 导入恢复」。
 
@@ -116,7 +114,7 @@
 
 - 应用为纯 HTML/CSS/原生 JS，构建/运行零依赖，不需要 npm 安装即可使用。
 
-- 运行全部测试：npm test（当前 487 项全部通过，覆盖存储/加密（含竞态与未来版本韧性）/UI/各模块/样式/动效/壁纸/移动端自动适配/性能/游戏引擎/交互质量回归/PWA/搜索/XSS 净化（含属性注入）/对比度/IndexedDB/通知/Web Worker/持久化危机兜底）。
+- 运行全部测试：npm test（当前 488 项全部通过，覆盖存储/加密（含竞态与未来版本韧性）/UI/各模块/样式/动效/壁纸/移动端自动适配/性能/游戏引擎/交互质量回归/PWA/搜索/XSS 净化（含属性注入）/对比度/IndexedDB/通知/Web Worker/持久化危机兜底）。
 
 - 类型检查（零构建）：npm run typecheck（JSDoc + tsc --noEmit，契约以 globals.d.ts 锁定）。
 
