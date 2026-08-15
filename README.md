@@ -16,7 +16,11 @@
 
 - 备用站：https://xiaoyu-hue.github.io/sonder520/
 
-另外还有历史主站（可能滞后）：https://sonder520.netlify.app/（因部署次数限制未同步最新，不推荐使用）。
+另外还有历史主站（可能滞后）：
+
+https://sonder520.netlify.app/
+
+（因部署次数限制未同步最新，不推荐使用）。
 
 > 数据存于各设备浏览器 localStorage，设备间相互独立；多设备数据迁移请用「数据与设置 → 导出备份 / 导入恢复」。
 
