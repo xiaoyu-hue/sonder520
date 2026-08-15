@@ -6,10 +6,12 @@
   "scripts": {
     "test": "node --test --test-timeout=30000 \"tests/**/*.test.js\"",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint js/*.js tests/*.js scripts/*.js",
+    "lint": "eslint js/*.js tests/*.js scripts/*.js e2e/*.js",
+    "test:e2e": "playwright test",
     "sync-sw": "node scripts/sync-sw.js"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "@types/node": "^26.2.0",
     "eslint": "^8.57.1",
     "fake-indexeddb": "^6.2.5",
