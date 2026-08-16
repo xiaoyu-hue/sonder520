@@ -250,7 +250,7 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
   }
 
   /* ---------- Store ---------- */
-  /** @constructor @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _idbWrite: any, _lastJson: string, _rev: number, _encKey: any, _encSize: number, _hasEncSnapshot: Function, _idbEncLocked: boolean, _undo: any[], _pendingLocal: any, _localFlushHandle: any, _bus: any, _emitChange: Function, _persistFailed: boolean, _idbFailed: boolean, _lastPersistError: any }} */
+  /** @constructor @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _idbWrite: any, _lastJson: string, _rev: number, _encKey: any, _encSize: number, _hasEncSnapshot: Function, _idbEncLocked: boolean, _undo: any[], _pendingLocal: any, _localFlushHandle: any, _bus: any, _emitChange: Function, _persistFailed: boolean, _idbFailed: boolean, _lastPersistError: any, _lastSeenMeta: any }} */
   function Store(storage) {
     this._storage = storage || (typeof localStorage !== 'undefined' ? localStorage : null);
     /* SonderBus 数据变更广播总线（浏览器 window.SonderBus / 测试注入；缺省静默） */
@@ -259,6 +259,13 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     if (this._storage) {
       try { persisted = JSON.parse(this._storage.getItem(STORAGE_KEY)); }
       catch (e) { persisted = null; }
+    }
+    /* 最近一次确认的权威快照 meta（多标签写锁的版本基线）。
+     * 构造时记录当前值；_doLocalFlush 成功落盘后更新为自己写入的 meta。 */
+    this._lastSeenMeta = null;
+    if (this._storage) {
+      try { this._lastSeenMeta = this._storage.getItem(STORAGE_META_KEY) || null; }
+      catch (e) { this._lastSeenMeta = null; }
     }
     this.state = normalize(this._hasEncSnapshot() ? null : persisted);
     this._meta = null;
@@ -354,7 +361,7 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
    * （Node/测试/旧浏览器）同步落盘，保证存储一致性。
    * 加密盐/壁纸等一次性关键 setItem 保持同步（正确性优先，非热路径）。
    * 可传入 save 已序列化的 json 避免二次 stringify。 */
-  /** @this {{ _storage: any, state: any, _meta: any, _pendingLocal: any, _localFlushHandle: any, _doLocalFlush: Function }} */
+  /** @this {{ _storage: any, state: any, _meta: any, _pendingLocal: any, _localFlushHandle: any, _doLocalFlush: Function, _lockedLocalFlush: Function }} */
   Store.prototype._persistLocal = function (json) {
     if (!this._storage) return;
     this._meta = nowISO();
@@ -364,15 +371,72 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     if (typeof globalThis.requestIdleCallback === 'function') {
       this._localFlushHandle = globalThis.requestIdleCallback(function () {
         self._localFlushHandle = null;
-        self._doLocalFlush();
+        self._lockedLocalFlush();
       }, { timeout: 900 });
     } else {
       this._doLocalFlush(); /* 无 idle API：同步落盘 */
     }
   };
 
+  /* Web Locks 多标签写锁：navigator.locks 可用时（Chrome 69+/FF 96+/Safari 15.4+）
+   * 防抖落盘点在本标签持锁回调内执行；拿锁失败/环境不支持 → 降级直接落盘（等价旧行为）。
+   * 跨标签竞态防护见 _lockedLocalFlush 内写前 meta 检查（另一标签已写更新快照时让位不覆盖）。 */
+  Store.prototype._lockedLocalFlush = function () {
+    var self = this;
+    var locks = (typeof navigator !== 'undefined' && navigator.locks && typeof navigator.locks.request === 'function')
+      ? navigator.locks : null;
+    if (!locks) { this._doLocalFlush(); return; }
+    var done = false;
+    var fallback = function () { if (done) return; done = true; self._doLocalFlush(); };
+    var p = null;
+    try {
+      p = locks.request('sonder-writer', function () {
+        /* 锁内：写前检查权威快照是否已被其他标签更新（meta 版本比较）。
+         * 本实例自上次确认后未见过的更新 meta → 本次待写基于旧内存 state，
+         * 直接覆盖会丢新数据（LWW 丢数据场景）→ 让位：吸收新快照、不覆盖。
+         * 相同/更旧 meta → 正常落盘。 */
+        if (self._storage) {
+          var curMeta = null;
+          try { curMeta = self._storage.getItem(STORAGE_META_KEY); } catch (e) { curMeta = null; }
+          /* 权威快照 meta 与本实例基线不一致（另一标签已写/外部变更）→ 让位不覆盖 */
+          if (curMeta && curMeta !== self._lastSeenMeta) {
+            done = true;
+            self._absorbNewer();
+            return;
+          }
+        }
+        done = true;
+        self._doLocalFlush();
+      });
+      if (p && typeof p.catch === 'function') p.catch(fallback);
+    } catch (e) { fallback(); }
+  };
+
+  /* 让位：放弃本次旧快照覆盖，改为吸收 localStorage 中的最新权威快照（其他标签已写更新）。
+   * 重载后重置内存基线并广播全量重绘；密文快照走 _decryptParse（有会话密钥时）。 */
+  /** @this {{ _storage: any, state: any, _lastJson: string, _rev: number, _lastSeenMeta: any, _emitChange: Function, _decryptParse: Function, _pendingLocal: any }} */
+  Store.prototype._absorbNewer = function () {
+    this._pendingLocal = undefined;
+    var self = this;
+    var raw = null;
+    if (this._storage) {
+      try { raw = this._storage.getItem(STORAGE_KEY); } catch (e) { raw = null; }
+    }
+    if (raw === null || raw === undefined) return;
+    this._decryptParse(raw).then(function (parsed) {
+      if (!parsed) return; /* 密文未解锁/解析失败：不覆盖也不吸收，保持现状 */
+      self.state = normalize(parsed);
+      self._lastJson = JSON.stringify(self.state);
+      self._rev++;
+      if (self._storage) {
+        try { self._lastSeenMeta = self._storage.getItem(STORAGE_META_KEY) || null; } catch (e) { /* 忽略 */ }
+      }
+      self._emitChange('all'); /* 采纳新快照：全量重绘 */
+    });
+  };
+
   /* 实际写 localStorage（权威快照；写满时记失败标记，IDB 副本兜底）。只写 _pendingLocal 最新一份 */
-  /** @this {{ _storage: any, _meta: any, _pendingLocal: any, _persistFailed: boolean, _lastPersistError: any }} */
+  /** @this {{ _storage: any, _meta: any, _pendingLocal: any, _persistFailed: boolean, _lastPersistError: any, _lastSeenMeta: any }} */
   Store.prototype._doLocalFlush = function () {
     if (this._pendingLocal === undefined) return;
     var json = this._pendingLocal;
@@ -382,6 +446,7 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
       this._storage.setItem(STORAGE_META_KEY, this._meta);
       this._persistFailed = false;
       this._lastPersistError = null;
+      this._lastSeenMeta = this._meta; /* 多标签写锁基线：本实例已落盘的权威版本 */
     } catch (e) {
       /* 存储满（QuotaExceededError / NS_ERROR_DOM_QUOTA_REACHED）等错误：置失败标记。
        * 数据仍在内存与 IDB 副本侧；若 IDB 也不可用则 hasPersistIssue() 指挥 UI 提示导出 */
