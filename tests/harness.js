@@ -19,8 +19,10 @@ const SCRIPT_ORDER = parseIndexScripts();
 /* 启动一个完整 App 的 JSDOM 实例。每个实例有自己独立的 localStorage。 */
 function boot(opts = {}) {
   const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+  /* url 可注入（如 file:// 直开场景）；jsdom 对任何协议都只解析不请求，
+   * 模拟的是 window.location.protocol 等环境标识，与真实资源加载无关。 */
   const dom = new JSDOM(html, {
-    url: 'https://sonder.local/',
+    url: opts.url || 'https://sonder.local/',
     runScripts: 'dangerously',
     pretendToBeVisual: true
   });

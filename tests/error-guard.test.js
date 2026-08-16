@@ -72,6 +72,31 @@ test('error-guard: 捕获资源加载失败（img 不冒泡的错误事件）', 
   assert.ok(last.message.indexOf('never-exists.jpg') >= 0, '消息应含资源地址');
 });
 
+test('error-guard: file:// 直开时资源加载失败仅记录不弹 toast（manifest CORS 噪音）', () => {
+  const { window, $ } = boot({ url: 'file:///D:/Sonder/index.html' });
+  const img = window.document.createElement('img');
+  img.src = 'manifest.json';
+  window.document.body.appendChild(img);
+  img.dispatchEvent(new window.Event('error'));
+  assert.equal(window.__sonderErrors.total, 1, '仍应记录到 __sonderErrors');
+  assert.equal(window.__sonderErrors.list[0].type, 'resource');
+  assert.ok(!$('#toastWrap .toast'), 'file:// 下资源类错误不应弹 toast');
+});
+
+test('error-guard: file:// 直开时脚本错误仍弹 toast（不掩盖真故障）', () => {
+  const { window, $ } = boot({ url: 'file:///D:/Sonder/index.html' });
+  const ev = new window.ErrorEvent('error', {
+    message: 'boom-file-js',
+    filename: 'app.js',
+    lineno: 1,
+    colno: 1,
+    error: new window.Error('boom-file-js')
+  });
+  window.dispatchEvent(ev);
+  assert.equal(window.__sonderErrors.total, 1);
+  assert.ok($('#toastWrap .toast'), 'file:// 下脚本错误应照常弹 toast');
+});
+
 test('error-guard: clear 可重置统计', () => {
   const { window } = boot({});
   const ev = new window.ErrorEvent('error', { message: 'x', error: new window.Error('x') });

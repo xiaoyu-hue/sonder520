@@ -30,12 +30,21 @@
     } catch (e) { /* 提示本身出错时静默，防止递归 */ }
   }
 
+  /* file:// 直开（本地开发/单文件使用）时，浏览器对 manifest 等资源的
+   * CORS 与安全限制是环境噪音（origin 为 null），并非应用缺陷：
+   * 资源类错误照常记录（__sonderErrors + 控制台），但不弹 toast 打扰。
+   * 脚本异常与 Promise 拒绝不受影响，仍会提示。 */
+  function shouldToast(entry) {
+    if (entry.type !== 'resource') return true;
+    try { return window.location.protocol !== 'file:'; } catch (e) { return true; }
+  }
+
   function report(entry) {
     record(entry);
     try {
       console.error('[Sonder] ' + entry.type + ': ' + entry.message, entry.stack || '');
     } catch (e) { /* 忽略 */ }
-    notify();
+    if (shouldToast(entry)) notify();
   }
 
   /* 捕获阶段监听，才能收到不冒泡的资源 error（img/script/link） */
