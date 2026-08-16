@@ -14,6 +14,7 @@
 - **多标签写锁（Web Locks 让位协议，ADR-007）**：store.js 防抖落盘点经 `'sonder-writer'` 锁排队；锁内对比 `sonder_meta_v1` 基线，另一标签已写更新快照时**让位吸收**（不覆盖新数据、`_rev` 递增、广播全量重绘）；无锁/锁异常环境自动降级直接落盘（等价旧行为）。新增契约测试 `tests/store-write-lock.test.js` 5 项（fake requestIdleCallback + fake navigator.locks，场景：正常持锁/连续写不误判/让位吸收/锁 reject 降级/无锁降级）。
 - **全局符号契约（ADR-008）**：确认 tsconfig `checkJs: true` 全局生效（js/**），store.js 实例成员以 `@this` 模板为唯一真源（新增 `_lastSeenMeta`/`_lockedLocalFlush`/`_absorbNewer` 已同步进模板），`npm run typecheck` 当前零错误；提交 ADR-007/008 与状态索引。
 - 测试基线 516 → 521（新增写锁 5 项，全量绿）。
+- 离线缓存升版 v29 → v30（store.js 内容指纹变化触发 sync-sw 自动升版，ASSETS 38 项不变）。
 
 ### 计划（来自 38 项审计清单，按优先级）
 
