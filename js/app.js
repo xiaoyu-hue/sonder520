@@ -341,6 +341,13 @@
   buildNav();
   todayLine();
   bindQuotaBar();
+  /* 另一标签已接管编辑（多标签让位协议）：本页未保存的输入已被放弃，即时提示用户 */
+  var yieldBus = globalThis.SonderBus && globalThis.SonderBus.bus;
+  if (yieldBus && typeof yieldBus.on === 'function') {
+    yieldBus.on('/store/yielded', function () {
+      UI.toast('另一标签已更新数据，本页已同步到最新版本（未保存的修改已被放弃）', 'err');
+    });
+  }
   window.addEventListener('hashchange', onHash);
   window.addEventListener('load', render);
 })();

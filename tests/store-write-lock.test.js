@@ -69,7 +69,7 @@ function makeLocks({ reject = false } = {}) {
   return locks;
 }
 
-/* 假 SonderBus：记录广播路径（验证让位触发全量重绘） */
+/* 假 SonderBus：记录广播路径（验证让位触发全量重绘 + 让位提示事件；正常写不误报） */
 function installBus() {
   const seen = [];
   globalThis.SonderBus = { bus: { emit(path) { seen.push(path); } } };
@@ -96,6 +96,7 @@ test('写锁：有 navigator.locks 时防抖落盘经 sonder-writer 锁执行', 
 test('写锁：单标签正常写后基线一致，不误判让位', () => {
   const locks = makeLocks();
   installLocks(locks);
+  const seen = installBus();
   try {
     const storage = memStorage();
     const s = S.createStore(storage);
@@ -107,6 +108,7 @@ test('写锁：单标签正常写后基线一致，不误判让位', () => {
     assert.equal(raw.memos.length, 2, '连续两次写均正常落盘');
     assert.equal(raw.memos[0].text, 'B');
     assert.equal(storage.getItem(S.STORAGE_META_KEY), s._meta, '落盘 meta 与实例一致');
+    assert.ok(!seen.includes('/store/yielded'), '基线一致时不误报让位');
   } finally { clearLocks(); }
 });
 
@@ -132,6 +134,7 @@ test('写锁：另一标签已写更新（meta 不一致）→ 让位不覆盖 +
     assert.equal(storage.getItem(S.STORAGE_META_KEY), 'META-OTHER', 'meta 不被回写');
     assert.equal(s.state.memos[0].text, '另一标签新数据', '内存同步为新快照');
     assert.ok(seen.includes('/data/all'), '让位触发全量重绘广播');
+    assert.ok(seen.includes('/store/yielded'), '让位触发接管提示事件（UI 弹 toast）');
     assert.equal(s._rev, 2, '吸收新快照 rev 递增');
   } finally { clearLocks(); }
 });

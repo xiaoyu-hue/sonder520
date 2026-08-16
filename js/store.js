@@ -413,9 +413,12 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
   };
 
   /* 让位：放弃本次旧快照覆盖，改为吸收 localStorage 中的最新权威快照（其他标签已写更新）。
-   * 重载后重置内存基线并广播全量重绘；密文快照走 _decryptParse（有会话密钥时）。 */
-  /** @this {{ _storage: any, state: any, _lastJson: string, _rev: number, _lastSeenMeta: any, _emitChange: Function, _decryptParse: Function, _pendingLocal: any }} */
+   * 重载后重置内存基线并广播全量重绘；密文快照走 _decryptParse（有会话密钥时）。
+   * 无论吸收结果如何（含解析失败保持现状），先广播让位事件——另一标签已接管，
+   * 本标签未保存的输入已被放弃，UI 应即时提示用户。 */
+  /** @this {{ _storage: any, state: any, _lastJson: string, _rev: number, _lastSeenMeta: any, _emitChange: Function, _decryptParse: Function, _pendingLocal: any, _bus: any }} */
   Store.prototype._absorbNewer = function () {
+    if (this._bus) this._bus.emit('/store/yielded');
     this._pendingLocal = undefined;
     var self = this;
     var raw = null;

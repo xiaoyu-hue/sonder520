@@ -15,6 +15,9 @@
 - **全局符号契约（ADR-008）**：确认 tsconfig `checkJs: true` 全局生效（js/**），store.js 实例成员以 `@this` 模板为唯一真源（新增 `_lastSeenMeta`/`_lockedLocalFlush`/`_absorbNewer` 已同步进模板），`npm run typecheck` 当前零错误；提交 ADR-007/008 与状态索引。
 - 测试基线 516 → 521（新增写锁 5 项，全量绿）。
 - 离线缓存升版 v29 → v30（store.js 内容指纹变化触发 sync-sw 自动升版，ASSETS 38 项不变）。
+- **让位提示（写锁 UX 闭环）**：`_absorbNewer` 让位时经总线广播 `/store/yielded`，app.js 订阅弹 toast「另一标签已更新数据，本页已同步到最新版本（未保存的修改已被放弃）」——让位不再无声丢输入；写锁契约测试扩 2 条断言（让位报 `/store/yielded`、基线一致不误报）。
+- **game-worker.js 纳入 typecheck**：tsconfig 移除 exclude（原因 `importScripts` 未声明），globals.d.ts 补 Web Worker 全局声明；worker 现在与其他 34 个 js 模块同等受 tsc 类型检查（`npm run typecheck` 零错误保持）。
+- 离线缓存升版 v30 → v31（store.js/app.js 内容指纹变化触发 sync-sw 自动升版，ASSETS 38 项不变）。
 
 ### 计划（来自 38 项审计清单，按优先级）
 

@@ -571,3 +571,7 @@ interface SonderHooks {
 /* 部分代码直接裸用全局名（非 window. 前缀），声明为全局变量 */
 declare var SonderStore: SonderStoreFactory;
 declare var SonderStats: SonderStatsFactory;
+
+/* Web Worker 专用全局（game-worker.js，不在 DOM/窗口作用域内）：
+ * DOM lib 的 postMessage/self 重载与 worker 环境兼容，仅 importScripts 缺失需要补充。 */
+declare function importScripts(...urls: string[]): void;
