@@ -1,525 +1,34 @@
-/* games.js - 娱乐游戏：井字棋 & 五子棋（AI 对决 / 双人对弈，悔棋 / 认输 / 战绩）
- * 视图纯函数（diffOptions/resultHtml/mineCellsHtml/idiomResult/brainResult/onLine/战绩文案）
- * 已迁至 games-view.js（window.SonderGamesView，须先于本文件加载），本文件仅保留
- * 页面交互、事件绑定、AI Worker 调度与战绩读写。 */
+/* games.js - 娱乐游戏：页面编排层（render 分派 / 游戏选择 / 战绩区 / 自动重绘 / 测试钩子）
+ * 共享状态见 games-shared.js（window.SonderGamesShared，须最先加载），视图纯函数见 games-view.js（window.SonderGamesView），
+ * 休闲小游戏见 games-mini.js（window.SonderGamesMini），对弈域见 games-battle.js（window.SonderGamesBattle）。
+ * 本文件仅保留页面交互路由、自动重绘订阅与测试钩子。 */
 (function () {
   'use strict';
   var Pages = window.Pages = window.Pages || {};
-  var G = window.SonderGames;
   var V = window.SonderGamesView;
-
-  var currentEl = null, currentCtx = null;
-  var ctxRef = { store: null }; /* 最近一次 render 的 store 引用（小游戏纪录统一读写 store） */
-  var legacyMigrated = false; /* 旧版独立 localStorage 纪录一次性迁移标记 */
-  var state = { game: null, mode: 'ai', playerStone: 'X', difficulty: 'normal', mini: null };
-  var busy = false;
-  var aiTimer = null;
-  /* 五子棋 AI Worker：承载耗时计算，避免阻塞主线程（无 Worker 环境自动回退同步计算，行为与旧版一致） */
-  var aiWorker = null;
-  var aiSeq = 0; /* 递增序号：悔棋/重开/切换时作废在途 AI 回复；同时用作 worker 消息 id */
-  var aiWaitCtx = null; /* 等待 worker 回复期间的 ctx 快照（onerror/兜底使用） */
-  var WORKER_TIMEOUT = 3000; /* worker 回复最大等待：超过即视为挂起，走同步兜底防死锁 */
-  var confirmOpen = false;
-
-  var KIND_NAME = { tictactoe: '井字棋', gomoku: '五子棋', guessnum: '🎯 猜数字', minesweeper: '💣 扫雷', idiom: '📖 猜成语', brainteaser: '🧠 脑筋急转弯' };
-
-  /* 统一确认框：防连点/叠加（同一时刻只允许一个弹窗），返回 Promise<boolean>。
-   * 已有弹窗时新请求被忽略并提示，避免用户"点了没反应"。 */
-  function askConfirm(ctx, message, okText) {
-    if (confirmOpen) {
-      ctx.UI.toast('请先处理当前弹出的确认框', 'err');
-      return Promise.resolve(null);
-    }
-    confirmOpen = true;
-    return ctx.UI.confirmBox(message, okText).then(function (ok) {
-      confirmOpen = false;
-      return ok;
-    });
-  }
-
-  function aiStone() { return state.playerStone === 'X' ? 'O' : 'X'; }
-  function playerName(stone) {
-    if (state.mode === 'ai') return stone === state.playerStone ? '你' : 'AI';
-    return stone === 'X' ? '玩家1' : '玩家2';
-  }
-  function sym(stone) { return stone === 'X' ? '✕' : '◯'; }
-  function kindName(g) { return KIND_NAME[g.kind] || g.kind; }
+  var S = window.SonderGamesShared;
+  var MI = window.SonderGamesMini;
+  var BT = window.SonderGamesBattle;
 
   function render(ctx) {
-    var container = currentEl;
-    ctxRef.store = (ctx && ctx.store) || null;
+    var container = S.currentEl;
+    S.ctxRef.store = (ctx && ctx.store) || null;
     container.innerHTML = '';
-    container.appendChild(state.game ? gameView(ctx) : (state.mini ? miniView(ctx) : pickView(ctx)));
+    container.appendChild(S.state.game ? BT.gameView(ctx) : (S.state.mini ? MI.miniView(ctx) : pickView(ctx)));
     container.appendChild(recordsArea(ctx));
     /* P3e：首次进入游戏页时把旧版独立 localStorage 纪录一次性并入统一 store（老用户数据不丢） */
-    if (!legacyMigrated) {
-      legacyMigrated = true;
-      migrateMiniRecords(ctx);
+    if (!S.legacyMigrated) {
+      S.legacyMigrated = true;
+      MI.migrateMiniRecords(ctx);
     }
     /* 恢复被切页打断的 AI 回合：AI 模式对局停在 AI 思考且未在思考中时重新调度落子 */
-    if (state.mode === 'ai' && state.game && !state.game.over && state.game.turn === aiStone() && !busy) {
-      aiThink(ctx);
+    if (S.state.mode === 'ai' && S.state.game && !S.state.game.over && S.state.game.turn === S.aiStone() && !S.busy) {
+      BT.aiThink(ctx);
     }
   }
 
-  /* ---------- 休闲小游戏 ---------- */
-  var MS_DIFFS = {
-    easy: { label: '简单', rows: 9, cols: 9, mines: 10 },
-    mid: { label: '中等', rows: 12, cols: 12, mines: 20 },
-    hard: { label: '困难', rows: 16, cols: 16, mines: 40 }
-  };
-  var MS_DEFAULT_DIFF = 'easy';
-  var MS_LONG_PRESS_MS = 350;
-
-  function startMini(ctx, kind) {
-    state.game = null;
-    if (kind === 'guessnum') {
-      state.mini = { kind: 'guessnum', g: G.guessNumStart() };
-    } else if (kind === 'minesweeper') {
-      var diff = miniBest2('minesweeper', 'diff') || MS_DEFAULT_DIFF;
-      var d = MS_DIFFS[diff] || MS_DIFFS[MS_DEFAULT_DIFF];
-      state.mini = { kind: 'minesweeper', g: G.mineStart(d.rows, d.cols, d.mines), diff: diff };
-    } else if (kind === 'idiom') {
-      state.mini = { kind: 'idiom', g: G.idiomStart() };
-    } else if (kind === 'brainteaser') {
-      state.mini = { kind: 'brainteaser', g: G.brainStart() };
-    } else {
-      state.mini = { kind: kind, g: null };
-    }
-    render(ctx);
-  }
-
-  function miniView(ctx) {
-    if (state.mini.kind === 'guessnum') return guessNumView(ctx);
-    if (state.mini.kind === 'minesweeper') return mineView(ctx);
-    if (state.mini.kind === 'idiom') return idiomView(ctx);
-    if (state.mini.kind === 'brainteaser') return brainView(ctx);
-    return pickView(ctx);
-  }
-
-  /* 单人小游戏纪录统一存 store.state.miniRecords（P3e；原独立 localStorage 键 sonder_games_* 仅用于一次性迁移） */
-  var MINI_KINDS = ['guessnum', 'minesweeper', 'idiom', 'brainteaser'];
-  function migrateMiniRecords(ctx) {
-    try {
-      MINI_KINDS.forEach(function (kind) {
-        var raw = window.localStorage.getItem('sonder_games_' + kind);
-        if (!raw) return;
-        var o = JSON.parse(raw);
-        if (o && typeof o === 'object') {
-          ctx.store.updateMiniRecord(kind, o);
-        }
-        window.localStorage.removeItem('sonder_games_' + kind);
-      });
-    } catch (e) { /* 迁移失败则保留旧键，后续访问再试 */ }
-  }
-  function miniRec(kind) {
-    return ctxRef.store ? ctxRef.store.getMiniRecord(kind) : {};
-  }
-  function miniBest(kind) {
-    var o = miniRec(kind);
-    return typeof o.best === 'number' ? o.best : null;
-  }
-  function saveMiniBest(kind, best) {
-    if (ctxRef.store) ctxRef.store.updateMiniRecord(kind, { best: best });
-  }
-  function miniBest2(kind, key) {
-    var o = miniRec(kind);
-    return key in o ? o[key] : null;
-  }
-  function saveMiniRec(kind, patch) {
-    if (ctxRef.store) ctxRef.store.updateMiniRecord(kind, patch);
-  }
-
-  /* -------- 猜数字 -------- */
-  function guessNumView(ctx) {
-    var UI = ctx.UI, m = state.mini, g = m.g;
-    var used = g.attempts.length, left = g.max - used;
-    var best = miniBest('guessnum');
-    var wrap = UI.el('<div></div>');
-    wrap.appendChild(UI.el(
-      '<div class="hbar">' +
-      '<div class="lab" style="font-size:15px">🎯 猜数字</div>' +
-      '<span class="muted small">心里想好 1~100，7 次机会猜中</span>' +
-      '<span class="sp"></span>' +
-      '<button class="btn" data-mact="back" type="button">← 选游戏</button>' +
-      '</div>'
-    ));
-    var card = UI.el(
-      '<div class="card">' +
-      '<div class="row" style="align-items:center;gap:8px">' +
-      '<span class="small muted">剩余机会</span><b id="mgLeft" aria-live="polite">' + left + '</b>' +
-      '<span class="small muted" style="margin-left:auto">' + (best ? '最佳纪录 ' + best + ' 次' : '还没有纪录，打破它！') + '</span>' +
-      '</div>' +
-      '<div class="row" style="gap:10px;margin-top:12px">' +
-      '<input type="number" id="mgGuess" min="1" max="100" step="1" inputmode="numeric" placeholder="输入 1~100" ' +
-      'aria-label="输入要猜的数字（1 到 100）" style="min-height:44px;flex:1">' +
-      '<button class="btn primary" id="mgGo" type="button" style="min-height:44px">猜！</button>' +
-      '</div>' +
-      '<div class="mg-hist" id="mgHist" role="status" aria-live="polite">' + histHtml(g) + '</div>' +
-      (g.over ? '<div class="mg-result" id="mgResult">' + V.resultHtml(g, state.mini.newBest) + '</div>' : '') +
-      '<div class="row" style="margin-top:12px">' +
-      '<button class="btn" data-mact="again" type="button" style="min-height:44px">🔄 再来一局</button>' +
-      '</div>' +
-      '</div>'
-    );
-    var go = function () {
-      var input = card.querySelector('#mgGuess');
-      var v = input ? input.value : '';
-      var res = G.guessNumTry(g, v);
-      if (!res.ok) { UI.toast(res.error, 'err'); return; }
-      if (res.win || res.lose) {
-        if (res.win) {
-          var oldBest = miniBest('guessnum');
-          state.mini.newBest = oldBest === null || g.attempts.length < oldBest;
-          if (state.mini.newBest) saveMiniBest('guessnum', g.attempts.length);
-        }
-        ctx.store.addGameRecord({
-          kind: 'guessnum', mode: 'solo', player: 'player',
-          winner: res.win ? 'player' : 'opponent',
-          note: res.win ? ('第 ' + g.attempts.length + ' 次猜中，目标 ' + g.target) : ('七次未中，目标 ' + g.target)
-        });
-      }
-      render(ctx);
-    };
-    var btn = card.querySelector('#mgGo');
-    if (btn) btn.addEventListener('click', go);
-    var input = card.querySelector('#mgGuess');
-    if (input) input.addEventListener('keydown', function (e) { if (e.key === 'Enter') go(); });
-    wrap.appendChild(card);
-    wrap.querySelectorAll('[data-mact]').forEach(function (b) {
-      b.addEventListener('click', function () {
-        if (b.dataset.mact === 'back') {
-          state.mini = null;
-          render(ctx);
-        } else if (b.dataset.mact === 'again') {
-          state.mini = { kind: 'guessnum', g: G.guessNumStart() };
-          render(ctx);
-        }
-      });
-    });
-    return wrap;
-  }
-
-  /* -------- 扫雷 -------- */
-  function mineView(ctx) {
-    var UI = ctx.UI, m = state.mini, g = m.g;
-    var wrap = UI.el('<div></div>');
-    wrap.appendChild(UI.el(
-      '<div class="hbar">' +
-      '<div class="lab" style="font-size:15px">💣 扫雷</div>' +
-      '<select id="msDiff" title="雷区尺寸与雷数" aria-label="选择扫雷难度">' +
-      Object.keys(MS_DIFFS).map(function (k) {
-        var d = MS_DIFFS[k];
-        return '<option value="' + k + '"' + (state.mini.diff === k ? ' selected' : '') + '>' + d.label + '（' + d.rows + '×' + d.cols + ' · ' + d.mines + '雷）</option>';
-      }).join('') +
-      '</select>' +
-      '<span class="sp"></span>' +
-      '<button class="btn" data-mact="back" type="button">← 选游戏</button>' +
-      '</div>'
-    ));
-    var rec = miniRec('minesweeper');
-    var statsTxt = rec.wins !== undefined
-      ? '胜 ' + rec.wins + ' · 负 ' + rec.losses
-      : '还没有战绩，来一局！';
-    var statusTxt = g.over
-      ? (g.won ? '🎉 扫雷成功！点对了吗？再来挑战更高难度！' : '💥 踩到雷了，下次小心！')
-      : '剩余 ' + Math.max(0, g.mines - g.flagged) + ' 雷';
-    var card = UI.el(
-      '<div class="card">' +
-      '<div class="row" style="align-items:center;gap:10px;flex-wrap:wrap">' +
-      '<span class="muted small">' + statusTxt + '</span>' +
-      '<span class="muted small">' + statsTxt + '</span>' +
-      '</div>' +
-      '<div class="ms-board-wrap" style="margin-top:12px">' +
-      '<div class="ms-board" id="msBoard" style="--cols:' + g.cols + ';grid-template-columns:repeat(' + g.cols + ',1fr)" role="grid" aria-label="扫雷雷区">' + V.mineCellsHtml(g, ctx.UI) + '</div>' +
-      '</div>' +
-      '<div class="row" style="margin-top:12px">' +
-      '<button class="btn" data-mact="again" type="button" style="min-height:44px">🔄 再来一局</button>' +
-      '</div>' +
-      '</div>'
-    );
-    var board = card.querySelector('#msBoard');
-    board.querySelectorAll('.ms-cell').forEach(function (cell) {
-      bindMineCell(ctx, cell);
-    });
-    wrap.appendChild(card);
-    wrap.querySelectorAll('[data-mact]').forEach(function (b) {
-      b.addEventListener('click', function () {
-        if (b.dataset.mact === 'back') {
-          state.mini = null;
-          render(ctx);
-        } else if (b.dataset.mact === 'again') {
-          msRestart(ctx);
-        }
-      });
-    });
-    var diffReal = wrap.querySelector('#msDiff');
-    if (diffReal) diffReal.addEventListener('change', function () {
-      state.mini.diff = diffReal.value;
-      saveMiniRec('minesweeper', { diff: diffReal.value });
-      msRestart(ctx);
-      UI.toast('已切换难度并重新开始');
-    });
-    return wrap;
-  }
-
-function histHtml(g) {
-    if (!g.attempts.length) return '<div class="muted small" style="margin-top:10px">还没开始，输入数字点击「猜！」</div>';
-    var rows = '';
-    g.attempts.forEach(function (n, i) {
-      var cls = 'mid';
-      var label = '平';
-      if (n === g.target) { cls = 'got'; label = '中了！'; }
-      else if (n > g.target) { cls = 'hi'; label = '大了'; }
-      else { cls = 'lo'; label = '小了'; }
-      rows += '<div class="mg-line"><span class="muted small">第' + (i + 1) + '次</span>' +
-        '<b class="mg-num">' + n + '</b>' +
-        '<span class="mg-hint ' + cls + '">' + label + '</span></div>';
-    });
-    return '<div style="margin-top:10px">' + rows + '</div>';
-  }
-
-  function finishMinesweeper(ctx, won) {
-    var rec = miniRec('minesweeper');
-    rec.wins = (rec.wins || 0) + (won ? 1 : 0);
-    rec.losses = (rec.losses || 0) + (won ? 0 : 1);
-    rec.diff = state.mini.diff;
-    saveMiniRec('minesweeper', rec);
-    ctx.store.addGameRecord({
-      kind: 'minesweeper', mode: 'solo', player: 'player',
-      winner: won ? 'player' : 'opponent',
-      difficulty: state.mini.diff,
-      note: won ? '扫清全部地雷' : ('踩中地雷，雷数 ' + state.mini.g.mines)
-    });
-    render(ctx);
-  }
-
-  function mineCellClick(ctx, cell) {
-    var g = state.mini.g;
-    if (g.over) return;
-    var r = Number(cell.dataset.r), c = Number(cell.dataset.c);
-    if (!isFinite(r) || !isFinite(c)) return;
-    var res = G.mineReveal(g, r, c);
-    if (!res.ok) { ctx.UI.toast(res.error, 'err'); return; }
-    if (res.over) {
-      finishMinesweeper(ctx, !!res.won);
-      return;
-    }
-    render(ctx);
-  }
-
-  function mineCellFlag(ctx, cell) {
-    var g = state.mini.g;
-    if (g.over) return;
-    var res = G.mineToggleFlag(g, Number(cell.dataset.r), Number(cell.dataset.c));
-    if (!res.ok) { ctx.UI.toast(res.error, 'err'); return; }
-    if (res.over) {
-      finishMinesweeper(ctx, !!res.won);
-      return;
-    }
-    render(ctx);
-  }
-
-  /* 移动端交互：单击翻开（由 click 触发）、长按 350ms 插旗（仅触屏/手写笔）。
-   * pointerdown 启动定时器并显示 .long-pressing 高亮；位移 >10px 或 pointercancel（滚动）取消。
-   * 插旗后 render(ctx) 会重建棋盘 DOM，长按抬手时浏览器补发的 click 会落到新格子，
-   * 故用「pointerup 关联」抑制：长按触发插旗后（msLpFired），本次抬手打时间戳 msLpUpAt，
-   * 紧接的 click/contextmenu 才被吞掉；新一轮 pointerdown 解除，主动点击不受误伤。 */
-  var msLpFired = false, msLpUpAt = null;
-
-  function bindMineCell(ctx, cell) {
-    var lpTimer = null, sx = 0, sy = 0;
-    function cancelLp() {
-      if (lpTimer === null) return;
-      window.clearTimeout(lpTimer);
-      lpTimer = null;
-      cell.classList.remove('long-pressing');
-    }
-    cell.addEventListener('pointerdown', function (e) {
-      msLpUpAt = null;
-      msLpFired = false;
-      if (e.pointerType === 'mouse') return;
-      sx = e.clientX; sy = e.clientY;
-      cell.classList.add('long-pressing');
-      lpTimer = window.setTimeout(function () {
-        lpTimer = null;
-        cell.classList.remove('long-pressing');
-        msLpFired = true;
-        mineCellFlag(ctx, cell);
-        if (typeof window.navigator.vibrate === 'function') window.navigator.vibrate(15);
-      }, MS_LONG_PRESS_MS);
-    });
-    cell.addEventListener('pointermove', function (e) {
-      if (lpTimer !== null && (Math.abs(e.clientX - sx) > 10 || Math.abs(e.clientY - sy) > 10)) cancelLp();
-    });
-    cell.addEventListener('pointercancel', cancelLp);
-    cell.addEventListener('pointerup', function () {
-      cancelLp();
-      if (msLpFired) msLpUpAt = Date.now();
-    });
-    cell.addEventListener('contextmenu', function (e) {
-      e.preventDefault();
-      if (lpSuppressed()) return;
-      mineCellFlag(ctx, cell);
-    });
-    cell.addEventListener('click', function () {
-      if (lpSuppressed()) return;
-      mineCellClick(ctx, cell);
-    });
-  }
-
-  function lpSuppressed() {
-    if (msLpUpAt === null) return false;
-    if (Date.now() - msLpUpAt > 400) { msLpUpAt = null; return false; }
-    msLpUpAt = null;
-    return true;
-  }
-
-  function msRestart(ctx) {
-    var d = MS_DIFFS[state.mini.diff] || MS_DIFFS[MS_DEFAULT_DIFF];
-    state.mini = { kind: 'minesweeper', g: G.mineStart(d.rows, d.cols, d.mines), diff: state.mini.diff };
-    render(ctx);
-  }
-
-  /* -------- 猜成语 -------- */
-  function idiomView(ctx) {
-    var UI = ctx.UI, g = state.mini.g;
-    var rec = miniRec('idiom');
-    var tips = g.tries > 0 ? ' · 提示：<b>' + UI.esc(g.hint) + '</b>' : '';
-    var wrap = UI.el('<div></div>');
-    wrap.appendChild(UI.el(
-      '<div class="hbar">' +
-      '<div class="lab" style="font-size:15px">📖 猜成语</div>' +
-      '<span class="muted small">谜面猜成语 · 3 次机会</span>' +
-      '<span class="sp"></span>' +
-      '<button class="btn" data-mact="back" type="button">← 选游戏</button>' +
-      '</div>'
-    ));
-    var card = UI.el(
-      '<div class="card">' +
-      '<div class="row" style="align-items:center;gap:10px">' +
-      '<span class="small muted">答对 ' + (rec.right || 0) + ' · 答错 ' + (rec.wrong || 0) + '</span>' +
-      '<span class="small muted" style="margin-left:auto">机会 ' + Math.max(0, g.max - g.tries) + '/' + g.max + '</span>' +
-      '</div>' +
-      '<div class="idm-q" role="status" aria-live="polite">「' + UI.esc(g.q) + '」</div>' +
-      (g.over ? '' :
-        '<div class="row" style="gap:10px;margin-top:12px">' +
-        '<input type="text" id="idmInput" maxlength="4" placeholder="输入四字成语" ' +
-        'aria-label="输入猜出的成语" style="min-height:44px;flex:1">' +
-        '<button class="btn primary" id="idmGo" type="button" style="min-height:44px">提交</button>' +
-        '</div>') +
-      '<div class="idm-tip">' + tips + '</div>' +
-      (g.over ? '<div class="mg-result" id="idmResult">' + V.idiomResult(g) + '</div>' : '') +
-      '<div class="row" style="margin-top:12px">' +
-      '<button class="btn" data-mact="again" type="button" style="min-height:44px">🔄 换一题</button>' +
-      '</div>' +
-      '</div>'
-    );
-    var go = function () {
-      var input = card.querySelector('#idmInput');
-      var res = G.idiomTry(g, input ? input.value : '');
-      if (!res.ok) { UI.toast(res.error, 'err'); return; }
-      if (res.correct) {
-        saveMiniRec('idiom', { right: (miniRec('idiom').right || 0) + 1 });
-        ctx.store.addGameRecord({ kind: 'idiom', mode: 'solo', player: 'player', winner: 'player', note: '答对「' + g.answer + '」' });
-      } else if (res.tries === g.max) {
-        saveMiniRec('idiom', { wrong: (miniRec('idiom').wrong || 0) + 1 });
-        ctx.store.addGameRecord({ kind: 'idiom', mode: 'solo', player: 'player', winner: 'opponent', note: '三次未中，答案是「' + g.answer + '」' });
-      }
-      render(ctx);
-    };
-    var goBtn = card.querySelector('#idmGo');
-    if (goBtn) goBtn.addEventListener('click', go);
-    var input = card.querySelector('#idmInput');
-    if (input) input.addEventListener('keydown', function (e) { if (e.key === 'Enter') go(); });
-    wrap.appendChild(card);
-    wrap.querySelectorAll('[data-mact]').forEach(function (b) {
-      b.addEventListener('click', function () {
-        if (b.dataset.mact === 'back') {
-          state.mini = null;
-          render(ctx);
-        } else {
-          state.mini = { kind: 'idiom', g: G.idiomStart() };
-          render(ctx);
-        }
-      });
-    });
-    return wrap;
-  }
-
-  /* -------- 脑筋急转弯 -------- */
-  function brainView(ctx) {
-    var UI = ctx.UI, g = state.mini.g;
-    var rec = miniRec('brainteaser');
-    var wrap = UI.el('<div></div>');
-    wrap.appendChild(UI.el(
-      '<div class="hbar">' +
-      '<div class="lab" style="font-size:15px">🧠 脑筋急转弯</div>' +
-      '<span class="muted small">猜猜看，想不出来可看答案</span>' +
-      '<span class="sp"></span>' +
-      '<button class="btn" data-mact="back" type="button">← 选游戏</button>' +
-      '</div>'
-    ));
-    var card = UI.el(
-      '<div class="card">' +
-      '<div class="row" style="align-items:center;gap:10px">' +
-      '<span class="small muted">答对 ' + (rec.right || 0) + ' · 放弃 ' + (rec.wrong || 0) + '</span>' +
-      '<span class="sp"></span>' +
-      '</div>' +
-      '<div class="idm-q" role="status" aria-live="polite">' + UI.esc(g.q) + '</div>' +
-      (g.over ? '' :
-        '<div class="row" style="gap:10px;margin-top:12px">' +
-        '<input type="text" id="brainInput" placeholder="输入你的答案" ' +
-        'aria-label="输入脑筋急转弯的答案" style="min-height:44px;flex:1">' +
-        '<button class="btn primary" id="brainGo" type="button" style="min-height:44px">提交</button>' +
-        '<button class="btn" id="brainGiveup" type="button" style="min-height:44px">看答案</button>' +
-        '</div>') +
-      (g.over ? '<div class="mg-result" id="brainResult">' + V.brainResult(g) + '</div>' : '') +
-      '<div class="row" style="margin-top:12px">' +
-      '<button class="btn" data-mact="again" type="button" style="min-height:44px">🔄 换一题</button>' +
-      '</div>' +
-      '</div>'
-    );
-    var go = function () {
-      var input = card.querySelector('#brainInput');
-      var res = G.brainTry(g, input ? input.value : '');
-      if (!res.ok) { UI.toast(res.error, 'err'); return; }
-      if (res.correct) {
-        saveMiniRec('brainteaser', { right: (miniRec('brainteaser').right || 0) + 1 });
-        ctx.store.addGameRecord({ kind: 'brainteaser', mode: 'solo', player: 'player', winner: 'player' });
-        render(ctx);
-      } else {
-        UI.toast('再想想，脑筋转个弯～');
-        input.value = '';
-        input.focus();
-      }
-    };
-    var goBtn = card.querySelector('#brainGo');
-    if (goBtn) goBtn.addEventListener('click', go);
-    var input = card.querySelector('#brainInput');
-    if (input) input.addEventListener('keydown', function (e) { if (e.key === 'Enter') go(); });
-    var giveup = card.querySelector('#brainGiveup');
-    if (giveup) giveup.addEventListener('click', function () {
-      g.over = true;
-      g.correct = false;
-      saveMiniRec('brainteaser', { wrong: (miniRec('brainteaser').wrong || 0) + 1 });
-      ctx.store.addGameRecord({ kind: 'brainteaser', mode: 'solo', player: 'player', winner: 'opponent', note: '直接看了答案' });
-      render(ctx);
-    });
-    wrap.appendChild(card);
-    wrap.querySelectorAll('[data-mact]').forEach(function (b) {
-      b.addEventListener('click', function () {
-        if (b.dataset.mact === 'back') {
-          state.mini = null;
-          render(ctx);
-        } else {
-          state.mini = { kind: 'brainteaser', g: G.brainStart() };
-          render(ctx);
-        }
-      });
-    });
-    return wrap;
-  }
+  /* 域文件经 window.SonderGamesShared.render 调用总渲染入口（运行时已就绪：本文件最后加载） */
+  S.render = render;
 
   /* ---------- 游戏选择 ---------- */
   function pickView(ctx) {
@@ -529,7 +38,7 @@ function histHtml(g) {
       '<div class="card" style="margin-bottom:14px">' +
       '<div class="row">' +
       '<span class="muted" style="margin-right:12px;white-space:nowrap">AI 难度</span>' +
-      '<select id="gDiffPick" title="AI 难度档位">' + V.diffOptions(state.difficulty) + '</select>' +
+      '<select id="gDiffPick" title="AI 难度档位">' + V.diffOptions(S.state.difficulty) + '</select>' +
       '<span class="muted small" style="margin-left:auto">困难 AI 更会进攻与布防</span>' +
       '</div>' +
       '</div>' +
@@ -573,365 +82,16 @@ function histHtml(g) {
     box.querySelectorAll('[data-pick]').forEach(function (c) {
       c.addEventListener('click', function () {
         var kind = c.dataset.pick;
-        if (kind === 'guessnum' || kind === 'minesweeper' || kind === 'idiom' || kind === 'brainteaser') startMini(ctx, kind);
-        else startGame(ctx, kind);
+        if (kind === 'guessnum' || kind === 'minesweeper' || kind === 'idiom' || kind === 'brainteaser') MI.startMini(ctx, kind);
+        else BT.startGame(ctx, kind);
       });
     });
     var diffSel = box.querySelector('#gDiffPick');
-    diffSel.addEventListener('change', function (e) { switchDiff(ctx, e.target.value); });
+    diffSel.addEventListener('change', function (e) { BT.switchDiff(ctx, e.target.value); });
     return box;
   }
 
-  /* ---------- 对局界面 ---------- */
-  function gameView(ctx) {
-    var UI = ctx.UI, g = state.game;
-    var wrap = UI.el('<div></div>');
-    wrap.appendChild(UI.el(
-      '<div class="hbar">' +
-      '<div class="lg-seg">' +
-      '<button data-mode="ai" type="button">AI 对决</button>' +
-      '<button data-mode="pvp" type="button">双人对弈</button>' +
-      '</div>' +
-      (state.mode === 'ai'
-        ? '<select id="gFirst" title="先后手">' +
-          '<option value="X"' + (state.playerStone === 'X' ? ' selected' : '') + '>执先（' + sym('X') + '）</option>' +
-          '<option value="O"' + (state.playerStone === 'O' ? ' selected' : '') + '>执后（' + sym('O') + '）</option>' +
-          '</select>' +
-          '<select id="gDiff" title="AI 难度档位">' + V.diffOptions(state.difficulty) + '</select>'
-        : '') +
-      '<button class="btn" data-act="new" type="button">新开局</button>' +
-      '</div>'
-    ));
-    wrap.appendChild(UI.el('<div class="gstatus" id="gStatus">' + UI.esc(statusText()) + '</div>'));
-
-    var cells = '';
-    for (var r = 0; r < g.size; r++) for (var c = 0; c < g.size; c++) {
-      var v = g.board[r][c];
-      var cls = 'cell';
-      var inner = '';
-      if (v === 'X') { inner = g.kind === 'tictactoe' ? '<span class="mk x">✕</span>' : '<span class="stone b"></span>'; }
-      else if (v === 'O') { inner = g.kind === 'tictactoe' ? '<span class="mk o">◯</span>' : '<span class="stone w"></span>'; }
-      if (v && g.moves.length && g.moves[g.moves.length - 1].r === r && g.moves[g.moves.length - 1].c === c) cls += ' last';
-      if (g.winLine && V.onLine(g.winLine, r, c)) cls += ' win';
-      cells += '<button type="button" class="' + cls + '" data-r="' + r + '" data-c="' + c + '" aria-label="第' + (r + 1) + '行第' + (c + 1) + '列">' + inner + '</button>';
-    }
-    var boardWrap = UI.el(
-      '<div class="board-wrap">' +
-      '<div class="game-board ' + (g.kind === 'gomoku' ? 'big' : 'small') + (g.over ? ' done' : '') + '" id="gBoard">' + cells + '</div>' +
-      '</div>'
-    );
-    wrap.appendChild(boardWrap);
-
-    var ops = UI.el(
-      '<div class="row" style="justify-content:center;gap:12px;margin-top:14px">' +
-      '<button class="btn" data-act="undo" type="button">悔棋</button>' +
-      '<button class="btn danger" data-act="resign" type="button">认输</button>' +
-      '<button class="btn" data-act="back" type="button">← 选游戏</button>' +
-      '</div>'
-    );
-    wrap.appendChild(ops);
-
-    var segbtns = wrap.querySelectorAll('.lg-seg button');
-    segbtns.forEach(function (b) {
-      b.classList.toggle('on', b.dataset.mode === state.mode);
-      b.addEventListener('click', function () { switchMode(ctx, b.dataset.mode); });
-    });
-    wrap.querySelector('[data-act="new"]').addEventListener('click', function () { newGame(ctx); });
-    wrap.querySelector('[data-act="undo"]').addEventListener('click', function () { undoMove(ctx); });
-    wrap.querySelector('[data-act="resign"]').addEventListener('click', function () { resignGame(ctx); });
-    wrap.querySelector('[data-act="back"]').addEventListener('click', function () { backToPick(ctx); });
-    var firstSel = wrap.querySelector('#gFirst');
-    if (firstSel) firstSel.addEventListener('change', function (e) { switchFirst(ctx, e.target.value); });
-    var diffSel = wrap.querySelector('#gDiff');
-    if (diffSel) diffSel.addEventListener('change', function (e) { switchDiff(ctx, e.target.value); });
-    boardWrap.querySelectorAll('.cell').forEach(function (cell) {
-      cell.addEventListener('click', function () {
-        if (busy || !state.game || state.game.over) return;
-        if (state.mode === 'ai' && state.game.turn !== state.playerStone) return;
-        doPlace(ctx, Number(cell.dataset.r), Number(cell.dataset.c));
-      });
-    });
-    return wrap;
-  }
-
-  function statusText() {
-    var g = state.game;
-    if (!g) return '';
-    if (g.over) {
-      if (g.winner === 'draw') return '平局，不分胜负';
-      var w = playerName(g.winner);
-      return w + ' 获胜' + (g.byResign ? '（对方认输）' : '');
-    }
-    var t = playerName(g.turn);
-    if (state.mode === 'ai' && busy) return t + ' 思考中…';
-    return t + '（' + sym(g.turn) + '）落子';
-  }
-
-  /* ---------- 对局操作 ---------- */
-  function startGame(ctx, kind) {
-    if (aiTimer) { clearTimeout(aiTimer); aiTimer = null; }
-    aiSeq++; /* 作废在途 worker 计算（重开/切换） */
-    aiWaitCtx = null;
-    state.game = G.createGame(kind);
-    busy = false;
-    render(ctx);
-    if (state.mode === 'ai' && state.game.turn === aiStone()) aiThink(ctx);
-  }
-
-  function doPlace(ctx, r, c) {
-    var g = state.game;
-    var res = G.place(g, r, c);
-    if (!res.ok) { ctx.UI.toast(res.error, 'err'); return; }
-    render(ctx);
-    if (res.winner || res.draw) { recordEnd(ctx); return; }
-    if (state.mode === 'ai' && g.turn === aiStone()) aiThink(ctx);
-  }
-
-  function aiThink(ctx) {
-    var g = state.game;
-    if (!g || g.over || aiTimer || aiWaitCtx) return; /* P5a：重入守卫——render 恢复路径与落子路径可能各自调度，已挂起时直接跳过 */
-    busy = true;
-    var st = document.querySelector('#gStatus');
-    if (st) st.textContent = statusText();
-    var delay = g.moves.length === 0 ? 320 : 220;
-    /* 五子棋：优先交给 Worker 异步计算（结构化克隆投递，不阻塞主线程）；失败自动回退同步 */
-    if (g.kind === 'gomoku' && ensureAiWorker()) {
-      aiWaitCtx = ctx;
-      aiTimer = setTimeout(workerTimeout, WORKER_TIMEOUT); /* P5f：worker 挂起/永不回复时同步兜底，防止 busy 永久锁死棋盘 */
-      aiWorker.postMessage({ id: ++aiSeq, game: g, stone: aiStone(), diff: state.difficulty });
-      return;
-    }
-    aiTimer = setTimeout(function () {
-      aiTimer = null;
-      busy = false;
-      if (!state.game || state.game !== g || state.game.over || state.game.turn !== aiStone()) return;
-      /* 越页守卫：玩家在 AI 思考期间切走（#gStatus 已从 #content 移除）时不劫持当前页面；
-       * 对局保留，切回时 render 会重新调度 AI 落子 */
-      if (!document.getElementById('gStatus')) return;
-      var mv = state.game.kind === 'tictactoe' ? G.tttAiMove(state.game, aiStone(), state.difficulty) : G.gomokuAiMove(state.game, aiStone(), state.difficulty);
-      var res = G.place(state.game, mv.r, mv.c);
-      render(ctx);
-      if (res.winner || res.draw) recordEnd(ctx);
-    }, delay);
-  }
-
-  /* ---------- 五子棋 AI Worker ---------- */
-  function ensureAiWorker() {
-    if (aiWorker) return true;
-    if (typeof Worker === 'undefined') return false;
-    try {
-      var w = new Worker('js/game-worker.js');
-      w.onmessage = onAiWorkerMsg;
-      w.onerror = function () {
-        aiWorker = null;
-        fallbackSyncAi();
-      };
-      aiWorker = w;
-      return true;
-    } catch (e) {
-      aiWorker = null;
-      return false;
-    }
-  }
-
-  /* worker 回复落子：id 与当前 aiSeq 不一致即过期（悔棋/重开/切换），直接丢弃 */
-  function onAiWorkerMsg(e) {
-    var d = e && e.data;
-    if (!d || d.id !== aiSeq) return;
-    aiSeq++; /* 本回复已消费，后续同 id 消息视为过期 */
-    if (aiTimer) { clearTimeout(aiTimer); aiTimer = null; } /* 取消在看守的 watchdog */
-    busy = false;
-    var ctx = aiWaitCtx;
-    aiWaitCtx = null; /* P6a：先消费等待上下文再执行守卫——越页/换局回复不得残留 aiWaitCtx，否则切回时 aiThink 重入守卫永久阻塞 AI */
-    var g = state.game;
-    if (!g || g.over || g.turn !== aiStone()) return;
-    if (!document.getElementById('gStatus')) return; /* 越页守卫：不劫持当前页面，切回时 render 恢复路径重新调度 */
-    var mv = d.mv;
-    if (!mv || typeof mv.r !== 'number' || typeof mv.c !== 'number') { fallbackSyncAi(); return; }
-    var res = G.place(g, mv.r, mv.c);
-    render(ctx);
-    if (res.winner || res.draw) recordEnd(ctx);
-  }
-
-  /* worker 回复超时：AI 思考中未收到回复则同步兜底（fallbackSyncAi 内部先复位状态再守卫，
-   * 若玩家已悔棋/切走/对局结束则静默作废） */
-  function workerTimeout() {
-    fallbackSyncAi();
-  }
-
-  /* worker 异常/超时兜底：同步重算落子（保证 AI 对局不卡死） */
-  function fallbackSyncAi() {
-    aiSeq++; /* 结构性作废在途 worker 回复：兜底落子后旧 id 消息即使到达也会被 id 守卫丢弃，杜绝双落子 */
-    var ctx = aiWaitCtx;
-    aiWaitCtx = null;
-    aiTimer = null;
-    busy = false;
-    if (!ctx || !state.game || state.game.kind !== 'gomoku' || state.game.over || state.game.turn !== aiStone()) return;
-    if (!document.getElementById('gStatus')) return;
-    var mv = G.gomokuAiMove(state.game, aiStone(), state.difficulty);
-    var res = G.place(state.game, mv.r, mv.c);
-    render(ctx);
-    if (res.winner || res.draw) recordEnd(ctx);
-  }
-
-    /* 悔棋：
-   * 仅对局进行中可用（终局后禁止）。
-   * AI 模式 - 撤回己方与 AI 各一步回到玩家思考点，可连续悔多步；
-   *           AI 思考中悔棋会取消其待落子（正在想的那步一并撤回）。
-   * 双人模式 - 由刚落子的一方提出收回刚落的这步，对方同意才撤销。 */
-  function undoMove(ctx) {
-    var g = state.game, UI = ctx.UI;
-    if (!g) return;
-    if (g.over) { UI.toast('对局已结束，不能悔棋', 'err'); return; }
-    if (!g.moves.length) {
-      /* P6b：AI 思考窗口期（AI 先手开局/思考中）空盘悔棋——先复位在途 AI 状态再刷新，
-       * 否则状态条停在「思考中」且 AI 永不落子（点击被 turn 守卫吞掉，对局卡死） */
-      if (busy) {
-        clearTimeout(aiTimer);
-        aiTimer = null;
-        aiSeq++; /* 作废在途 worker 回复 */
-        aiWaitCtx = null;
-        busy = false;
-      }
-      UI.toast('暂无落子可悔', 'err');
-      render(ctx);
-      return;
-    }
-    if (busy) {
-      clearTimeout(aiTimer);
-      aiTimer = null;
-      aiSeq++; /* 作废在途 worker 回复（AI 思考中悔棋） */
-      aiWaitCtx = null;
-      busy = false;
-    }
-    if (state.mode === 'pvp') {
-      var last = g.moves[g.moves.length - 1];
-      var asker = playerName(last.p);
-      var opp = playerName(last.p === 'X' ? 'O' : 'X');
-      askConfirm(ctx, asker + '（' + sym(last.p) + '）想收回刚落的这一步，' + opp + ' 是否同意？', '同意悔棋').then(function (ok) {
-        if (ok === null) return;
-        if (!ok) { UI.toast('对方不同意悔棋'); return; }
-        G.undo(g);
-        UI.toast('对方已同意，撤销一步');
-        render(ctx);
-      });
-      return;
-    }
-    G.undo(g);
-    if (g.turn !== state.playerStone) G.undo(g);
-    UI.toast('已悔棋');
-    render(ctx);
-    if (state.mode === 'ai' && g.turn === aiStone()) aiThink(ctx);
-  }
-
-  function resignGame(ctx) {
-    var g = state.game, UI = ctx.UI;
-    if (!g || g.over) return;
-    if (!g.moves.length) {
-      /* P6c：AI 思考窗口期（AI 先手开局）空盘认输——同 P6b，先复位再刷新，对局不得卡死 */
-      if (busy) {
-        clearTimeout(aiTimer);
-        aiTimer = null;
-        aiSeq++; /* 作废在途 worker 回复 */
-        aiWaitCtx = null;
-        busy = false;
-      }
-      UI.toast('还没落子，先下一手吧', 'err');
-      render(ctx);
-      return;
-    }
-    if (busy) {
-      clearTimeout(aiTimer);
-      aiTimer = null;
-      aiSeq++; /* 作废在途 worker 回复（AI 思考中认输） */
-      aiWaitCtx = null;
-      busy = false;
-    }
-    askConfirm(ctx, state.mode === 'ai' ? '确定认输？本局判给 AI 获胜' : '确定认输？本局判给对面获胜', '认输').then(function (ok) {
-      if (ok !== true) return;
-      var w = G.resign(g, state.mode === 'ai' ? state.playerStone : 'X');
-      if (w === null) { UI.toast('对局已结束，未产生记录'); return; } /* P5a：终局后（如幽灵定时器已落子）不再补记 */
-      recordMatch(ctx);
-      UI.toast('你已认输');
-      render(ctx);
-    });
-  }
-
-  function newGame(ctx) {
-    var g = state.game;
-    if (!g) return;
-    if (!g.moves.length) { startGame(ctx, g.kind); return; }
-    askConfirm(ctx, '新开一局？当前进度将被清空', '新开局').then(function (ok) {
-      if (ok === true) startGame(ctx, g.kind);
-    });
-  }
-
-  function backToPick(ctx) {
-    var g = state.game;
-    if (!g) return;
-    var leave = function () {
-      if (aiTimer) { clearTimeout(aiTimer); aiTimer = null; }
-      state.game = null;
-      busy = false;
-      render(ctx);
-    };
-    if (!g.moves.length && !g.over) { leave(); return; }
-    askConfirm(ctx, '返回游戏选择？当前对局进度将丢失', '返回').then(function (ok) { if (ok === true) leave(); });
-  }
-
-  function switchMode(ctx, mode) {
-    if (state.mode === mode) return;
-    var g = state.game;
-    if (!g) return;
-    var go = function () {
-      state.mode = mode;
-      startGame(ctx, g.kind);
-    };
-    if (g.moves.length || g.over) askConfirm(ctx, '切换模式将重新开局，确定？', '切换').then(function (ok) { if (ok === true) go(); });
-    else go();
-  }
-
-  function switchFirst(ctx, stone) {
-    var g = state.game;
-    var v = stone === 'O' ? 'O' : 'X';
-    if (state.playerStone === v) return;
-    var go = function () {
-      state.playerStone = v;
-      startGame(ctx, g.kind);
-    };
-    if (g.moves.length || g.over) askConfirm(ctx, '改变先后手将重新开局，确定？', '切换').then(function (ok) { if (ok === true) go(); });
-    else go();
-  }
-
-  function switchDiff(ctx, v) {
-    if (state.difficulty === v) return;
-    var g = state.game;
-    var go = function () {
-      state.difficulty = ctx.store.setGameDifficulty(v);
-      if (g) startGame(ctx, g.kind);
-      else render(ctx);
-    };
-    if (g && (g.moves.length || g.over)) askConfirm(ctx, '切换难度将重新开局，确定？', '切换').then(function (ok) { if (ok === true) go(); });
-    else go();
-  }
-
   /* ---------- 战绩 ---------- */
-  function recordMatch(ctx) {
-    var g = state.game;
-    ctx.store.addGameRecord({
-      kind: g.kind, mode: state.mode,
-      player: state.mode === 'ai' ? state.playerStone : 'X',
-      winner: g.winner, byResign: g.byResign,
-      difficulty: state.mode === 'ai' ? state.difficulty : null
-    });
-  }
-  function recordEnd(ctx) {
-    var g = state.game;
-    recordMatch(ctx);
-    ctx.UI.toast(g.winner !== 'draw' ? '本局结束：' + playerName(g.winner) + ' 获胜' : '本局平局');
-    render(ctx);
-  }
-
   function recordsArea(ctx) {
     var UI = ctx.UI, recs = ctx.store.state.gameRecords;
     var box = UI.el('<div></div>');
@@ -944,7 +104,7 @@ function histHtml(g) {
         card.appendChild(UI.el(
           '<div class="list-item">' +
           '<div class="grow">' +
-          '<div class="title">' + UI.esc(kindName({ kind: r.kind })) + ' · ' + (r.mode === 'ai' ? 'AI 对决' : (r.mode === 'solo' ? '单人挑战' : '双人对弈')) + V.diffBadge(r) + '</div>' +
+          '<div class="title">' + UI.esc(S.kindName({ kind: r.kind })) + ' · ' + (r.mode === 'ai' ? 'AI 对决' : (r.mode === 'solo' ? '单人挑战' : '双人对弈')) + V.diffBadge(r) + '</div>' +
           '<div class="sub">' + UI.esc(V.shortDate(r.date)) + (r.byResign ? ' · 认输' : '') + (r.note ? ' · ' + UI.esc(r.note) : '') + '</div>' +
           '</div>' +
           '<span class="pill ' + V.resultPill(r) + '">' + V.resultText(r) + '</span>' +
@@ -953,7 +113,7 @@ function histHtml(g) {
       });
       var clearBtn = UI.el('<button class="small-btn danger" style="margin:10px 16px 6px" data-rec="clear">清空记录</button>');
       clearBtn.addEventListener('click', function () {
-        askConfirm(ctx, '清空全部战绩记录？', '清空').then(function (ok) {
+        S.askConfirm(ctx, '清空全部战绩记录？', '清空').then(function (ok) {
           if (ok !== true) return;
           ctx.store.clearGameRecords();
           UI.toast('战绩已清空');
@@ -969,10 +129,10 @@ function histHtml(g) {
   Pages.game = {
     title: '娱乐游戏',
     render: function (container, ctx) {
-      currentEl = container;
-      currentCtx = ctx;
+      S.currentEl = container;
+      S.currentCtx = ctx;
       var d = ctx.store.state.settings.gameDifficulty;
-      if (d === 'easy' || d === 'hard' || d === 'normal') state.difficulty = d;
+      if (d === 'easy' || d === 'hard' || d === 'normal') S.state.difficulty = d;
       render(ctx);
     }
   };
@@ -983,8 +143,8 @@ function histHtml(g) {
     if (!bus) return;
     ['/data/gameRecords', '/data/miniRecords', '/data/settings', '/data/all'].forEach(function (p) {
       bus.on(p, function () {
-        if (currentEl && currentCtx && !busy && ((location.hash || '').replace(/^#\/?/, '').split('/')[0] === 'game')) {
-          render(currentCtx);
+        if (S.currentEl && S.currentCtx && !S.busy && ((location.hash || '').replace(/^#\/?/, '').split('/')[0] === 'game')) {
+          render(S.currentCtx);
         }
       });
     });
@@ -993,27 +153,27 @@ function histHtml(g) {
   /* 测试/调试钩子：只读快照 + 可控注入。门闩 __SONDER_TEST__：仅测试进程暴露（harness 在脚本加载前注入），生产不挂载 */
   if (window.__SONDER_TEST__) {
   window.__gamesDbg = function () {
-    var g = state.game;
+    var g = S.state.game;
     return {
-      mode: state.mode,
-      playerStone: state.playerStone,
-      difficulty: state.difficulty,
-      busy: busy,
+      mode: S.state.mode,
+      playerStone: S.state.playerStone,
+      difficulty: S.state.difficulty,
+      busy: S.busy,
       game: g && { kind: g.kind, turn: g.turn, moves: g.moves.length, over: g.over, winner: g.winner },
-      mini: state.mini && (state.mini.kind === 'guessnum'
-        ? { kind: 'guessnum', target: state.mini.g.target, attempts: state.mini.g.attempts.length, over: state.mini.g.over, won: state.mini.g.won }
-        : { kind: state.mini.kind, over: state.mini.g.over, won: state.mini.g.won, revealed: state.mini.g.revealed, flagged: state.mini.g.flagged, boardReady: !!state.mini.g.board, rows: state.mini.g.rows, cols: state.mini.g.cols, mines: state.mini.g.mines }),
-      worker: !!aiWorker
+      mini: S.state.mini && (S.state.mini.kind === 'guessnum'
+        ? { kind: 'guessnum', target: S.state.mini.g.target, attempts: S.state.mini.g.attempts.length, over: S.state.mini.g.over, won: S.state.mini.g.won }
+        : { kind: S.state.mini.kind, over: S.state.mini.g.over, won: S.state.mini.g.won, revealed: S.state.mini.g.revealed, flagged: S.state.mini.g.flagged, boardReady: !!S.state.mini.g.board, rows: S.state.mini.g.rows, cols: S.state.mini.g.cols, mines: S.state.mini.g.mines }),
+      worker: !!S.aiWorker
     };
   };
   /* 测试钩子：注入确定的猜数字答案（仅测试用） */
   window.__gamesDbg.setMiniTarget = function (n) {
-    if (state.mini && state.mini.kind === 'guessnum') state.mini.g.target = n;
+    if (S.state.mini && S.state.mini.kind === 'guessnum') S.state.mini.g.target = n;
   };
   /* 测试钩子：注入确定的扫雷雷位布局（仅测试用） */
   window.__gamesDbg.setMineField = function (rows, cols, mineList) {
-    if (!state.mini || state.mini.kind !== 'minesweeper') return;
-    var s = state.mini.g;
+    if (!S.state.mini || S.state.mini.kind !== 'minesweeper') return;
+    var s = S.state.mini.g;
     var b = [], i, j;
     for (i = 0; i < rows; i++) {
       b.push([]);
@@ -1039,18 +199,21 @@ function histHtml(g) {
     s.revealed = 0;
     s.flagged = 0;
     s.mines = mineList.length; /* 以实盘为准 */
-    render(currentCtx);
+    render(S.currentCtx);
   };
   /* 测试钩子：注入确定的猜成语答案（仅测试用） */
   window.__gamesDbg.setIdiomAnswer = function (a) {
-    if (state.mini && state.mini.kind === 'idiom') state.mini.g.answer = a;
+    if (S.state.mini && S.state.mini.kind === 'idiom') S.state.mini.g.answer = a;
   };
   /* 测试钩子：注入确定的脑筋急转弯题目与答案（仅测试用） */
   window.__gamesDbg.setBrainQ = function (q, accepted) {
-    if (state.mini && state.mini.kind === 'brainteaser') {
-      state.mini.g.q = q;
-      state.mini.g.accepted = (accepted || []).slice();
+    if (S.state.mini && S.state.mini.kind === 'brainteaser') {
+      S.state.mini.g.q = q;
+      S.state.mini.g.accepted = (accepted || []).slice();
     }
   };
   }
+
+  /* 对外暴露：小游戏域的 miniView 兜底分支与未来扩展经此引用 */
+  window.SonderGamesPage = { pickView: pickView };
 })();

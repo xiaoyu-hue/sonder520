@@ -5,6 +5,12 @@
 
 ## [v6.0] - 规划中（未发布）
 
+### 已实施（工程基线，尚未发版）
+
+- **games.js 域拆分（1056 → ~220 行）**：按职责拆为 `games-shared.js`（共享状态/AI 调度，须最先加载）+ `games-mini.js`（四款休闲小游戏）+ `games-battle.js`（对弈/AI/战绩）+ 编排层 games.js；index.html 脚本顺序契约同步扩展（games-logic → games-view → games-shared → games-mini → games-battle → games.js），行为零变更（110 项游戏测试全绿，全量 516 项）。契约测试 state.test.js 白名单与 `SonderGames*` 全局声明（globals.d.ts）随拆分层级同步。
+- **ESM 试验田（ADR-001 演进条款落地评估）**：新增 `js/quotes-core.mjs`（纯 ESM 零依赖）+ 双实现一致性测试——生产保持 UMD/零构建不动摇（测试 harness 按 index.html 顺序 `window.eval` 注入 + qa.test.js `require` quotes.js 均依赖 UMD），试验田以一致性守卫证明「同源双实现」策略可行。
+- 离线缓存升版 v28 → v29（ASSETS 自动收录 3 个新 js 文件，ASSET_SIG 指纹刷新）。
+
 ### 计划（来自 38 项审计清单，按优先级）
 
 #### 文档与工程治理
@@ -26,7 +32,8 @@
 
 #### 架构（需单独决策）
 - ES Modules / Vite / TypeScript 渐进迁移（推荐）：与 ADR-001 零构建决策的取舍需单独立项，
-  不进入 v6.0 默认范围。当前零构建 + defer 顺序契约 + UMD 双环境（浏览器/Node 测试）仍满足需求。
+  不进入 v6.0 默认范围。当前零构建 + defer 顺序契约 + UMD 双环境（浏览器/Node 测试）仍满足需求；
+  已落地 ESM 试验田（quotes-core.mjs + 双实现一致性测试）持续评估，见上文「已实施」。
 
 #### UX（backlog）
 - 首次使用引导弹窗（3 步）、撤销栈（删除类操作）、键盘快捷键帮助面板、离线状态指示器。

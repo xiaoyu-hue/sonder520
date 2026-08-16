@@ -427,6 +427,11 @@ interface Window {
   SonderCrypto: SonderCryptoApi;
   SonderGames: SonderGamesApi;
   SonderGamesView: SonderGamesViewApi;
+  /* games.js 拆分（games-shared/mini/battle 域 + 页面层）：共享状态单例与各域 API */
+  SonderGamesShared: SonderGamesSharedApi;
+  SonderGamesMini: SonderGamesMiniApi;
+  SonderGamesBattle: SonderGamesBattleApi;
+  SonderGamesPage: SonderGamesPageApi;
   SonderQuotes: { quoteOfDay(dateStr: string): string; quotes: string[] };
   UI: SonderUI;
   MOTION: SonderMotionApi;
@@ -457,7 +462,7 @@ interface SonderGameState {
   size: number;
   board: Array<Array<string | null>>;
   turn: string;
-  moves: Array<{ r: number; c: number }>;
+  moves: Array<{ r: number; c: number; p?: string }>;
   winner: string | null;
   over: boolean;
   byResign: boolean;
@@ -497,6 +502,55 @@ interface SonderGamesViewApi {
   resultPill(r: any): string;
   shortDate(d: string): string;
   diffBadge(r: any): string;
+}
+
+/* games.js 拆分后的游戏域接口（games-shared / games-mini / games-battle / 页面编排） */
+interface SonderGamesSharedState {
+  game: SonderGameState | null;
+  mode: string;
+  playerStone: string;
+  difficulty: string;
+  mini: any;
+}
+
+interface SonderGamesSharedApi {
+  currentEl: HTMLElement | null;
+  currentCtx: SonderCtx | null;
+  ctxRef: { store: SonderStoreImpl | null };
+  legacyMigrated: boolean;
+  state: SonderGamesSharedState;
+  busy: boolean;
+  aiTimer: any;
+  aiWorker: Worker | null;
+  aiSeq: number;
+  aiWaitCtx: SonderCtx | null;
+  WORKER_TIMEOUT: number;
+  confirmOpen: boolean;
+  KIND_NAME: Record<string, string>;
+  /* 以下方法在字面量赋值后挂载（契约测试扫描 games-shared.js 的字面量声明），故标可选 */
+  askConfirm?(ctx: SonderCtx, message: string, okText?: string): Promise<boolean | null>;
+  aiStone?(): string;
+  playerName?(stone: string): string;
+  sym?(stone: string): string;
+  kindName?(g: any): string;
+  render?(ctx: SonderCtx): void;
+}
+
+interface SonderGamesMiniApi {
+  startMini(ctx: SonderCtx, kind: string): void;
+  miniView(ctx: SonderCtx): HTMLElement;
+  migrateMiniRecords(ctx: SonderCtx): void;
+}
+
+interface SonderGamesBattleApi {
+  gameView(ctx: SonderCtx): HTMLElement;
+  aiThink(ctx: SonderCtx): void;
+  startGame(ctx: SonderCtx, kind: string): void;
+  switchDiff(ctx: SonderCtx, v: string): void;
+}
+
+interface SonderGamesPageApi {
+  pickView(ctx: SonderCtx): HTMLElement;
 }
 
 interface SonderHooks {

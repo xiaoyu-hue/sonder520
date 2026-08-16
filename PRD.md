@@ -302,7 +302,7 @@ https://xiaoyu-hue.github.io/sonder520/
 11. 统一交互：弹窗规则、二次确认、Esc 关闭、Toast、确认框防叠、弹层焦点管理（落焦/陷阱/归还）。
 12. 可靠性：PWA 离线可用（缓存 v19 自动同步；导航网络优先，刷新即新版）、存储双写双存、存储超 4.5MB 顶部警示条、双写后端同时失效时红色危机警示条强制引导导出、XSS 全模块净化（含属性注入与表单字段 key 转义）、可选加密、性能优化（序列化去重/搜索索引缓存/AI 剪枝/派生密钥缓存）、错误上报与壳层降级。
 13. 工程防线：eslint 全绿、零构建类型契约（d.ts + tsc）、innerHTML 白名单审计、状态双轨契约、store 领域拆分、脚本清单单一真源。
-14. 自动化测试 514 项全绿（各版本全量验证）。
+14. 自动化测试 516 项全绿（各版本全量验证）。
 
 ---
 
@@ -334,7 +334,7 @@ https://xiaoyu-hue.github.io/sonder520/
 14. 导出 JSON → 修改数据 → 导入恢复，数据与导出时一致（导入前有覆盖提示）。
 15. 持久化：任意数据录入后刷新、关标签、重启浏览器均不丢失。
 16. 手机外链、离线打开本地 index.html 均可用；数据只在本地浏览器中。
-17. 工程验收：npm test（514 项）、npm run typecheck、npm run lint 三绿。
+17. 工程验收：npm test（516 项）、npm run typecheck、npm run lint 三绿。
 
 ---
 
@@ -345,10 +345,10 @@ https://xiaoyu-hue.github.io/sonder520/
   - 数据层：`store.js`（核心：构造/持久化/加密/导入导出/汇总与共享 helper）+ `store-tasks / store-media / store-content / store-settings`（领域方法）+ `encryption.js`（可选加密核心：PBKDF2 60 万次 + AES-GCM-256，密文分支、锁屏、串行加密链、派生密钥缓存）+ `event-bus.js`（SonderBus 事件总线：store 变更发布 → 页面订阅自动重绘）
   - 组件：`ui.js`（弹窗/Toast/表单、统一 sanitize 净化与 URL 协议白名单、焦点管理）
   - 模块：`home / today / memo / selfmedia / dev / consulting / reading / news / design / settings` 各一个文件
-  - 游戏：`games-logic.js`（纯对弈规则与三档难度 AI 策略：井字棋完全搜索、五子棋启发式评分 + 困难档前瞻剪枝；猜数字/扫雷/猜成语/脑筋急转弯规则与题库）+ `games.js`（游戏视图、悔棋/认输/开局/战绩、AI 落子节奏）+ `game-worker.js`（五子棋 AI 计算 Web Worker，异步不卡 UI；Worker 不可用时 games.js 自动降级为同步计算，过期应手丢弃）
+  - 游戏：`games-logic.js`（纯对弈规则与三档难度 AI 策略：井字棋完全搜索、五子棋启发式评分 + 困难档前瞻剪枝；猜数字/扫雷/猜成语/脑筋急转弯规则与题库）+ `games-shared.js`（共享状态与 AI 调度，须最先加载）+ `games-mini.js`（猜数字/扫雷/猜成语/脑筋急转弯视图与纪录）+ `games-battle.js`（对弈视图、悔棋/认输/开局/战绩、AI 落子节奏与 Worker 调度）+ `games-view.js`（渲染纯函数）+ `games.js`（页面编排：render 分派/游戏选择/战绩区/测试钩子）+ `game-worker.js`（五子棋 AI 计算 Web Worker，异步不卡 UI；Worker 不可用时自动降级为同步计算，过期应手丢弃）
   - 搜索：`search.js`（全局索引 + 缓存、模糊匹配、分组跳转、水墨高亮定位）
   - 扩展渲染：`markdown.js`（技术笔记 Markdown 渲染与代码复制）
-  - 壳层：`app.js`（路由/主题跟随/帧率档位/警示条/危机警示条/导航降级）、`error-guard.js`（全局错误安全网与上报）、`sw.js`（Service Worker 离线缓存，当前 v19，脚本自动同步；导航网络优先）、`manifest.json`（PWA 清单与图标）
+  - 壳层：`app.js`（路由/主题跟随/帧率档位/警示条/危机警示条/导航降级）、`error-guard.js`（全局错误安全网与上报）、`sw.js`（Service Worker 离线缓存，当前 v29，脚本自动同步；导航网络优先）、`manifest.json`（PWA 清单与图标）
   - 类型：`globals.d.ts`（Pages/SonderStore 61 个公开方法/UI 全局接口 + 24 个领域类型契约）
 - **主题系统**：CSS 自定义属性 + 深浅双主题；`@supports` 为不支持 `backdrop-filter` 的浏览器降低层级；壁纸独立 img 元素 + `object-fit: cover` + 透明度变量；文字/强调色 token 化并满足 WCAG AA。
 - **数据兼容**：读取时做字段归一化（缺失补默认、非法值夹取 + 9 处旧字段迁移），支持历史版本数据平安迁移；IndexedDB 与 localStorage 双写双存，冲突按保存时间取新；加密开关对旧数据完全兼容（未启用时无感）；未来加密版本密文原样保留不破坏。

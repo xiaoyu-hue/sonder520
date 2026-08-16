@@ -14,7 +14,7 @@ const PAGES = ['home', 'today', 'memo', 'selfmedia', 'dev', 'consulting', 'readi
 
 /* 页面内部 state 允许的瞬态键（UI 过滤/当前视图/对局进行中） */
 const PAGE_STATE_WHITELIST = {
-  'games.js': ['game', 'mode', 'playerStone', 'difficulty', 'mini'],
+  'games-shared.js': ['game', 'mode', 'playerStone', 'difficulty', 'mini'],
   'news.js': ['status', 'tag'],
   'selfmedia.js': ['status', 'tag', 'view']
 };
