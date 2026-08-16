@@ -1,4 +1,4 @@
-# Changelog
+﻿# Changelog
 
 本项目所有重要变更均记录于此。格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循语义化版本（SemVer）。完整版本演进另见 [PRD.md](PRD.md) 的版本历史表。
@@ -8,7 +8,8 @@
 ### 已实施（工程基线，尚未发版）
 
 - **games.js 域拆分（1056 → ~220 行）**：按职责拆为 `games-shared.js`（共享状态/AI 调度，须最先加载）+ `games-mini.js`（四款休闲小游戏）+ `games-battle.js`（对弈/AI/战绩）+ 编排层 games.js；index.html 脚本顺序契约同步扩展（games-logic → games-view → games-shared → games-mini → games-battle → games.js），行为零变更（110 项游戏测试全绿，全量 516 项）。契约测试 state.test.js 白名单与 `SonderGames*` 全局声明（globals.d.ts）随拆分层级同步。
-- **ESM 试验田（ADR-001 演进条款落地评估）**：新增 `js/quotes-core.mjs`（纯 ESM 零依赖）+ 双实现一致性测试——生产保持 UMD/零构建不动摇（测试 harness 按 index.html 顺序 `window.eval` 注入 + qa.test.js `require` quotes.js 均依赖 UMD），试验田以一致性守卫证明「同源双实现」策略可行。
+- **ESM 试验田（ADR-001 演进条款落地评估）**：新增 `js/quotes-core.mjs`（纯 ESM 零依赖）+ 双实现一致性测试——生产保持 UMD/零构建不动摇（qa.test.js `require` quotes.js 依赖 UMD；harness 注入方式已升级，见下），试验田以一致性守卫证明「同源双实现」策略可行。
+- **ADR 治理落地**：docs/adr/README.md 建立三态状态体系（提议/已采纳/已废弃）+ 全部 ADR 状态索引；harness 脚本注入由 `window.eval` 改为真实 `<script>` 元素（执行语义与浏览器一致，为原生 ESM/module 迁移留门）；旧命名测试文件改语义名（issue1/2/3 → selfmedia-stats/reading-stats/reading-progress，m3/m4/m5 → today-home-ux/modules-smoke/settings-ux）。
 - 离线缓存升版 v28 → v29（ASSETS 自动收录 3 个新 js 文件，ASSET_SIG 指纹刷新）。
 
 ### 计划（来自 38 项审计清单，按优先级）
@@ -16,7 +17,6 @@
 #### 文档与工程治理
 - 新增 CHANGELOG.md（本文件）——版本迭代集中记录。
 - 补 PRD 测试基线描述（487 → 512，与 README/npm test 实际一致）。
-- 计划：为 ADR 增加「状态」标记（提议/已采纳/已废弃）。
 
 #### SEO 与分享
 - 计划：Open Graph / Twitter Card 标签（index.html 已就位，本轮加入）。

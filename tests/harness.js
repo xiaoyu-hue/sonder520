@@ -90,11 +90,12 @@ function boot(opts = {}) {
       /* seed: 提供初始 localStorage 内容 */
       window.localStorage.setItem('sonder_data_v1', JSON.stringify(opts.seed));
     }
-    try {
-      window.eval(code);
-    } catch (e) {
-      throw new Error('加载 ' + f + ' 出错: ' + e.message);
-    }
+    /* 用真实 <script> 元素注入而非 eval：执行语义与浏览器一致（全局作用域、
+     * 顶层运行时错误走 window error 事件），为未来原生 ESM/module 迁移留门。
+     * 语法/顶层错误由 scripts.test.js 的语法校验与 error-guard 兜底暴露。 */
+    const el = window.document.createElement('script');
+    el.textContent = code;
+    window.document.head.appendChild(el);
   });
 
   window.dispatchEvent(new window.Event('load'));
