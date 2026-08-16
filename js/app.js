@@ -99,6 +99,7 @@
     container.innerHTML = '';
     var page = Pages[key] || Pages.home;
     document.getElementById('pageTitle').textContent = page.title;
+    document.title = page.title + ' · Sonder';
     buildNav();
     applyTheme();
     applyWallpaper();
