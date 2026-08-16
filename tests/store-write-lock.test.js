@@ -163,3 +163,104 @@ test('写锁：无 navigator.locks 环境 → 直接落盘（等价旧行为）'
   assert.equal(raw.memos.length, 1, '无锁直接落盘');
   assert.ok(storage.getItem(S.STORAGE_META_KEY), 'meta 一并写入');
 });
+
+/* ====== 加密态写锁（ADR-007 边界更新：_encSave 经 _lockedEncWrite 纳入让位协议） ======
+ * 用真加密引擎（Node webcrypto）驱动：enableEncryption 派生密钥并落盘密文基线，
+ * 另一标签的"更新快照"用同一盐+密码手工加密构造（闭环验证让位时不覆盖密文）。 */
+const CRYPTO = require('../js/encryption.js');
+const PWD = 'sonder-lock-2026';
+const SALT_KEY = 'sonder_encsalt_v1';
+
+function encRaw(storage) {
+  const raw = storage.getItem(S.STORAGE_KEY);
+  return raw ? JSON.parse(raw) : null;
+}
+
+/* 用存储中的盐 + 密码派生密钥，把 state 加密成可放回 STORAGE_KEY 的密文 payload（模拟另一标签落盘） */
+async function encryptState(storage, state) {
+  const salt = CRYPTO.b64ToBytes(storage.getItem(SALT_KEY));
+  const key = await CRYPTO.deriveKey(PWD, salt);
+  const bundle = await CRYPTO.encryptText(JSON.stringify(state), key);
+  return JSON.stringify({ e: 1, v: bundle.v, iv: bundle.iv, data: bundle.data });
+}
+
+async function decryptState(storage) {
+  const raw = encRaw(storage);
+  const salt = CRYPTO.b64ToBytes(storage.getItem(SALT_KEY));
+  const key = await CRYPTO.deriveKey(PWD, salt);
+  return JSON.parse(await CRYPTO.decryptBundle(raw, key));
+}
+
+test('加密态写锁：锁内 meta 一致 → 正常加密落盘，不误报让位', async () => {
+  const locks = makeLocks();
+  installLocks(locks);
+  const seen = installBus();
+  try {
+    const storage = memStorage();
+    const s = S.createStore(storage);
+    s.addMemo('明文基线'); /* 先以明文落盘建立基线 */
+    runQueued();
+    await s.enableEncryption(PWD); /* 加密切换：锁内检查通过 → 落盘密文（ADR-007 边界已纳入） */
+    assert.equal(encRaw(storage).e, 1, '启用后为密文');
+
+    s.addMemo('加密后新数据'); /* 加密态 save → _encSave → 锁内再次检查 */
+    await s._encChain;
+    await tick();
+
+    assert.ok(!seen.includes('/store/yielded'), 'meta 一致不误报让位');
+    const dec = await decryptState(storage);
+    assert.ok(dec.memos.some(m => m.text === '加密后新数据'), '加密态新数据已落盘');
+    assert.ok(dec.memos.some(m => m.text === '明文基线'), '旧数据保留');
+    assert.equal(storage.getItem(S.STORAGE_META_KEY), s._meta, '落盘 meta 与实例一致');
+    assert.equal(s._lastSeenMeta, s._meta, '基线同步为最新 meta');
+  } finally { clearLocks(); }
+});
+
+test('加密态写锁：另一标签已写更新密文（meta 不一致）→ 让位不覆盖 + 吸收 + 广播', async () => {
+  const locks = makeLocks();
+  installLocks(locks);
+  const seen = installBus();
+  try {
+    const storage = memStorage();
+    const s = S.createStore(storage);
+    s.addMemo('本标签旧数据');
+    runQueued(); /* 明文基线 */
+    await s.enableEncryption(PWD); /* 加密基线：_lastSeenMeta = 本标签加密 meta */
+    const baselineMeta = storage.getItem(S.STORAGE_META_KEY);
+    assert.ok(baselineMeta, '加密基线 meta 已写');
+
+    /* 模拟另一标签使用同一密码写入更新密文快照 */
+    const otherState = JSON.parse(JSON.stringify(s.state));
+    otherState.memos.unshift({ id: 'other-1', text: '另一标签新数据', time: '2026-08-16T00:00:00.000Z', archived: false });
+    storage.setItem(S.STORAGE_META_KEY, 'META-OTHER');
+    storage.setItem(S.STORAGE_KEY, await encryptState(storage, otherState));
+
+    s.addMemo('本标签新输入'); /* 触发加密 save：锁内检查发现外部已写 → 让位 */
+    await s._encChain;
+    await tick();
+
+    assert.ok(seen.includes('/store/yielded'), '加密态让位触发接管提示事件');
+    assert.ok(seen.includes('/data/all'), '吸收新快照触发全量重绘广播');
+    assert.equal(storage.getItem(S.STORAGE_META_KEY), 'META-OTHER', 'meta 不被回写');
+    const dec = await decryptState(storage);
+    assert.equal(dec.memos[0].text, '另一标签新数据', '让位：密文快照未被本标签旧数据覆盖');
+    assert.ok(!dec.memos.some(m => m.text === '本标签新输入'), '本次未落盘（让位放弃）');
+    assert.equal(s.state.memos[0].text, '另一标签新数据', '内存同步为新密文快照（吸收解密）');
+    assert.equal(s._rev, 4, '吸收新快照 rev 递增');
+  } finally { clearLocks(); }
+});
+
+test('加密态写锁：无 navigator.locks → 降级直接落盘（等价旧行为）', async () => {
+  clearLocks();
+  const storage = memStorage();
+  const s = S.createStore(storage);
+  s.addMemo('无锁加密基线');
+  runQueued();
+  await s.enableEncryption(PWD);
+  s.addMemo('无锁加密新数据');
+  await s._encChain;
+  await tick();
+  const dec = await decryptState(storage);
+  assert.equal(encRaw(storage).e, 1, '仍为密文');
+  assert.ok(dec.memos.some(m => m.text === '无锁加密新数据'), '无锁环境加密态直接落盘');
+});

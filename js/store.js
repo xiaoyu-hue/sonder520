@@ -517,8 +517,9 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
 
   /* 加密落盘：AES-GCM 异步（微任务级，用户操作间隙完成）。
    * 串行队列保证加密按调用顺序落盘：encryptText 为异步，连续多次 save
-   * 若不排队，后发起的加密可能先完成并覆盖落盘 → 旧状态覆盖新状态（丢最新变更）。 */
-  /** @this {{ _storage: any, _encKey: any, _encSize: number, _persistLocal: any, _idbWrite: any, _encChain: Promise, flushPersist: Function }} */
+   * 若不排队，后发起的加密可能先完成并覆盖落盘 → 旧状态覆盖新状态（丢最新变更）。
+   * 落盘前经 _lockedEncWrite 走写锁让位协议（同明文 _lockedLocalFlush，ADR-007）。 */
+  /** @this {{ _storage: any, _encKey: any, _encSize: number, _persistLocal: any, _idbWrite: any, _encChain: Promise, flushPersist: Function, _lockedEncWrite: Function }} */
   Store.prototype._encSave = function (json) {
     var self = this;
     if (!this._encKey || !Crypto) return Promise.resolve();
@@ -527,16 +528,55 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
       return Crypto.encryptText(json, self._encKey).then(function (bundle) {
         var payload = JSON.stringify({ e: 1, v: bundle.v, iv: bundle.iv, data: bundle.data });
         self._encSize = payload.length;
-        self._persistLocal(payload);
-        self.flushPersist(); /* 加密落盘即时可见：enableEncryption 回读验证依赖 LS 已写入 */
-        var salt = self._storage ? self._storage.getItem(STORAGE_SALT_KEY) : null;
-        self._idbWrite(payload, salt ? { salt: salt } : {});
+        return self._lockedEncWrite(payload).then(function (written) {
+          if (!written) return; /* 让位：本次密文不落盘，新快照吸收后由后续 save 跟进 */
+          var salt = self._storage ? self._storage.getItem(STORAGE_SALT_KEY) : null;
+          self._idbWrite(payload, salt ? { salt: salt } : {});
+        });
       });
     }).catch(function (err) {
       /* 加密失败：存储停留在上次成功版本，后续变更会继续重试；上报便于发现 */
       try { console.error('[Sonder] 加密持久化失败', err); } catch (e) { /* 忽略 */ }
     });
     return self._encChain;
+  };
+
+  /* 加密落盘的写锁封装：与明文 _lockedLocalFlush 同一让位协议（ADR-007）。
+   * 锁内写前检查 meta——另一标签已写更新快照 → 让位不覆盖（吸收新快照），
+   * resolve(false) 表示本次密文未落盘；一致 → 立即落盘并 resolve(true)。
+   * Promise 化保证 enableEncryption 的回读验证在锁回调完成后才执行；
+   * 无锁环境降级直接落盘（等价旧行为）。 */
+  /** @this {{ _storage: any, _lastSeenMeta: any, _absorbNewer: Function, _persistLocal: Function, flushPersist: Function }} */
+  Store.prototype._lockedEncWrite = function (payload) {
+    var self = this;
+    var locks = (typeof navigator !== 'undefined' && navigator.locks && typeof navigator.locks.request === 'function')
+      ? navigator.locks : null;
+    if (!locks) { self._persistLocal(payload); self.flushPersist(); return Promise.resolve(true); }
+    return new Promise(function (resolve) {
+      var done = false;
+      var fallback = function () { if (done) return; done = true; self._persistLocal(payload); self.flushPersist(); resolve(true); };
+      var p = null;
+      try {
+        p = locks.request('sonder-writer', function () {
+          if (self._storage) {
+            var curMeta = null;
+            try { curMeta = self._storage.getItem(STORAGE_META_KEY); } catch (e) { curMeta = null; }
+            /* 权威快照 meta 与本实例基线不一致（另一标签已写/外部变更）→ 让位不覆盖 */
+            if (curMeta && curMeta !== self._lastSeenMeta) {
+              done = true;
+              self._absorbNewer();
+              resolve(false);
+              return;
+            }
+          }
+          done = true;
+          self._persistLocal(payload);
+          self.flushPersist();
+          resolve(true);
+        });
+        if (p && typeof p.catch === 'function') p.catch(fallback);
+      } catch (e) { fallback(); }
+    });
   };
 
   /* 启动时调用：优先从 IndexedDB 恢复（若更新）。返回 Promise<是否采用 IDB 数据> */
