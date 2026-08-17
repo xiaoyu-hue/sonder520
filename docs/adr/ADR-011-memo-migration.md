@@ -50,3 +50,14 @@
   6. **XSS 白名单随迁**：innerhtml.test.js 白名单行号 109/111 → 258/260（同一赋值点 `wrap.innerHTML` 因 file 重排位移，语义零变化）。
 - 实证：**578 项全绿**（工厂无扩展 → 无新契约测试；dev 旧测试原样通过为成功判据）；typecheck 与 lint 零问题（含清理 2 处迁移残留未用变量）；Playwright E2E 5/5；sw.js 缓存 v38 → v39。提交 b139e5b（代码）+ 文档批次。
 - 回滚预案：本批两笔独立提交（b139e5b dev 迁移 / docs 批次），任一阶段测试失败即停；单笔 `git revert` 即可，数据无迁移动作、无 storage key / schema 变更（三集合照旧写主快照）。
+
+### 绑定收敛回溯：memo 闭包 → 容器委托（2026-08-17）
+
+- 背景：试点评估检查点（本节第 35 行）待办「绑定模式收敛」触发条件（dev 迁移完成）已达成——dev 迁移强制委托写法，三模块对比后委托胜出（dev + today vs memo 闭包）。本次为待办收尾：memo 卡内按钮统一为委托写法。
+- **决策**：
+  1. **memo 绑定委托化**：itemEl 移除三处闭包逐个绑（archive/edit/del），改经 `bindDelegated` 容器级委托（`data-act` 回查 `store.state.memos` 最新对象，`delegatedBound` 门闩防常驻容器监听累积）。DOM 契约零变更（`data-id`/`data-act` 属性不变），`#memoAdd` 与空状态新建按钮保持节点级绑定（与 dev `#devAdd` 一致——委托化范围限定"卡内行按钮"）。
+  2. **顺带消除 stale-closure 竞态**：原闭包捕获绘制时刻的 `isArchived`，双标签场景另一页改状态后本页点归档会以旧值覆盖；委托回查 state 最新对象后取反，以最新态为准。
+  3. **行为保留**：归档/取消归档文案、编辑预填、删除需确认 + 撤销 toast + P5a 切页守卫原样。
+- 实证：**578 项全绿**（memo 旧测试原样通过为成功判据，home-memo-ux / smoke / modules-smoke / 快速备忘等未改动）；typecheck 与 lint 零问题；Playwright E2E 5/5；sw.js 缓存 v39 → v40。
+- 结论：绑定写法三模块（memo/today/dev）收敛完成，本轮待办关闭；无新待办引入（行为不变、测试全绿，符合「代码漂亮」级收尾标准）。
+- 回滚预案：单文件单提交，`git revert` 即回闭包写法；无数据动作。

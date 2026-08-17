@@ -9,6 +9,7 @@
   var currentEl = null, currentCtx = null;
   var mod = null;
   var unsubs = [];
+  var delegatedBound = false; /* 常驻容器委托只绑一次（防监听累积），对齐 today/dev 写法 */
 
   /* 工厂模块配置：id=memos 对应 state.memos（与 store.addMemo 同一集合）
    * prepend: 最新在最前（对齐 store.addMemo unshift）
@@ -67,10 +68,47 @@
     });
   }
 
+  /* 卡内按钮统一容器委托：归档/编辑/删除经 data-act 回查 state 最新对象
+   * （target 为绘制时刻临时对象不可靠；与 dev/today 同写法，绑定模式收敛） */
+  function bindDelegated(ctx) {
+    var container = currentEl, store = ctx.store, UI = ctx.UI;
+    if (delegatedBound) return;
+    delegatedBound = true;
+    container.addEventListener('click', function (e) {
+      var b = e.target.closest && e.target.closest('[data-act="archive"],[data-act="edit"],[data-act="del"]');
+      if (!b) return;
+      var row = b.closest && b.closest('[data-id]');
+      if (!row) return;
+      var m = store.state.memos.find(function (x) { return x.id === row.dataset.id; });
+      if (!m) return;
+      if (b.getAttribute('data-act') === 'archive') {
+        ensureMod(ctx);
+        mod.update(m.id, { archived: !m.archived });
+        draw();
+        return;
+      }
+      if (b.getAttribute('data-act') === 'edit') { openAdd(ctx, m); return; }
+      UI.confirmBox('确定删除这条备忘？').then(function (ok) {
+        if (ok) {
+          ensureMod(ctx);
+          mod.remove(m.id);
+          draw();
+          UI.toast('备忘已删除', null, { label: '撤销', onClick: function () {
+            ctx.store.undoRemove();
+            /* P5a：撤销只恢复数据；已切页则不整页顶替当前页面 */
+            if (routeIs('memo')) draw();
+            else UI.toast('备忘已恢复');
+          } });
+        }
+      });
+    });
+  }
+
   /* 页面渲染（app.js 导航调用）与工厂 renderer 共用同一绘制 */
   function render(container, ctx) {
     currentEl = container; currentCtx = ctx;
     ensureMod(ctx);
+    bindDelegated(ctx);
     draw();
   }
 
@@ -105,7 +143,8 @@
 
   function itemEl(m, isArchived, ctx) {
     var UI = ctx.UI;
-    var row = UI.el(
+    /* 行内按钮无独立监听：统一走容器委托（bindDelegated），DOM 契约（data-id/data-act）不变 */
+    return UI.el(
       '<div class="list-item" data-id="' + m.id + '">' +
       '<div class="grow"><div class="notes-area">' + UI.esc(m.text) + '</div>' +
       '<div class="sub">' + fmt(m.time) + '</div></div>' +
@@ -114,28 +153,6 @@
       '<button class="small-btn danger" data-act="del">删除</button>' +
       '</div>'
     );
-    row.querySelector('[data-act="archive"]').onclick = function () {
-      ensureMod(ctx);
-      mod.update(m.id, { archived: !isArchived });
-      draw();
-    };
-    row.querySelector('[data-act="edit"]').onclick = function () { openAdd(ctx, m); };
-    row.querySelector('[data-act="del"]').onclick = function () {
-      UI.confirmBox('确定删除这条备忘？').then(function (ok) {
-        if (ok) {
-          ensureMod(ctx);
-          mod.remove(m.id);
-          draw();
-          UI.toast('备忘已删除', null, { label: '撤销', onClick: function () {
-            ctx.store.undoRemove();
-            /* P5a：撤销只恢复数据；已切页则不整页顶替当前页面 */
-            if (routeIs('memo')) draw();
-            else UI.toast('备忘已恢复');
-          } });
-        }
-      });
-    };
-    return row;
   }
 
   Pages.memo = { title: '快速备忘', render: render, add: function (ctx) { openAdd(ctx); } };
