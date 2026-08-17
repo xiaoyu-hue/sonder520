@@ -39,6 +39,7 @@
 - **试点二入厂（today 今日计划，Phase 7 渐进迁移续）**：**ModuleFactory v0.1.2**——新增 `config.orderField`（启用保留键 order：add 自动分配、编辑不刷；validate 仅允许 `'order'` 且与 `prepend: true` 互斥）与 `move(id, dir)` API（'up'/'down' 交换相邻并重写全集合 order，越界/未知 id 返回 false 无副作用，未配置 orderField 时调用抛错）——语义对齐 `store.reorderTask`，不配置时与 v0.1.1 行为完全一致。**today.js 迁移**：迁入 `createModule`（id=tasks + orderField:order，title/note/date/priority/done/doneAt 字段声明），CRUD 与排序改经工厂（add/update/remove/move），订阅改经 EVENT 表并保存 unsubscribe，工厂操作完成统一重绘（路由守卫保留）；done/doneAt 联动为页面层业务规则（勾选写时间戳、取消置空，已完成组按 doneAt 排序）；store.addTask 等保留给其他调用方（home 勾选仍走 store.updateTask，共享同一 state.tasks）；🍅 专注计时器保留原实现；删除撤销仍走 `store.undoRemove()`（P5a 守卫保留）。globals.d.ts `SonderModuleConfig`/`SonderStandardModule` 补 orderField/move 类型。工厂扩展 5 项契约测试；innerhtml.test.js XSS 白名单行号随迁（87 → 129，赋值点语义不变）。
 - 测试基线 573 → 578（新增工厂扩展契约 5 项，全量绿）。
 - 离线缓存升版 v37 → v38（today.js / ModuleFactory.js 指纹变化触发 sync-sw 自动升版，ASSETS 40 项不变）。
+- **试点评估检查点（memo + today 迁移后只读复盘）**：工厂健康无特判（扩展全配置化、契约测试锁定）；能力使用率核对（query/getById/destroy 为契约待消费，保留）；渲染重复度不显著 → **VisualEngine 未达进框架阈值，暂不进**（两模块仅风格相似，共享原语已在 UI 层沉淀）；无新通用缺口（删除+撤销流程第 3 次出现再抽）。**待办**：按钮绑定模式收敛（memo 闭包 vs today 委托）——dev 迁移强制委托写法，三模块对比后统一。决策：走路径 B，试点三候选 dev（嵌套结构验证工厂边界）。评估结论完整记录于 ADR-011。
 
 ### 计划（来自 38 项审计清单，按优先级）
 
