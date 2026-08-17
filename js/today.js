@@ -1,4 +1,10 @@
-/* today.js - 今日计划 */
+/* today.js - 今日计划
+ * 已迁移至标准模块工厂（Sonder-Frame v0.1.2，试点二）——协议见 docs/adr/ADR-011：
+ * 文件不改名不换位、Pages/DOM/store API 契约零变更、数据写同一 state.tasks；
+ * CRUD 与排序经工厂模块（orderField: order + move），store.addTask 等保留给既有调用方；
+ * done/doneAt 联动为业务规则，页面层显式传参（勾选写时间戳、取消置空）；
+ * 🍅 专注计时器为页面级瞬态（悬浮窗/通知/测试钩子），不进框架。
+ */
 (function () {
   'use strict';
   var Pages = window.Pages = window.Pages || {};
@@ -7,8 +13,45 @@
   var currentCtx = null;
   var currentEl = null;
   var viewDay = null; /* 日期筛选状态：null = 跟随今天（状态提升，切页/刷新后保留） */
+  var mod = null;
+  var unsubs = [];
+
+  function routeIs() {
+    return (location.hash || '').replace(/^#\/?/, '').split('/')[0] === 'today';
+  }
+
+  /* 工厂模块配置：id=tasks 对应 state.tasks（与 store.addTask 同一集合）
+   * orderField: 启用保留键 order——add 自动分配、move 上下移（分组显示依赖 order）
+   * doneAt: 完成时间戳（非表单字段，仅作 update patch 通道，由页面按 done 联动写入）
+   * 未配置 timeField：编辑会刷新 updatedAt（新增无害字段，渲染不依赖） */
+  /** @type {SonderModuleConfig} */
+  var CONFIG = {
+    id: 'tasks',
+    displayName: '今日计划',
+    storageKey: 'sonder_data_v1',
+    schemaVersion: 1,
+    orderField: 'order',
+    fields: [
+      { key: 'title', type: 'text', label: '任务', required: true },
+      { key: 'note', type: 'textarea', label: '备注' },
+      { key: 'date', type: 'date', label: '计划日期' },
+      { key: 'priority', type: 'select', label: '优先级', options: ['p1', 'p2', 'p3', 'p4'] },
+      { key: 'done', type: 'boolean', label: '已完成' },
+      { key: 'doneAt', type: 'text', label: '完成时间' }
+    ]
+  };
+
+  function ensureMod(ctx) {
+    if (!mod) {
+      mod = globalThis.SonderModuleFactory.createModule(ctx.store, CONFIG);
+      /* 工厂操作（add/update/remove/move）完成即统一重绘（仅当前路由为本页） */
+      mod.render(function () { if (currentEl && currentCtx && routeIs()) render(currentEl, currentCtx); });
+    }
+    return mod;
+  }
 
   function openAdd(ctx, target) {
+    ensureMod(ctx);
     ctx.UI.formModal({
       title: target ? '编辑任务' : '新建任务',
       confirmText: '保存',
@@ -22,10 +65,9 @@
         ] }
       ],
       onSubmit: function (v) {
-        if (target) ctx.store.updateTask(target.id, v);
-        else ctx.store.addTask(v);
+        if (target) mod.update(target.id, v);
+        else mod.add(v);
         ctx.UI.toast('已保存');
-        render(currentEl, ctx);
         return true;
       }
     });
@@ -79,13 +121,13 @@
   function renderGroups(listEl, store, day) {
     var g = S.groupTasks(store.state.tasks, day);
     var html = '';
-    html += section('待办 · 今天 (' + day + ')', g.now, day) ;
+    html += section('待办 · 今天 (' + day + ')', g.now, day);
     html += section('已过期', g.overdue, day);
     html += section('之后安排', g.upcoming, day);
     html += section('已完成', g.done, day);
 
     listEl.innerHTML = html;
-    bind(listEl, store, day);
+    bind(listEl, store);
   }
 
   function section(title, items, day) {
@@ -118,7 +160,7 @@
       '</span>';
   }
 
-  function bind(container, store, day) {
+  function bind(container, store) {
     var UI = window.UI;
     container.querySelectorAll('[data-act]').forEach(function (b) {
       b.addEventListener('click', function (e) {
@@ -126,12 +168,12 @@
         if (b.dataset.act === 'del') {
           UI.confirmBox('确定删除这条任务？').then(function (ok) {
             if (ok) {
-              store.removeTask(id);
-              renderGroups(container, store, day);
+              ensureMod({ store: store });
+              mod.remove(id);
               UI.toast('任务已删除', null, { label: '撤销', onClick: function () {
                 store.undoRemove();
                 /* P5a：撤销只恢复数据；若已切页（#content 常驻，currentEl 仍指向它）则不整页顶替当前页面 */
-                if (((location.hash || '').replace(/^#\/?/, '').split('/')[0]) === 'today') render(currentEl, currentCtx);
+                if (routeIs()) renderGroups(container, store, viewDay || S.todayStr());
                 else UI.toast('任务已恢复');
               } });
             }
@@ -140,15 +182,17 @@
           var t = store.state.tasks.find(function (x) { return x.id === id; });
           if (t) openAdd(currentCtx, t);
         } else {
-          store.reorderTask(id, b.dataset.act);
-          renderGroups(container, store, day);
+          ensureMod({ store: store });
+          mod.move(id, b.dataset.act);
         }
       });
     });
     container.querySelectorAll('.tpl-done').forEach(function (c) {
       c.addEventListener('change', function () {
-        store.updateTask(c.closest('[data-id]').dataset.id, { done: c.checked });
-        renderGroups(container, store, day);
+        var checked = c.checked;
+        ensureMod({ store: store });
+        /* 业务规则：done 联动完成时间戳（已完成组按 doneAt 排序） */
+        mod.update(c.closest('[data-id]').dataset.id, { done: checked, doneAt: checked ? S._h.nowISO() : null });
       });
     });
     container.querySelectorAll('[data-focus]').forEach(function (b) {
@@ -236,16 +280,15 @@
 
   Pages.today = { title: '今日计划', render: render, add: function (ctx) { openAdd(ctx); } };
 
-  /* 数据变更自动重绘（SonderBus）：计划/设置变更时仅当前路由为本页才刷新 */
+  /* 数据变更自动重绘（SonderBus EVENT 表）：计划/设置变更时仅当前路由为本页才刷新 */
   (function () {
     var bus = globalThis.SonderBus && globalThis.SonderBus.bus;
-    if (!bus) return;
-    ['/data/tasks', '/data/settings', '/data/all'].forEach(function (p) {
-      bus.on(p, function () {
-        if (currentEl && currentCtx && ((location.hash || '').replace(/^#\/?/, '').split('/')[0] === 'today')) {
-          render(currentEl, currentCtx);
-        }
-      });
+    var E = globalThis.SonderBus && globalThis.SonderBus.EVENT;
+    if (!bus || !E) return;
+    [E.data('tasks'), E.data('settings'), E.DATA_ALL].forEach(function (p) {
+      unsubs.push(bus.on(p, function () {
+        if (currentEl && currentCtx && routeIs()) render(currentEl, currentCtx);
+      }));
     });
   })();
 })();
