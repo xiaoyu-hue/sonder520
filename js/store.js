@@ -167,6 +167,18 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     return base;
   }
 
+  /* EventBridge 事件路径：浏览器经 SonderBus.EVENT 常量表取事件名（新代码唯一真源），
+   * Node 独立加载（无全局总线）时回落等价字面量——两条路径输出恒等，
+   * 订阅端无论走常量表还是字面量都收到同一路径。
+   * kind: 'data'（/data/<集合> 广播）| 'yielded'（多标签让位）。 */
+  function dataEvent(kind, key) {
+    var E = globalThis.SonderBus && globalThis.SonderBus.EVENT;
+    if (kind === 'data') {
+      return (E && E.data) ? E.data(key) : '/data/' + key;
+    }
+    return (E && E.STORE_YIELDED) ? E.STORE_YIELDED : '/store/yielded';
+  }
+
   /* 优先级四档：p1 紧急重要 / p2 重要不紧急 / p3 紧急不重要 / p4 不紧急不重要。
    * 旧版 高/中/低 在此自动迁移：高→p1、中→p2、低→p4；未知值回落 p2。 */
   var PRIORITY_MAP = { '高': 'p1', '中': 'p2', '低': 'p4' };
@@ -326,9 +338,10 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
   };
 
   /* SonderBus 数据变更广播：集合方法在 save() 后调用（list 为数据键名）。
-   * 无 bus（测试/降级）时静默；页面模块据此自动重绘。 */
+   * 无 bus（测试/降级）时静默；页面模块据此自动重绘。
+   * 事件路径经 EventBridge 常量表生成（Node 独立加载回落字面量，路径等价）。 */
   Store.prototype._emitChange = function (list) {
-    if (this._bus) this._bus.emit('/data/' + list);
+    if (this._bus) this._bus.emit(dataEvent('data', list));
   };
 
   /* 主快照是否为密文（未解锁时据此判定"需要解锁"）。
@@ -439,7 +452,7 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
    * 本标签未保存的输入已被放弃，UI 应即时提示用户。 */
   /** @this {{ _storage: any, state: any, _lastJson: string, _rev: number, _lastSeenMeta: any, _emitChange: Function, _decryptParse: Function, _pendingLocal: any, _bus: any }} */
   Store.prototype._absorbNewer = function () {
-    if (this._bus) this._bus.emit('/store/yielded');
+    if (this._bus) this._bus.emit(dataEvent('yielded'));
     this._pendingLocal = undefined;
     var self = this;
     var raw = null;

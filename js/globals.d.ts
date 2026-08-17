@@ -626,10 +626,39 @@ interface SonderStorageDiagnostics {
   lastError: { name: string; message: string } | null;
 }
 
+/* EventBridge：事件名常量表（冻结，新代码唯一事件名真源）
+ * data(key) → '/data/<集合>' 路径生成器（与 store._emitChange 广播等价）；
+ * DATA_ALL / STORE_YIELDED 为静态事件名。订阅端只依赖 path，detail 恒为 undefined。 */
+interface SonderBusEventMap {
+  readonly DATA_ALL: string;
+  readonly STORE_YIELDED: string;
+  data(key: string | number): string;
+}
+
+/* 总线实例（window.SonderBus.bus 单例）；on 返回 unsubscribe（销毁时调用） */
+interface SonderBusInstance {
+  on(pattern: string, fn: (path: string, detail?: unknown) => void): () => void;
+  off(pattern: string, fn: (path: string, detail?: unknown) => void): void;
+  emit(path: string, detail?: unknown): void;
+  clear(): void;
+  counts: { on: number; emit: number };
+}
+
+interface SonderBusApi {
+  bus: SonderBusInstance;
+  matches(pattern: string, path: string): boolean;
+  EVENT: SonderBusEventMap;
+  on(pattern: string, fn: (path: string, detail?: unknown) => void): () => void;
+  off(pattern: string, fn: (path: string, detail?: unknown) => void): void;
+  emit(path: string, detail?: unknown): void;
+  reset(): void;
+}
+
 /* 部分代码直接裸用全局名（非 window. 前缀），声明为全局变量 */
 declare var SonderStore: SonderStoreFactory;
 declare var SonderStats: SonderStatsFactory;
 declare var SonderModuleFactory: SonderModuleFactoryApi;
+declare var SonderBus: SonderBusApi;
 
 /* Web Worker 专用全局（game-worker.js，不在 DOM/窗口作用域内）：
  * DOM lib 的 postMessage/self 重载与 worker 环境兼容，仅 importScripts 缺失需要补充。 */

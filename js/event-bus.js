@@ -1,8 +1,22 @@
-/* SonderBus - 轻量事件总线（单页协作）
+/* SonderBus - 轻量事件总线（单页协作）+ EventBridge v0.1 事件契约
  * 兼容浏览器(<script> 暴露 window.SonderBus)与 Node(module.exports)。
  * 用途：store 数据变更 → 页面模块自动重绘；多模块间解耦通知。
  * 路径约定：/data/<数据键>，通配 '*' 匹配任意数量路径段（跨层）。
  * 依赖：无。
+ *
+ * ================= EventBridge v0.1 事件契约（谁发 / 谁听 / 结构 / 缺字段） =================
+ * EVENT.data(key)      数据变更    谁发：store 集合方法持久化成功后（save → 广播）
+ *                                 谁听：页面模块重绘——home/总览订阅 /data/* 全量，
+ *                                       单页模块按 /data/<集合> 精确订阅
+ *                                 结构：path = /data/<集合>；detail 恒为 undefined
+ *                                 缺字段：订阅者只依赖 path，不得读取 detail
+ * EVENT.DATA_ALL       全量数据变更 谁发：导入 / 清空 / 锁定解锁 / 加解密切换
+ *                                 谁听：全量重绘入口（detail 同 DATA 规则）
+ * EVENT.STORE_YIELDED  多标签让位    谁发：store 写锁让位吸收（_absorbNewer）
+ *                                 谁听：app.js（toast 提示已同步）
+ * 纪律：新框架代码一律经 EVENT 表（禁止书写魔法字符串路径）；
+ *       订阅必须保存返回值 unsubscribe，销毁时调用（destroy 完整清理）。
+ *       存量页面模块维持字面量路径订阅（兼容），收编改造随模块迁移进行。
  */
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) {
@@ -12,6 +26,15 @@
   }
 })(typeof self !== 'undefined' ? self : this, function () {
   'use strict';
+
+  /* 事件名常量表（冻结）：新代码唯一事件名真源 */
+  var EVENT = {
+    DATA_ALL: '/data/all',
+    STORE_YIELDED: '/store/yielded',
+    /* /data/<集合> 路径生成器：与 store._emitChange 广播完全等价 */
+    data: function (key) { return '/data/' + String(key); }
+  };
+  Object.freeze(EVENT);
 
   /* 路径匹配：pattern 中 '*' 匹配任意数量段（含层级）。
    * '/data/*'  命中 '/data/memos'、'/data/dev/projects'
@@ -92,6 +115,7 @@
   return {
     bus: bus,
     matches: matches,
+    EVENT: EVENT,
     on: function (p, fn) { return bus.on(p, fn); },
     off: function (p, fn) { bus.off(p, fn); },
     emit: function (p, d) { bus.emit(p, d); },
