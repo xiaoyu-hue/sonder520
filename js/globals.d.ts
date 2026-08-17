@@ -437,6 +437,9 @@ interface SonderModuleConfig {
   storageKey: string;
   schemaVersion: number;
   fields: SonderModuleField[];
+  /* v0.1.1：prepend 新增最在前（默认 append）；timeField 集合时间戳字段名 */
+  prepend?: boolean;
+  timeField?: string;
 }
 interface SonderStandardModule {
   id: string;
