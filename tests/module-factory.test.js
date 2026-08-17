@@ -243,6 +243,88 @@ test('timeField + prepend 组合（memo 形态）：最新在前 + time 字段�
   assert.ok(s2.state.testmod[0].time, 'time 字段持久化');
 });
 
+/* ================= v0.1.2 扩展：orderField + move（迁移试点二前置） ================= */
+
+test('契约: orderField 非法值拒绝；与 prepend 互斥', () => {
+  const { F, store } = makeModule();
+  const base = makeConfig();
+  [
+    { orderField: 'seq' },
+    { orderField: '' },
+    { orderField: 7 },
+    { orderField: 'order', prepend: true }
+  ].forEach(bad => {
+    assert.throws(() => F.createModule(store, Object.assign({}, base, bad)), TypeError, JSON.stringify(bad));
+  });
+});
+
+test('orderField: add 自动分配 order（0,1,2…），未配置时记录无 order 字段', () => {
+  const S = require('../js/store.js');
+  const F = require('../js/framework/ModuleFactory.js');
+  const plainStore = S.createStore(memStorage());
+  const plain = F.createModule(plainStore, makeConfig());
+  const p1 = plain.add({ title: '无序' });
+  assert.ok(!('order' in p1), '未配置 orderField 不生成 order（v0.1.1 回归）');
+  const m = F.createModule(plainStore, makeConfig({ orderField: 'order' }));
+  assert.equal(m.config.orderField, 'order');
+  const a = m.add({ title: '一' });
+  const b = m.add({ title: '二' });
+  const c = m.add({ title: '三' });
+  assert.equal(a.order, 1, 'order 从集合当前长度续编（与既有记录不冲突）');
+  assert.equal(b.order, 2);
+  assert.equal(c.order, 3);
+  assert.equal(plainStore.state.testmod[3].order, 3, '数组序与 order 一致（append）');
+});
+
+test('move: 上移/下移交换相邻并重写全集合 order，越界与未知 id 返回 false 无副作用', () => {
+  const { F, store } = makeModule();
+  const m = F.createModule(store, makeConfig({ orderField: 'order' }));
+  const r = m.add({ title: '一' });
+  const s = m.add({ title: '二' });
+  m.add({ title: '三' });
+  assert.equal(m.move(s.id, 'up'), true);
+  assert.deepEqual(store.state.testmod.map(x => x.title), ['二', '一', '三']);
+  assert.deepEqual(store.state.testmod.map(x => x.order), [0, 1, 2], 'order 重写为连续');
+  assert.equal(m.move(r.id, 'down'), true);
+  assert.deepEqual(store.state.testmod.map(x => x.title), ['二', '三', '一']);
+  assert.equal(m.move(r.id, 'down'), false, '末位下移越界');
+  assert.equal(m.move('ghost', 'up'), false, '未知 id');
+  assert.deepEqual(store.state.testmod.map(x => x.title), ['二', '三', '一'], '失败无副作用');
+});
+
+test('move: 未配置 orderField 的模块调用 move 抛错；move 触发 _emitChange 与 renderer', () => {
+  const { m, store } = makeModule();
+  assert.throws(() => m.move('x', 'up'), /orderField/);
+  const om = require('../js/framework/ModuleFactory.js').createModule(store, makeConfig({ orderField: 'order' }));
+  const calls = [];
+  const orig = store._emitChange;
+  store._emitChange = k => calls.push(k);
+  om.render(() => { calls.push('render'); });
+  om.add({ title: '一' });
+  const b = om.add({ title: '二' });
+  calls.length = 0;
+  om.move(b.id, 'up');
+  store._emitChange = orig;
+  assert.deepEqual(calls, ['testmod', 'render']);
+});
+
+test('orderField: 跨实例持久化保留 order 与数组序（today 形态）', async () => {
+  const S = require('../js/store.js');
+  const F = require('../js/framework/ModuleFactory.js');
+  const storage = memStorage();
+  const cfg = makeConfig({ orderField: 'order' });
+  const s1 = S.createStore(storage);
+  const m1 = F.createModule(s1, cfg);
+  m1.add({ title: '一', done: true });
+  m1.add({ title: '二' });
+  const r3 = m1.add({ title: '三' });
+  m1.move(r3.id, 'up');
+  const s2 = S.createStore(storage);
+  await waitFor(() => s2.state.testmod && s2.state.testmod.length === 3, '跨实例读到持久化记录');
+  assert.deepEqual(s2.state.testmod.map(x => x.title), ['一', '三', '二']);
+  assert.deepEqual(s2.state.testmod.map(x => x.order), [0, 1, 2]);
+});
+
 /* ================= 行为：update ================= */
 
 test('update: 按 id 精确匹配，未命中返回 null', () => {

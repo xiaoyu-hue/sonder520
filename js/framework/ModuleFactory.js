@@ -14,6 +14,10 @@
  * v0.1.1（迁移试点前置扩展）：新增可选配置 prepend（add 最新在前，默认 append）
  * 与 timeField（集合时间戳字段名——新增写入、编辑不刷、配置后不再生成默认
  * createdAt/updatedAt；用于兼容既有 time 字段的集合）。不配置时行为与 v0.1 完全一致。
+ * v0.1.2（迁移试点二前置扩展）：新增可选配置 orderField（启用保留键 order 作为
+ * 集合排序键——add 时自动分配 order = 当前长度，并开放 move(id, dir) 上下移：
+ * 交换位置并重写全集合 order，语义对齐 store.reorderTask）。orderField 与 prepend
+ * 互斥（最新在前与用户排序矛盾）；未配置时无 order 字段、无 move（行为与 v0.1.1 一致）。
  * 集合注册：createModule 时经 store._registerCollection 纳入 normalize 白名单，
  * 保证"新建→刷新→还在"（含导入/解密/清空路径）；destroy 不注销，数据留存。
  * 字段净化：用户输入默认不可信——text/textarea/date 取 trim 字符串、
@@ -64,6 +68,12 @@
          config.fields.some(function (f) { return f.key === config.timeField; }))) {
       throw new TypeError('ModuleFactory: config.timeField 必须为未占用的字段名');
     }
+    if (config.orderField !== undefined && config.orderField !== 'order') {
+      throw new TypeError('ModuleFactory: config.orderField 当前仅支持保留键 "order"');
+    }
+    if (config.orderField === 'order' && config.prepend === true) {
+      throw new TypeError('ModuleFactory: config.orderField 与 config.prepend 互斥（排序语义矛盾）');
+    }
     var seen = {};
     config.fields.forEach(function (f, i) {
       if (!f || typeof f !== 'object' || Array.isArray(f)) {
@@ -113,7 +123,9 @@
       /* v0.1.1：prepend 新增在最前（unshift，默认 append）；
        * timeField 集合时间戳字段名（新增写入、编辑不刷、不生成默认时间字段） */
       prepend: config.prepend === true,
-      timeField: (typeof config.timeField === 'string' && config.timeField.trim()) ? config.timeField : null
+      timeField: (typeof config.timeField === 'string' && config.timeField.trim()) ? config.timeField : null,
+      /* v0.1.2：orderField 启用保留键 order（add 分配 + move 上下移） */
+      orderField: config.orderField === 'order' ? 'order' : null
     };
   }
 
@@ -193,6 +205,7 @@
         var record = { id: h.uid() };
         if (cfg.timeField) record[cfg.timeField] = h.nowISO();
         else { record.createdAt = h.nowISO(); record.updatedAt = h.nowISO(); }
+        if (cfg.orderField) record[cfg.orderField] = collection().length;
         cfg.fields.forEach(function (f) {
           record[f.key] = sanitize(cfg, f.key, data ? data[f.key] : undefined);
         });
@@ -240,6 +253,23 @@
         store.save();
         store._emitChange(cfg.id);
         notify();
+      },
+      /* v0.1.2：上下移（仅配置 orderField 时可用）。
+       * 语义对齐 store.reorderTask：交换相邻位置并重写全集合 order；
+       * 越界/未知 id 返回 false 且无副作用。 */
+      move: function (id, dir) {
+        requireLive();
+        if (!cfg.orderField) throw new Error('ModuleFactory[' + cfg.id + ']: 未配置 orderField，不支持 move');
+        var arr = collection();
+        var idx = h.idxOf(arr, id);
+        var swap = dir === 'up' ? idx - 1 : idx + 1;
+        if (idx < 0 || swap < 0 || swap >= arr.length) return false;
+        var tmp = arr[idx]; arr[idx] = arr[swap]; arr[swap] = tmp;
+        for (var i = 0; i < arr.length; i++) arr[i][cfg.orderField] = i;
+        store.save();
+        store._emitChange(cfg.id);
+        notify();
+        return true;
       },
       getById: function (id) {
         requireLive();

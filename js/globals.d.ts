@@ -440,6 +440,8 @@ interface SonderModuleConfig {
   /* v0.1.1：prepend 新增最在前（默认 append）；timeField 集合时间戳字段名 */
   prepend?: boolean;
   timeField?: string;
+  /* v0.1.2：orderField 启用保留键 order（add 自动分配 + move 上下移），与 prepend 互斥 */
+  orderField?: 'order';
 }
 interface SonderStandardModule {
   id: string;
@@ -447,6 +449,7 @@ interface SonderStandardModule {
   add(data: Record<string, unknown>): Record<string, unknown>;
   update(id: string, patch: Record<string, unknown>): Record<string, unknown> | null;
   remove(id: string): void;
+  move(id: string, dir: 'up' | 'down'): boolean;
   getById(id: string): Record<string, unknown> | null;
   query(filter?: (r: Record<string, unknown>) => boolean, sort?: (a: Record<string, unknown>, b: Record<string, unknown>) => number): Array<Record<string, unknown>>;
   render(fn: (() => void) | null): void;
