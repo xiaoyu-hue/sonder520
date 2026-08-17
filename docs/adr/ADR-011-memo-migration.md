@@ -37,3 +37,16 @@
 
 **决策**：走路径 B——试点三候选 dev（速查手册，页面薄、风险小；其嵌套结构「项目分组→任务」可验证工厂对嵌套集合的边界，正式迁移前须先做选型侦查）。
 - 回滚预案：三批独立提交（11521dd 工厂扩展 / ec867e9 memo 迁移 / docs），任一阶段测试失败即停；单批 `git revert` 即可，数据无迁移动作、无需数据回滚。
+
+### 试点 3：dev（开发工作页）——2026-08-17
+
+- **选型侦查结论**：dev 页为三个集合复合页（`devProjects` 含嵌套任务 / `devNotes` / `devSnippets`）；领域 API 项目新建用 unshift（最新在前）、笔记/片段编辑刷新 updatedAt 驱动置顶排序；测试安全网 dev-v3 7 项 + modules-smoke + store/behavior/search 共享测试；**无新工厂缺口**（v0.1.2 能力均可配置描述）。
+- **决策**：
+  1. **无工厂扩展**：三个集合全部用 v0.1.2 既有能力（本次迁移实证「无新通用缺口」结论——首批消费方覆盖 add/update/remove/render/prepend，扩展线收敛）。
+  2. **dev 迁移形态**：同一页面三实例模块——`devProjects`（`prepend: true` 对齐 unshift 最新在前 + name 必填 + note + `tasks` 声明 array 仅作默认保底）、`devNotes`/`devSnippets`（title/内容必填；不配 timeField，靠工厂默认 createdAt/updatedAt——编辑自动刷新 updatedAt 出场即满足置顶排序，无需扩展）。
+  3. **嵌套集合边界（本试点核心结论）**：嵌套任务（`tasks` 内嵌数组的增删改）属内嵌数据局部操作，工厂为整记录模型（add/update/remove 以记录为单位），**不进工厂**——保留 `addDevTask/updateDevTask/removeDevTask` 领域 API，其变更经 store emitChange → EVENT 订阅兜底重绘。确立规则：**嵌套集合一律留在 store/页面层，工厂只管顶层记录集合**。
+  4. **绑定委托化落地（试点2检查点待办首次执行）**：dev 卡内按钮（项目设置/删除、任务编辑/删除/勾选、笔记编辑/删除、片段复制/编辑/删除）由闭包逐个绑改为**容器级委托**（`data-*` 属性 → 点击回查 state 最新对象；`delegatedBound` 门闩防常驻容器监听累积）。对比结果：委托 2:1 胜出（dev + today）→ **memo 闭包绑定统一为委托列为下一轮回溯任务**（触发条件已达成，行为不变、测试全绿）。
+  5. **行为保留**：三个标签 tabState、Markdown 渲染与一键复制、删除撤销不对称（项目/笔记可撤销、任务/片段无撤销）原样；dev 撤销无 P5a 切页守卫的历史小瑕疵本批不扩散（如实记录）。工厂 `required` 校验替代 store 的"空名回落'未命名项目'"——表单层必填已拦截，页面路径等价、工厂更严（防御性，不劣化）。文本字段工厂 trim（Markdown 首尾空格/空行无渲染语义，无影响）。
+  6. **XSS 白名单随迁**：innerhtml.test.js 白名单行号 109/111 → 258/260（同一赋值点 `wrap.innerHTML` 因 file 重排位移，语义零变化）。
+- 实证：**578 项全绿**（工厂无扩展 → 无新契约测试；dev 旧测试原样通过为成功判据）；typecheck 与 lint 零问题（含清理 2 处迁移残留未用变量）；Playwright E2E 5/5；sw.js 缓存 v38 → v39。提交 b139e5b（代码）+ 文档批次。
+- 回滚预案：本批两笔独立提交（b139e5b dev 迁移 / docs 批次），任一阶段测试失败即停；单笔 `git revert` 即可，数据无迁移动作、无 storage key / schema 变更（三集合照旧写主快照）。
