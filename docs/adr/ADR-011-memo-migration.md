@@ -71,3 +71,16 @@
 - 实证：**583 项全绿**（基线 578 + 新增 `tests/offline-indicator.test.js` 5 项，既有 pwa/shell 测试原样通过）；typecheck 与 lint 零问题；Playwright E2E 5/5（断言 v40）；sw.js 缓存 v40 → v41。
 - 结论：CHANGELOG「离线状态指示器」计划关闭；无新待办引入。
 - 回滚预案：单提交（app.js + 测试 + harness + 文档），`git revert` 即回静态占位状态；无数据动作。
+
+### 试点 4：news（看新闻计划）——2026-08-17
+
+- **选型侦查**：news 为全项目第二个最小标准模块（131 行，单集合 `state.news`），字段 title/url/source/tags/status/note/time；领域 API（addNews/updateNews/removeNews）消费方均为只读（search.js 全局搜索索引、home.js 概览卡汇总直接读 `state.news`——工厂写同一集合，读法零变更）。测试安全网 news-ux 5 项 + modules-smoke + state/search 共享测试。**无新工厂缺口**（v0.1.2 能力均可配置描述）——零工厂扩展，再次实证「无新通用缺口」。
+- **决策**：
+  1. **零工厂扩展**：单实例 `id: 'news'`，`prepend: true` 对齐 addNews 的 unshift + `timeField: 'time'` 对齐既有 time 字段（新增写入、编辑不刷）；字段声明 title（text, required）/ url / source / tags（array 默认保底）/ status（select unread-read-favorite）/ note。
+  2. **筛选状态不进工厂**：页面本地筛选 `state.status`/`state.tag`（下拉筛选+清除）是**视图层派生状态**，留页面层——与 today 的 done/doneAt 页面规则、dev 的 tabState 同属「页面业务规则不进工厂」边界。
+  3. **绑定委托化（试点 3 写法收敛后首个新消费方）**：卡内按钮（mark/fav/unfav/edit/del）由闭包逐个绑改为容器级委托（`data-act` 回查 `store.state.news` 最新对象 + `delegatedBound` 门闩防监听累积），与 memo/today/dev 四模块写法收敛。
+  4. **行为保留**：空态文案、状态 pill（收藏/已读/待读）、危险链接 sanitizeUrl 不外链、筛选交互、删除需确认 + 撤销 toast 原样；onSubmit 标签逗号拆分预处理留页面层。
+  5. **领域 API 保留**：addNews/updateNews/removeNews 不删（先例同 memo/today/dev；无调用方改写，留作兼容）。
+- 实证：**583 项全绿**（数量不变——工厂零扩展 → 无新契约测试；news 旧测试原样通过为成功判据）；typecheck 与 lint 零问题；Playwright E2E 5/5（断言 v41）；sw.js 缓存 v41 → v42。innerhtml 无新增赋值点（news 原唯一赋值为清空 `innerHTML=''`，白名单不动）。
+- 结论：四模块（memo/today/dev/news）工厂化完成，零扩展轨迹延续；筛选状态留页面的边界决策首次落账。无新待办引入。
+- 回滚预案：两笔独立提交（74ec1a4 news 迁移 / docs 批次），任一阶段测试失败即停；单笔 `git revert` 即可，数据无迁移动作、无 storage key / schema 变更。

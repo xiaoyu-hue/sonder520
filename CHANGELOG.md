@@ -48,6 +48,9 @@
 - 测试基线 578 → 583（新增离线指示器 5 项，全量绿；typecheck/lint 零问题，E2E 5/5）。
 - 离线缓存升版 v40 → v41（app.js 指纹变化触发 sync-sw 自动升版，ASSETS 40 项不变）。
 - **文档数字一致性收尾**：一次性对齐各文档的测试基线（README/README.en 578 → 583、PRD 验收与架构节 521/514 → 583、device-acceptance 521 → 583 并更新日期 08-17）、缓存版本（PRD 当前描述 v19/v29 → v41）、PRD 头部版本标注与版本演进表新增 v6.0 行、README ADR 索引补全至 ADR-011。历史版本摘要中的数字（v5.x 当时基线、各试点迁移期基线）作为历史记录保留。
+- **试点四入厂（news 看新闻计划，Phase 7 渐进迁移续）**：**零工厂扩展**（v0.1.2 能力全覆盖，延续「无新通用缺口」实证）。**news.js 迁移**：单实例模块 `news`（prepend 对齐 addNews 的 unshift 最新在前 + timeField:time 对齐既有 time 字段，title 必填 + url/source/note + tags 声明 array 仅默认保底 + status select）；**筛选状态不进工厂**（status/tag 下拉筛选为视图层派生状态留页面，与 today done/doneAt、dev tabState 同边界）；卡内按钮（mark/fav/unfav/edit/del）闭包逐个绑统一为容器委托（data-* 回查 state 最新对象 + delegatedBound 门闩），四模块写法收敛；删除撤销走工厂 _undoPush；订阅改经 EVENT 表保存 unsubscribe；DOM/Pages/store API 契约零变更（search/home 只读 state.news 不受影响），文件不改名不换位；innerhtml 无新增赋值点白名单不动。
+- 测试基线 583 → 583（news 旧测试原样全绿为成功判据；typecheck/lint 零问题，E2E 5/5）。
+- 离线缓存升版 v41 → v42（news.js 指纹变化触发 sync-sw 自动升版，ASSETS 40 项不变）。
 
 ### 计划（来自 38 项审计清单，按优先级）
 
