@@ -10,6 +10,9 @@ interface SonderStoreImpl {
   isNearQuota(): boolean;
   hasPersistIssue(): boolean;
   persistIssueDetail(): Error | null;
+  getStorageStatus(): SonderStorageStatus;
+  persistResult(): Promise<SonderStorageStatus>;
+  diagnostics(): SonderStorageDiagnostics;
   save(): boolean;
   flushPersist(): void;
   clearAll(): void;
@@ -566,6 +569,28 @@ interface SonderHooks {
   applyWallpaper?: () => void;
   applyFrame?: () => void;
   todayLine?: () => void;
+}
+
+/* TrustLayer 结构化存储状态（store.getStorageStatus / persistResult 返回值） */
+interface SonderStorageStatus {
+  ok: boolean;
+  backend: string;
+  degraded: boolean;
+  critical: boolean;
+  reason: string | null;
+}
+
+/* TrustLayer 存储诊断聚合（store.diagnostics 返回值） */
+interface SonderStorageDiagnostics {
+  storageReady: boolean;
+  idbAvailable: boolean;
+  idbFailed: boolean;
+  persistFailed: boolean;
+  statusReason: string | null;
+  usageBytes: number;
+  nearQuota: boolean;
+  status: SonderStorageStatus;
+  lastError: { name: string; message: string } | null;
 }
 
 /* 部分代码直接裸用全局名（非 window. 前缀），声明为全局变量 */

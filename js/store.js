@@ -115,6 +115,13 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
   function isPlainObject(v) {
     return v !== null && typeof v === 'object' && !Array.isArray(v);
   }
+  /* 持久化失败原因归类（结构化状态 status.reason 用；未知错误一律归 storage_error） */
+  function classifyFailReason(e) {
+    var name = e && e.name ? String(e.name) : '';
+    if (name === 'QuotaExceededError' || name === 'NS_ERROR_DOM_QUOTA_REACHED') return 'quota';
+    if (name === 'SecurityError') return 'security';
+    return 'storage_error';
+  }
 
   /* ---------- 默认数据结构 ---------- */
   var DEFAULT_SETTINGS = {
@@ -250,7 +257,7 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
   }
 
   /* ---------- Store ---------- */
-  /** @constructor @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _idbWrite: any, _lastJson: string, _rev: number, _encKey: any, _encSize: number, _hasEncSnapshot: Function, _idbEncLocked: boolean, _undo: any[], _pendingLocal: any, _localFlushHandle: any, _bus: any, _emitChange: Function, _persistFailed: boolean, _idbFailed: boolean, _lastPersistError: any, _lastSeenMeta: any }} */
+  /** @constructor @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _idbWrite: any, _lastJson: string, _rev: number, _encKey: any, _encSize: number, _hasEncSnapshot: Function, _idbEncLocked: boolean, _undo: any[], _pendingLocal: any, _localFlushHandle: any, _bus: any, _emitChange: Function, _persistFailed: boolean, _idbFailed: boolean, _lastPersistError: any, _statusReason: string, _lastSeenMeta: any }} */
   function Store(storage) {
     this._storage = storage || (typeof localStorage !== 'undefined' ? localStorage : null);
     /* SonderBus 数据变更广播总线（浏览器 window.SonderBus / 测试注入；缺省静默） */
@@ -281,6 +288,7 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     this._persistFailed = false;    /* localStorage 主快照最近一次写入失败（配额满等） */
     this._idbFailed = false;        /* IndexedDB 兜底副本最近一次写入失败 */
     this._lastPersistError = null;  /* 最近一次持久化错误（诊断用） */
+    this._statusReason = null;      /* 最近一次持久化失败的原因分类（quota 等，结构化状态派生用） */
   }
 
   /* P4c：删除撤销——记录删除条目（容量 10，超出丢最旧），undoRemove 恢复 */
@@ -439,7 +447,7 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
   };
 
   /* 实际写 localStorage（权威快照；写满时记失败标记，IDB 副本兜底）。只写 _pendingLocal 最新一份 */
-  /** @this {{ _storage: any, _meta: any, _pendingLocal: any, _persistFailed: boolean, _lastPersistError: any, _lastSeenMeta: any }} */
+  /** @this {{ _storage: any, _meta: any, _pendingLocal: any, _persistFailed: boolean, _lastPersistError: any, _lastSeenMeta: any, _statusReason: string }} */
   Store.prototype._doLocalFlush = function () {
     if (this._pendingLocal === undefined) return;
     var json = this._pendingLocal;
@@ -449,12 +457,14 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
       this._storage.setItem(STORAGE_META_KEY, this._meta);
       this._persistFailed = false;
       this._lastPersistError = null;
+      this._statusReason = null;
       this._lastSeenMeta = this._meta; /* 多标签写锁基线：本实例已落盘的权威版本 */
     } catch (e) {
       /* 存储满（QuotaExceededError / NS_ERROR_DOM_QUOTA_REACHED）等错误：置失败标记。
        * 数据仍在内存与 IDB 副本侧；若 IDB 也不可用则 hasPersistIssue() 指挥 UI 提示导出 */
       this._persistFailed = true;
       this._lastPersistError = e;
+      this._statusReason = classifyFailReason(e);
     }
   };
 
@@ -473,7 +483,7 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
    * 只接受调用方显式传入的原始串（明文或密文格式原样落盘），extra 合并进 entry（如加密盐）。
    * undefined/null/空串一律跳过——绝不回退到内存 state 序列化：锁定态下内存是明文空
    * defaultState，回退写盘会把明文空数据写进 IDB，破坏密文兜底副本（loadIdb 空 IDB 回填路径）。 */
-  /** @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _idbWrite: any, _lastJson: string, _rev: number, _idbFailed: boolean }} */
+  /** @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _idbWrite: any, _lastJson: string, _rev: number, _idbFailed: boolean, _statusReason: string }} */
   Store.prototype._idbWrite = function (json, extra) {
     if (!idbAvailable()) return;
     if (json === undefined || json === null || json === '') return;
@@ -493,6 +503,7 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     }).catch(function (err) {
       /* IDB 写入失败不影响主流程（localStorage 仍兜底），但记失败标记并上报便于发现环境问题 */
       self._idbFailed = true;
+      if (!self._statusReason) self._statusReason = 'indexeddb_write_failed';
       try { console.error('[Sonder] IndexedDB 写入失败', err); } catch (e) { /* 忽略 */ }
     });
   };
@@ -519,7 +530,7 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
    * 串行队列保证加密按调用顺序落盘：encryptText 为异步，连续多次 save
    * 若不排队，后发起的加密可能先完成并覆盖落盘 → 旧状态覆盖新状态（丢最新变更）。
    * 落盘前经 _lockedEncWrite 走写锁让位协议（同明文 _lockedLocalFlush，ADR-007）。 */
-  /** @this {{ _storage: any, _encKey: any, _encSize: number, _persistLocal: any, _idbWrite: any, _encChain: Promise, flushPersist: Function, _lockedEncWrite: Function }} */
+  /** @this {{ _storage: any, _encKey: any, _encSize: number, _persistLocal: any, _idbWrite: any, _encChain: Promise, flushPersist: Function, _lockedEncWrite: Function, _statusReason: string }} */
   Store.prototype._encSave = function (json) {
     var self = this;
     if (!this._encKey || !Crypto) return Promise.resolve();
@@ -536,6 +547,7 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
       });
     }).catch(function (err) {
       /* 加密失败：存储停留在上次成功版本，后续变更会继续重试；上报便于发现 */
+      if (!self._statusReason) self._statusReason = 'encryption_failed';
       try { console.error('[Sonder] 加密持久化失败', err); } catch (e) { /* 忽略 */ }
     });
     return self._encChain;
@@ -684,6 +696,46 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
   /* 最近一次持久化错误对象（诊断用；无失败时为 null） */
   Store.prototype.persistIssueDetail = function () {
     return this._lastPersistError;
+  };
+  /* 结构化存储状态（TrustLayer 契约：返回全新对象，不外泄内部引用）。
+   * ok=true 表示数据有可靠落点（localStorage 主快照成功，或失败但 IDB 兜底副本在）；
+   * degraded=true 表示主后端失败、靠兜底或待重试，功能可用但需留意；
+   * critical=true 表示数据仅存于内存（主失败且兜底不可用）——与 hasPersistIssue() 严格一致，
+   * UI 应显示"立即导出备份"危机警示。
+   * reason 归类：quota / security / indexeddb_write_failed / encryption_failed / storage_error。 */
+  Store.prototype.getStorageStatus = function () {
+    var status;
+    if (!this._persistFailed) {
+      status = { ok: true, backend: 'localStorage', degraded: false, critical: false, reason: null };
+    } else if (idbAvailable() && !this._idbFailed) {
+      status = { ok: true, backend: 'indexedDB', degraded: true, critical: false, reason: this._statusReason || 'storage_error' };
+    } else {
+      status = { ok: false, backend: null, degraded: true, critical: true, reason: this._statusReason || 'storage_unavailable' };
+    }
+    return status;
+  };
+  /* 同步待写快照落盘后，返回结构化存储状态（Promise 版：等待 localStorage 同步写 + IDB 串行队列收尾）。
+   * 用于保存流程的关键路径校验（持久化结果不得谎报成功）。 */
+  Store.prototype.persistResult = function () {
+    var self = this;
+    this.flushPersist();
+    var chains = [this._idbPromise || Promise.resolve()];
+    return Promise.all(chains).then(function () { return self.getStorageStatus(); });
+  };
+  /* 存储诊断信息聚合（排查用；返回全新对象） */
+  Store.prototype.diagnostics = function () {
+    var err = this._lastPersistError;
+    return {
+      storageReady: !!this._storage,
+      idbAvailable: idbAvailable(),
+      idbFailed: this._idbFailed,
+      persistFailed: this._persistFailed,
+      statusReason: this._statusReason,
+      usageBytes: this.storageUsage(),
+      nearQuota: this.isNearQuota(),
+      status: this.getStorageStatus(),
+      lastError: err ? { name: err && err.name, message: err && err.message } : null
+    };
   };
   Store.prototype.dismissQuotaNotice = function () {
     this.state.settings.quotaNoticeDismissed = true;
