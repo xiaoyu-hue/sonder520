@@ -139,8 +139,13 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     taskReminder: false
   };
 
+  /* 工厂注册的标准模块集合（ModuleFactory.createModule → _registerCollection）。
+   * 纳入 defaultState 与 normalize 白名单：重载/导入/解密/清空后保留且保底空数组，
+   * 防止工厂模块数据被静默丢弃（数据安全优先）。 */
+  var EXTRA_COLLECTIONS = [];
+
   function defaultState() {
-    return {
+    var base = {
       version: 1,
       settings: deepClone(DEFAULT_SETTINGS),
       memos: [],
@@ -158,6 +163,8 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
       /* 单人小游戏最佳纪录（原独立 localStorage key，P3e 并入统一 state：加密/备份/导出随之覆盖） */
       miniRecords: {}
     };
+    EXTRA_COLLECTIONS.forEach(function (k) { base[k] = []; });
+    return base;
   }
 
   /* 优先级四档：p1 紧急重要 / p2 重要不紧急 / p3 紧急不重要 / p4 不紧急不重要。
@@ -295,6 +302,12 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
   Store.prototype._undoPush = function (u) {
     this._undo.push(u);
     if (this._undo.length > 10) this._undo.shift();
+  };
+  /* 工厂扩展：注册标准模块集合 key（幂等；ModuleFactory.createModule 调用）。
+   * 使该集合进入 normalize 白名单——重载/导入/解密后数据不被丢弃，并保底为空数组。 */
+  Store.prototype._registerCollection = function (key) {
+    if (typeof key !== 'string' || !key) return;
+    if (EXTRA_COLLECTIONS.indexOf(key) < 0) EXTRA_COLLECTIONS.push(key);
   };
   /* P4c：撤销最近一次删除；成功返回被恢复的数据，无可撤销返回 null */
   Store.prototype.undoRemove = function () {

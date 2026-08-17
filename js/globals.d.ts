@@ -422,10 +422,43 @@ interface SonderReadingStats {
   buckets: Array<{ label: string; color: string; count: number }>;
 }
 
+/* ModuleFactory.js 暴露的标准模块工厂（Sonder-Frame v0.1） */
+type SonderFieldType = 'text' | 'textarea' | 'date' | 'boolean' | 'number' | 'select' | 'array';
+interface SonderModuleField {
+  key: string;
+  type: SonderFieldType;
+  label: string;
+  required?: boolean;
+  options?: string[];
+}
+interface SonderModuleConfig {
+  id: string;
+  displayName: string;
+  storageKey: string;
+  schemaVersion: number;
+  fields: SonderModuleField[];
+}
+interface SonderStandardModule {
+  id: string;
+  config: SonderModuleConfig;
+  add(data: Record<string, unknown>): Record<string, unknown>;
+  update(id: string, patch: Record<string, unknown>): Record<string, unknown> | null;
+  remove(id: string): void;
+  getById(id: string): Record<string, unknown> | null;
+  query(filter?: (r: Record<string, unknown>) => boolean, sort?: (a: Record<string, unknown>, b: Record<string, unknown>) => number): Array<Record<string, unknown>>;
+  render(fn: (() => void) | null): void;
+  destroy(): void;
+}
+interface SonderModuleFactoryApi {
+  createModule(store: SonderStoreImpl, config: SonderModuleConfig): SonderStandardModule;
+  FIELD_TYPES: SonderFieldType[];
+}
+
 interface Window {
   Pages: Record<string, SonderPage>;
   SonderStore: SonderStoreFactory;
   SonderStats: SonderStatsFactory;
+  SonderModuleFactory: SonderModuleFactoryApi;
   SonderMarkdown: { render(src: string): string; esc(s: unknown): string };
   SonderCrypto: SonderCryptoApi;
   SonderGames: SonderGamesApi;
@@ -596,6 +629,7 @@ interface SonderStorageDiagnostics {
 /* 部分代码直接裸用全局名（非 window. 前缀），声明为全局变量 */
 declare var SonderStore: SonderStoreFactory;
 declare var SonderStats: SonderStatsFactory;
+declare var SonderModuleFactory: SonderModuleFactoryApi;
 
 /* Web Worker 专用全局（game-worker.js，不在 DOM/窗口作用域内）：
  * DOM lib 的 postMessage/self 重载与 worker 环境兼容，仅 importScripts 缺失需要补充。 */
