@@ -24,6 +24,9 @@
 - **TrustLayer 结构化存储状态（Phase 1）**：store.js 新增 `getStorageStatus()`（同步 `{ok, backend, degraded, critical, reason}`）/ `persistResult()`（Promise 版，落盘后如实返回结果）/ `diagnostics()`（聚合诊断）三个公共 API；落盘失败点统一记录 reason 归类（quota / security / indexeddb_write_failed / encryption_failed / storage_error）；`_persistFailed`/`_idbFailed` 真源与 `hasPersistIssue()`/`persistIssueDetail()` 旧 API 行为零变更（quota-fail 既有测试原样通过）；globals.d.ts 同步声明并新增 `SonderStorageStatus`/`SonderStorageDiagnostics` 类型（契约测试自动校验两边一致）。新增契约测试 `tests/store-trustlayer-status.test.js` 11 项。
 - 测试基线 524 → 535（全量绿）。
 - 离线缓存升版 v32 → v33（store.js 内容指纹变化触发 sync-sw 自动升版，ASSETS 39 项不变）。
+- **IndexedDB 优先写（Phase 2，Sonder-Frame ④ 核心遗留项落地）**：主/副本语义反转——IndexedDB 成为主快照、localStorage 降级为副本。双写写序不变量 `_persistLocal → _idbWrite` 保持（不交换行序，`_meta` 刷新与 IDB `savedAt` 一致性依赖该序）；跨标签写锁/让位协议仍以 LS 的 `sonder_meta_v1` 为基线（LS 同步可见性最适合做锁协议载体），读取按「哪个版本更新且完整」取新。`getStorageStatus()` 三分支重写：主成功 → `ok/indexedDB`（副本失败标 `degraded`）；主失败但 LS 正常 → `ok/localStorage` 降级（`reason: indexeddb_write_failed / indexeddb_unavailable`）；双失败 → `critical`。`_persistFailed`/`_idbFailed` 字段与 `hasPersistIssue()` 公式保持不变（对称公式，UI 行为零变化，quota-fail 既有测试原样通过）。契约测试 `tests/store-trustlayer-status.test.js` 11 → 14 项（副本停更但 IDB 正常 → 仍全健康 / 主失败 LS 降级 / 副本恢复回主 / 无 IDB 环境 reason 断言）。
+- 测试基线 535 → 538（全量绿）。
+- 离线缓存升版 v33 → v34（store.js 内容指纹变化触发 sync-sw 自动升版，ASSETS 39 项不变）。
 
 ### 计划（来自 38 项审计清单，按优先级）
 

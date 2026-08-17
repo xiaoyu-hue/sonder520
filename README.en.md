@@ -56,7 +56,7 @@ Source code: https://github.com/xiaoyu-hue/sonder520
 
 - Data & Settings: theme (follows system, overridable), wallpaper upload/opacity, animation fps (60/90/120), module toggles, stats, export/import backup, encryption switch, weekly report generator, desktop notifications, migrate to IndexedDB
 
-- Reliability: PWA offline, dual storage (localStorage + IndexedDB + optional encryption), encryption resilience (no plaintext writes while locked, future-version ciphertext preserved untouched), warning bar when storage exceeds 4.5 MB, red crisis bar (export-only) when both storage backends fail, global search, XSS sanitization everywhere (incl. attribute injection), error reporting with graceful shell degradation
+- Reliability: PWA offline (network-first navigation, new version on refresh, offline cache fallback), dual storage (IndexedDB primary snapshot + localStorage fallback copy + optional encryption), encryption resilience (no plaintext writes while locked, future-version ciphertext preserved untouched), warning bar when storage exceeds 4.5 MB, red crisis bar (export-only) when both storage backends fail, global search, XSS sanitization everywhere (incl. attribute injection), error reporting with graceful shell degradation
 
 - Note: Chinese-cultural content (daily quotes, Idiom & Brain Teaser games) intentionally stays in Chinese — translating them would lose the flavor.
 
@@ -114,7 +114,7 @@ Notes:
 
 - Pure HTML/CSS/vanilla JS — zero build/run dependencies, no npm install needed to use the app.
 
-- Run all tests: npm test (currently 535 passing, covering storage/encryption (incl. races & future-version resilience)/structured storage status (TrustLayer contract)/UI/all modules/styles/animations/wallpaper/mobile adaptation/perf/game engines/interaction regressions/PWA/search/XSS (incl. attribute injection)/contrast/IndexedDB/notifications/Web Worker/crisis fallback/motion-layer contracts & behavior).
+- Run all tests: npm test (currently 538 passing, covering storage/encryption (incl. races & future-version resilience)/structured storage status (TrustLayer contract)/UI/all modules/styles/animations/wallpaper/mobile adaptation/perf/game engines/interaction regressions/PWA/search/XSS (incl. attribute injection)/contrast/IndexedDB/notifications/Web Worker/crisis fallback/motion-layer contracts & behavior).
 
 - Type check (zero-build): npm run typecheck (JSDoc + tsc --noEmit, contracts locked in globals.d.ts).
 
