@@ -21,6 +21,9 @@
 - **加密态纳入多标签写锁（ADR-007 边界更新）**：`_encSave` 落盘改经 `_lockedEncWrite`（Promise 化锁内封装）——`'sonder-writer'` 锁内做同款写前 meta 检查，另一标签已写更新密文时让位吸收（`_absorbNewer` 解密吸收、本次密文不落盘）；无锁环境降级直接落盘（等价旧行为）。`enableEncryption` 回读验证时序不变（锁回调完成后才执行）；写锁契约测试扩 3 项加密态用例（真加密引擎：meta 一致正常落盘 / 另一标签已写密文 → 让位 + `/store/yielded`，+ /data/all / 无锁降级）。
 - 测试基线 521 → 524（全量绿）。
 - 离线缓存升版 v31 → v32（store.js 内容指纹变化触发 sync-sw 自动升版，ASSETS 39 项不变）。
+- **TrustLayer 结构化存储状态（Phase 1）**：store.js 新增 `getStorageStatus()`（同步 `{ok, backend, degraded, critical, reason}`）/ `persistResult()`（Promise 版，落盘后如实返回结果）/ `diagnostics()`（聚合诊断）三个公共 API；落盘失败点统一记录 reason 归类（quota / security / indexeddb_write_failed / encryption_failed / storage_error）；`_persistFailed`/`_idbFailed` 真源与 `hasPersistIssue()`/`persistIssueDetail()` 旧 API 行为零变更（quota-fail 既有测试原样通过）；globals.d.ts 同步声明并新增 `SonderStorageStatus`/`SonderStorageDiagnostics` 类型（契约测试自动校验两边一致）。新增契约测试 `tests/store-trustlayer-status.test.js` 11 项。
+- 测试基线 524 → 535（全量绿）。
+- 离线缓存升版 v32 → v33（store.js 内容指纹变化触发 sync-sw 自动升版，ASSETS 39 项不变）。
 
 ### 计划（来自 38 项审计清单，按优先级）
 
