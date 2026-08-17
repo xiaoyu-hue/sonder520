@@ -33,7 +33,7 @@
   2. 派发 `offline` 事件 → 切换正确；
   3. 派发 `online` 事件 → 恢复正确；
   4. 初始离线（模拟 `navigator.onLine=false`）→ 直接显示离线提示。
-- **回归**：`npm test`（578 项基线全绿）、`npm run typecheck`、`npm run lint`。
+- **回归**：`npm test`（583 项基线全绿，578 旧基线 + 新增 5 项）、`npm run typecheck`、`npm run lint`。
 - **E2E**：`npm run test:e2e`（5 项冒烟全绿，断言 v40 缓存版本）。
 - **同步**：内容指纹变化 → `npm run sync-sw`（v40 → v41），随后同步 CHANGELOG / AGENTS / ADR。
 

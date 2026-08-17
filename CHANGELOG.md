@@ -47,6 +47,7 @@
 - **离线状态指示器（CHANGELOG 计划关闭）**：页脚 `#netOnline` / `#netOffline` 早已就位但全库无 JS 控制（半成品）——app.js 补上 `applyNetState()`（按 `navigator.onLine` 切 hidden）+ `online`/`offline` 事件监听 + 启动初始化，断网/恢复即时切换，只动 hidden 属性、无新 DOM/CSS/事件名；harness 支持 `opts.online` 初始状态注入。新增契约测试 `tests/offline-indicator.test.js` 5 项（初始在线 / offline 切换 / online 恢复 / 初始离线 / 不影响其他页脚元素）。
 - 测试基线 578 → 583（新增离线指示器 5 项，全量绿；typecheck/lint 零问题，E2E 5/5）。
 - 离线缓存升版 v40 → v41（app.js 指纹变化触发 sync-sw 自动升版，ASSETS 40 项不变）。
+- **文档数字一致性收尾**：一次性对齐各文档的测试基线（README/README.en 578 → 583、PRD 验收与架构节 521/514 → 583、device-acceptance 521 → 583 并更新日期 08-17）、缓存版本（PRD 当前描述 v19/v29 → v41）、PRD 头部版本标注与版本演进表新增 v6.0 行、README ADR 索引补全至 ADR-011。历史版本摘要中的数字（v5.x 当时基线、各试点迁移期基线）作为历史记录保留。
 
 ### 计划（来自 38 项审计清单，按优先级）
 

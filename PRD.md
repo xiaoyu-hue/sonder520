@@ -1,7 +1,7 @@
 # 个人工作生活 App · 产品需求文档（PRD）
 
-> 版本：v5.2
-> 状态：已完成开发并上线
+> 版本：v6.0（规划中，工程基线）
+> 状态：已完成开发并上线（v5.2 为最新发布版；v6.0 为渐进式框架演进，见 CHANGELOG）
 > 在线地址：
 
 主站1:
@@ -38,6 +38,7 @@ https://xiaoyu-hue.github.io/sonder520/
 | **v5.0** | **两轮评审修复 + 一轮补丁（16 项）：统计语义、CSV 注入、扫雷死局、认输归属、渲染副作用、引擎校验、存储韧性、搜索索引、对比度 token、壳降级、测试 flake 加固、扫雷首击插旗暂存、终局认输防重记、AI 重入守卫、撤销不顶替当前页；测试深化至 423 项** |
 | **v5.1** | **性能与可靠性四补丁：PBKDF2 派生密钥缓存（解锁提速）、SonderBus 事件总线（跨模块解耦自动刷新）、五子棋 AI 异步化（Web Worker + 同步兜底 + 过期应手丢弃）、持久化危机兜底（双写失效红色警示条强制引导导出）；测试深化至 451 项** |
 | **v5.2** | **工程防线补强 + 可靠性（9 项）：表单注入转义（data-k 属性 + getAttribute 匹配）、waitFor 条件轮询（消除固定延时竞态）、测试超时硬性兜底（npm 30s + CI 10min）、__SONDER_TEST__ 门闩（测试钩子隔离）、死代码清理、重复逻辑收敛（num0/esc/hashStr/copyText）、弱覆盖域页面交互补测 29 项、CI Node 20 弃用警告消除、PWA 导航 Network First（刷新即拿新版，离线仍回退）；测试深化至 514 项** |
+| **v6.0** | **Sonder-Frame 渐进式框架（规划中，未发布）：TrustLayer 结构化存储状态（getStorageStatus/persistResult/diagnostics）+ IndexedDB 优先写（主快照反转，LS 降级副本）+ 标准模块工厂（ModuleFactory CRUD/Schema/净化/注册表，prepend/timeField/orderField/move 扩展）+ EventBridge 事件契约（EVENT 常量表）+ 试点迁移（memo/today/dev 入厂，嵌套边界/委托绑定收敛）+ 离线状态指示器；测试基线 514 → 583 项** |
 
 ### v5.0 更新摘要（本版）
 
@@ -172,7 +173,7 @@ https://xiaoyu-hue.github.io/sonder520/
   - 五子棋大棋盘 ≤720px：棋盘宽 `min(97vw,480px)`、格距 2px、内边距 8px、格子方形、棋子 86% 填充；≤360px 进一步压缩；棋盘始终不横向溢出（照顾 iPhone SE 一档小屏）
   - 扫雷棋盘手机端：棋盘宽 `max(100%, 列数×26px)` 横向滚动容器，格子 ≥26px 触控尺寸
   - 安全区 `env(safe-area-inset-bottom)`、`100vh→100dvh` 回退（老 iOS/安卓）、触控目标 ≥44px、输入控件 16px 防 iOS 聚焦缩放、`color-scheme` 同步表单与滚动条
-- **PWA 友好**：`viewport-fit=cover` + `apple-mobile-web-app-capable`，支持「添加到主屏幕」作为 App 打开；Service Worker 离线缓存（当前缓存版本 v19，`npm run sync-sw` 自动同步清单并递增版本）；导航请求网络优先（刷新即拿新版，离线回退缓存首页），静态资源缓存优先。
+- **PWA 友好**：`viewport-fit=cover` + `apple-mobile-web-app-capable`，支持「添加到主屏幕」作为 App 打开；Service Worker 离线缓存（当前缓存版本 v41，`npm run sync-sw` 自动同步清单并递增版本）；导航请求网络优先（刷新即拿新版，离线回退缓存首页），静态资源缓存优先。
 
 ---
 
@@ -300,9 +301,9 @@ https://xiaoyu-hue.github.io/sonder520/
 9. 娱乐游戏六款：井字棋 / 五子棋（AI 三档难度 / 双人，悔棋认输开局确认制，全规则回归锁定）+ 猜数字 / 扫雷 / 猜成语 / 脑筋急转弯（战绩并入对战记录，含 solo 模式与备注、AI 难度显示；小游戏最佳纪录统一存储）。
 10. 数据与设置：导出/导入/统计（完成率分母=今日到期任务）/清空战绩/主题/模块开关/动画帧率（60/90/120）/数据迁移（IndexedDB）/加密（向导+锁屏+免密会话+韧性防线）/桌面通知/本周报告一键复制/壁纸上传。
 11. 统一交互：弹窗规则、二次确认、Esc 关闭、Toast、确认框防叠、弹层焦点管理（落焦/陷阱/归还）。
-12. 可靠性：PWA 离线可用（缓存 v19 自动同步；导航网络优先，刷新即新版）、存储双写双存、存储超 4.5MB 顶部警示条、双写后端同时失效时红色危机警示条强制引导导出、XSS 全模块净化（含属性注入与表单字段 key 转义）、可选加密、性能优化（序列化去重/搜索索引缓存/AI 剪枝/派生密钥缓存）、错误上报与壳层降级。
+12. 可靠性：PWA 离线可用（缓存 v41 自动同步；导航网络优先，刷新即新版）、存储双写双存、存储超 4.5MB 顶部警示条、双写后端同时失效时红色危机警示条强制引导导出、XSS 全模块净化（含属性注入与表单字段 key 转义）、可选加密、性能优化（序列化去重/搜索索引缓存/AI 剪枝/派生密钥缓存）、错误上报与壳层降级。
 13. 工程防线：eslint 全绿、零构建类型契约（d.ts + tsc）、innerHTML 白名单审计、状态双轨契约、store 领域拆分、脚本清单单一真源。
-14. 自动化测试 521 项全绿（各版本全量验证）。
+14. 自动化测试 583 项全绿（各版本全量验证）。
 
 ---
 
@@ -334,7 +335,7 @@ https://xiaoyu-hue.github.io/sonder520/
 14. 导出 JSON → 修改数据 → 导入恢复，数据与导出时一致（导入前有覆盖提示）。
 15. 持久化：任意数据录入后刷新、关标签、重启浏览器均不丢失。
 16. 手机外链、离线打开本地 index.html 均可用；数据只在本地浏览器中。
-17. 工程验收：npm test（521 项）、npm run typecheck、npm run lint 三绿。
+17. 工程验收：npm test（583 项）、npm run typecheck、npm run lint 三绿。
 
 ---
 
@@ -348,11 +349,11 @@ https://xiaoyu-hue.github.io/sonder520/
   - 游戏：`games-logic.js`（纯对弈规则与三档难度 AI 策略：井字棋完全搜索、五子棋启发式评分 + 困难档前瞻剪枝；猜数字/扫雷/猜成语/脑筋急转弯规则与题库）+ `games-shared.js`（共享状态与 AI 调度，须最先加载）+ `games-mini.js`（猜数字/扫雷/猜成语/脑筋急转弯视图与纪录）+ `games-battle.js`（对弈视图、悔棋/认输/开局/战绩、AI 落子节奏与 Worker 调度）+ `games-view.js`（渲染纯函数）+ `games.js`（页面编排：render 分派/游戏选择/战绩区/测试钩子）+ `game-worker.js`（五子棋 AI 计算 Web Worker，异步不卡 UI；Worker 不可用时自动降级为同步计算，过期应手丢弃）
   - 搜索：`search.js`（全局索引 + 缓存、模糊匹配、分组跳转、水墨高亮定位）
   - 扩展渲染：`markdown.js`（技术笔记 Markdown 渲染与代码复制）
-  - 壳层：`app.js`（路由/主题跟随/帧率档位/警示条/危机警示条/导航降级）、`error-guard.js`（全局错误安全网与上报）、`sw.js`（Service Worker 离线缓存，当前 v29，脚本自动同步；导航网络优先）、`manifest.json`（PWA 清单与图标）
+  - 壳层：`app.js`（路由/主题跟随/帧率档位/警示条/危机警示条/导航降级/离线状态指示）、`error-guard.js`（全局错误安全网与上报）、`sw.js`（Service Worker 离线缓存，当前 v41，脚本自动同步；导航网络优先）、`manifest.json`（PWA 清单与图标）
   - 类型：`globals.d.ts`（Pages/SonderStore 61 个公开方法/UI 全局接口 + 24 个领域类型契约）
 - **主题系统**：CSS 自定义属性 + 深浅双主题；`@supports` 为不支持 `backdrop-filter` 的浏览器降低层级；壁纸独立 img 元素 + `object-fit: cover` + 透明度变量；文字/强调色 token 化并满足 WCAG AA。
 - **数据兼容**：读取时做字段归一化（缺失补默认、非法值夹取 + 9 处旧字段迁移），支持历史版本数据平安迁移；IndexedDB 与 localStorage 双写双存，冲突按保存时间取新；加密开关对旧数据完全兼容（未启用时无感）；未来加密版本密文原样保留不破坏。
 - **移动端棋盘细节**：15 列盘使用 grid；`.game-board.big` 手机断点压缩格距与边距、格子 `min-height: 0` 保持方正 1:1；宽度 `min(97vw, 480px)` 保证不溢屏；扫雷用 `max(100%, 列数×26px)` + 横向滚动容器保证格子 ≥26px；棋盘格子为游戏固有热区（整盘须尽收眼底），其余全部 UI 触控目标 ≥44px。
 - **工程防线**：eslint@8（无注释空 catch 禁止）、零构建 TypeScript 类型检查（JSDoc + tsc --noEmit）、innerHTML 白名单审计（24 处赋值点全部验证）、契约测试（contract/behavior/state/innerhtml）、index.html 脚本单一真源（harness 自动解析）、`scripts/sync-sw.js` 自动同步 SW 清单并递增缓存版本。
-- **自动化测试**：jsdom + `node --test`（glob 全量）+ fake-indexeddb；覆盖存储、加密（含竞态/边界/未来版本韧性/派生缓存）、UI、全部模块、样式、动效、壁纸、移动端自动适配、性能、游戏引擎（胜负检测/禁手逻辑/AI 策略/六款游戏/Worker 行为）、交互质量回归（确认弹窗防叠、悔棋语义、终局锁定、棋盘压缩）、PWA、搜索、XSS 净化（含属性注入）、IndexedDB 双写与容量警示、持久化危机兜底、通知、对比度、CSS 变量契约、周报、本周报告，当前 **514 项全部通过**（`npm test` 全绿）。
+- **自动化测试**：jsdom + `node --test`（glob 全量）+ fake-indexeddb；覆盖存储、加密（含竞态/边界/未来版本韧性/派生缓存）、UI、全部模块、样式、动效、壁纸、移动端自动适配、性能、游戏引擎（胜负检测/禁手逻辑/AI 策略/六款游戏/Worker 行为）、交互质量回归（确认弹窗防叠、悔棋语义、终局锁定、棋盘压缩）、PWA、搜索、离线状态指示、XSS 净化（含属性注入）、IndexedDB 双写与容量警示、持久化危机兜底、通知、对比度、CSS 变量契约、周报、本周报告，当前 **583 项全部通过**（`npm test` 全绿）。
 - **持续质量**：每轮改动后执行源码 `node --check` 语法检查、`npm run typecheck`（零构建类型检查）、`npm run lint` 与全量测试；改动脚本/入口后运行 `npm run sync-sw` 同步离线缓存清单。
