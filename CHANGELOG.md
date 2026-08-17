@@ -31,8 +31,11 @@
 - 测试基线 538 → 561（新增 ModuleFactory 23 项，全量绿）。
 - 离线缓存升版 v34 → v35（js/framework/ModuleFactory.js 指纹变化触发 sync-sw 自动升版，ASSETS 40 项）。
 - **跨模块事件总线契约（EventBridge v0.1，Sonder-Frame ⑤ EventBridge 层）**：`js/event-bus.js`（SonderBus）原地收编升级——新增冻结常量表 `EVENT`（`DATA_ALL` / `STORE_YIELDED` / `data(key)` 路径生成器）作为事件名唯一真源；payload 契约文档化（`/data/<集合>` 广播 detail 恒 undefined，订阅者只依赖 path；`/data/all` 全量变更；`/store/yielded` 多标签让位）；`SonderBus.on` 返回 unsubscribe 固化为契约（重复取消幂等，销毁时必须调用）。store.js `_emitChange`/`_absorbNewer` 改经常量表生成（Node 独立加载回落等价字面量，广播路径输出恒等——既有写锁/广播测试原样通过）；存量页面模块字面量订阅维持兼容，收编随各模块迁移逐模块进行。globals.d.ts 补 `SonderBusApi`/`SonderBusInstance`/`SonderBusEventMap` 类型。提交 ADR-010。新增契约测试 `tests/event-bridge.test.js` 8 项。
-- 测试基线 538 → 561（全量绿）。
-- 离线缓存升版 v34 → v35（新增 ModuleFactory 进 ASSETS 40 项，sync-sw 自动升版）。
+- 测试基线 561 → 569（新增 EventBridge 契约 8 项，全量绿）。
+- 离线缓存升版 v35 → v36（event-bus.js/store.js 指纹变化触发 sync-sw 自动升版，ASSETS 40 项不变）。
+- **试点迁移协议 + memo 入厂（Phase 7 起点，Sonder-Frame 渐进式改造首个真实消费）**：确立迁移协议（文件不改名不换位、DOM/Page/store API 契约零变更、数据写同一 state 集合、customRender 复用既有渲染、VisualEngine 暂不进框架、订阅改经 EVENT 表、工厂缺口走配置级纯增量扩展、旧行为测试原样全绿为成功判据）。**ModuleFactory v0.1.1**：新增 `config.prepend`（新增最在前，默认 append）与 `config.timeField`（集合时间戳字段名：新增写入、编辑不刷、不生成默认 createdAt/updatedAt；validate 拒绝非法值）——不配置时与 v0.1 行为完全一致。**memo.js 迁移**：迁入 `createModule`（id=memos + prepend + timeField:time，text/archived 字段声明），模块懒初始化，工厂 renderer 与页面绘制共用函数，删除撤销仍走 `store.undoRemove()`（P5a 守卫保留），home/app 的 `store.addMemo` 调用不变；globals.d.ts `SonderModuleConfig` 补 prepend/timeField 类型。提交 ADR-011。工厂扩展 4 项契约测试。
+- 测试基线 569 → 573（新增工厂扩展契约 4 项，全量绿）。
+- 离线缓存升版 v36 → v37（memo.js / ModuleFactory.js 指纹变化触发 sync-sw 自动升版，ASSETS 40 项不变）。
 
 ### 计划（来自 38 项审计清单，按优先级）
 
