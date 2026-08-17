@@ -28,6 +28,9 @@
 - 测试基线 535 → 538（全量绿）。
 - 离线缓存升版 v33 → v34（store.js 内容指纹变化触发 sync-sw 自动升版，ASSETS 39 项不变）。
 - **标准模块工厂（Phase 3，Sonder-Frame ② ModuleFactory 层 v0.1）**：新增 `js/framework/ModuleFactory.js`（UMD 自包含，store 实例由 `createModule(store, config)` 注入）——config 三件套（validate → normalize → freeze），第一版字段类型只开放 text/textarea/date/boolean/number/select/array；记录生命周期「净化 → required 校验（临时副本）→ 落盘 → 广播」，校验失败不污染内存；`id/createdAt/updatedAt` 工厂生成，id 为保留键；query 纯净（不改 state、不触 render、外发浅拷贝）；删除进 `_undoPush` 撤销栈；destroy 仅使模块失效不碰数据。**数据安全关键**：`_registerCollection` 将集合纳入 normalize 白名单（store.js 新增 `EXTRA_COLLECTIONS` 注册表 + defaultState 保底），重载/导入/解密/清空全路径保留工厂数据（E2E「新建→刷新→还在」成立）；storageKey 粒度持久化留待 Phase 7。提交 ADR-009。新增契约测试 `tests/module-factory.test.js` 23 项。
+- 测试基线 538 → 561（新增 ModuleFactory 23 项，全量绿）。
+- 离线缓存升版 v34 → v35（js/framework/ModuleFactory.js 指纹变化触发 sync-sw 自动升版，ASSETS 40 项）。
+- **跨模块事件总线契约（EventBridge v0.1，Sonder-Frame ⑤ EventBridge 层）**：`js/event-bus.js`（SonderBus）原地收编升级——新增冻结常量表 `EVENT`（`DATA_ALL` / `STORE_YIELDED` / `data(key)` 路径生成器）作为事件名唯一真源；payload 契约文档化（`/data/<集合>` 广播 detail 恒 undefined，订阅者只依赖 path；`/data/all` 全量变更；`/store/yielded` 多标签让位）；`SonderBus.on` 返回 unsubscribe 固化为契约（重复取消幂等，销毁时必须调用）。store.js `_emitChange`/`_absorbNewer` 改经常量表生成（Node 独立加载回落等价字面量，广播路径输出恒等——既有写锁/广播测试原样通过）；存量页面模块字面量订阅维持兼容，收编随各模块迁移逐模块进行。globals.d.ts 补 `SonderBusApi`/`SonderBusInstance`/`SonderBusEventMap` 类型。提交 ADR-010。新增契约测试 `tests/event-bridge.test.js` 8 项。
 - 测试基线 538 → 561（全量绿）。
 - 离线缓存升版 v34 → v35（新增 ModuleFactory 进 ASSETS 40 项，sync-sw 自动升版）。
 

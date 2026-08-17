@@ -19,5 +19,6 @@
 | ADR-007 | 多标签写锁（Web Locks 让位协议） | 已采纳 |
 | ADR-008 | 全局符号契约（JSDoc @this 模板为成员真源） | 已采纳 |
 | ADR-009 | 标准模块工厂（ModuleFactory v0.1：CRUD/Schema/净化/注册） | 已采纳 |
+| ADR-010 | 跨模块事件总线契约（EventBridge v0.1：EVENT 常量表 + payload 契约） | 已采纳 |
 
 新增 ADR 时复制任意已采纳 ADR 的头部模板，先写「提议」，拍板后改「已采纳」。
