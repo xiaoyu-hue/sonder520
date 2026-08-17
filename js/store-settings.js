@@ -19,7 +19,7 @@
     this._emitChange('settings');
     return this.state.settings.wallpaperOpacity;
   };
-  /* 自定义壁纸：data URL 存取，不走主快照（返回是否成功，配额写满返回 false） */
+  /* 自定义壁纸：data URL 存取，不进持久化快照（返回是否成功，配额写满返回 false） */
   Store.prototype.getCustomWallpaper = function () {
     try { return this._storage ? this._storage.getItem(h.STORAGE_WALLPAPER_KEY) : null; } catch (e) { return null; }
   };

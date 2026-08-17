@@ -110,7 +110,7 @@
   }
 
   /* 存储接近上限（约 5MB）时顶部显示警示条：导出备份 / 迁移至 IndexedDB。
-   * 持久化危机（LS 写失败且 IDB 兜底失效，数据只存在内存）时升级为红色危机条：
+   * 持久化危机（LS 副本与 IDB 主快照同时不可用，数据只存在内存）时升级为红色危机条：
    * 只留导出入口，不写入 dismiss（无法一键永久关闭），任一侧恢复后自动消失。 */
   function quotaCheck() {
     var bar = document.getElementById('quotaBar');
@@ -125,7 +125,7 @@
         warn.hidden = true;
         failMsg.hidden = false;
         orEl.hidden = true;
-        migrate.hidden = true; /* LS 写失败时迁移无意义（IDB 本就在兜底） */
+        migrate.hidden = true; /* 双失败危机时迁移无意义（IDB 主快照已不可用） */
         bar.classList.add('qb-fail');
       } else {
         warn.hidden = false;

@@ -39,15 +39,15 @@
   /* 加密盐（16 字节 base64）独立明文存放：未解锁时也须能读它以派生密钥。
    * 盐无需保密（仅防彩虹表），数据本体仍是密文。 */
   var STORAGE_SALT_KEY = 'sonder_encsalt_v1';
-/* 自定义壁纸（base64 data URL，独立存放：不进主快照/IDB，避免撑爆配额） */
+/* 自定义壁纸（base64 data URL，独立存放：不进持久化快照 LS 副本/IDB 主快照，避免撑爆配额） */
 var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
   var ENC_FORMAT = 'sonder-enc-v1';
   var BACKUP_ENC_FORMAT = 'sonder-enc-backup-v1';
 
   /* ---------- IndexedDB 层 ----------
-   * localStorage 上限约 5MB，数据增长后可能写满。Sonder 采用双写双存：
-   * 每次保存同时写 localStorage 与 IndexedDB（容量大），任一被清空时
-   * 另一份兜底恢复。冲突以 savedAt 时间戳取新。 */
+   * 主快照 = IndexedDB（真源，容量大）；localStorage = 副本（降级后备镜像，
+   * 兼跨标签写锁协议基线）。每次保存双写双存，任一被清空时另一份恢复。
+   * 冲突以 savedAt 时间戳取新。 */
   var IDB_NAME = 'sonder-db';
   var IDB_STORE = 'state';
   var IDB_KEY = 'state';
@@ -283,10 +283,10 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     this._encSize = 0;
     this._idbEncLocked = false;
     this._undo = []; /* P4c 删除撤销栈（内存态，不持久化）：{list,at,data} 或 {restore} */
-    this._pendingLocal = undefined; /* 主快照待写（批量防抖：一次 idle 只落最新一份） */
+    this._pendingLocal = undefined; /* 副本快照待写（批量防抖：一次 idle 只落最新一份） */
     this._localFlushHandle = null;  /* 已调度的 requestIdleCallback 句柄（无 idle 时为 null） */
-    this._persistFailed = false;    /* localStorage 主快照最近一次写入失败（配额满等） */
-    this._idbFailed = false;        /* IndexedDB 兜底副本最近一次写入失败 */
+    this._persistFailed = false;    /* localStorage 副本最近一次写入失败（配额满等；主快照 IndexedDB 不受影响） */
+    this._idbFailed = false;        /* IndexedDB 主快照最近一次写入失败 */
     this._lastPersistError = null;  /* 最近一次持久化错误（诊断用） */
     this._statusReason = null;      /* 最近一次持久化失败的原因分类（quota 等，结构化状态派生用） */
   }
@@ -358,12 +358,12 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
       });
     }).catch(function () { return null; });
   };
-  /* 未解锁判定：localStorage 主快照为密文，或 IDB 侧存在待解锁密文（loadIdb 探测标记） */
+  /* 未解锁判定：localStorage 副本为密文，或 IDB 侧存在待解锁密文（loadIdb 探测标记） */
   Store.prototype.needsUnlock = function () {
     return this._encKey ? false : (this._hasEncSnapshot() || !!this._idbEncLocked);
   };
 
-  /* 主快照 setItem 批量防抖：放入 requestIdleCallback 执行，页面空闲时统一落盘。
+  /* 副本快照（LS）setItem 批量防抖：放入 requestIdleCallback 执行，页面空闲时统一落盘。
    * 一次 idle 周期内多次 save 只写最新快照（_pendingLocal 覆盖），避免密集保存
    * 反复序列化写 localStorage 阻塞主线程。无 requestIdleCallback 的环境
    * （Node/测试/旧浏览器）同步落盘，保证存储一致性。
@@ -399,14 +399,14 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     var p = null;
     try {
       p = locks.request('sonder-writer', function () {
-        /* 锁内：写前检查权威快照是否已被其他标签更新（meta 版本比较）。
+        /* 锁内：写前检查 LS 快照是否已被其他标签更新（meta 版本比较）。
          * 本实例自上次确认后未见过的更新 meta → 本次待写基于旧内存 state，
          * 直接覆盖会丢新数据（LWW 丢数据场景）→ 让位：吸收新快照、不覆盖。
          * 相同/更旧 meta → 正常落盘。 */
         if (self._storage) {
           var curMeta = null;
           try { curMeta = self._storage.getItem(STORAGE_META_KEY); } catch (e) { curMeta = null; }
-          /* 权威快照 meta 与本实例基线不一致（另一标签已写/外部变更）→ 让位不覆盖 */
+          /* LS 快照 meta 与本实例基线不一致（另一标签已写/外部变更）→ 让位不覆盖 */
           if (curMeta && curMeta !== self._lastSeenMeta) {
             done = true;
             self._absorbNewer();
@@ -420,7 +420,7 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     } catch (e) { fallback(); }
   };
 
-  /* 让位：放弃本次旧快照覆盖，改为吸收 localStorage 中的最新权威快照（其他标签已写更新）。
+  /* 让位：放弃本次旧快照覆盖，改为吸收 localStorage 中的最新 LS 快照（其他标签已写更新）。
    * 重载后重置内存基线并广播全量重绘；密文快照走 _decryptParse（有会话密钥时）。
    * 无论吸收结果如何（含解析失败保持现状），先广播让位事件——另一标签已接管，
    * 本标签未保存的输入已被放弃，UI 应即时提示用户。 */
@@ -446,7 +446,8 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     });
   };
 
-  /* 实际写 localStorage（权威快照；写满时记失败标记，IDB 副本兜底）。只写 _pendingLocal 最新一份 */
+  /* 实际写 localStorage（降级后备副本；写满只停副本停更，IndexedDB 主快照不受影响）。
+   * 只写 _pendingLocal 最新一份 */
   /** @this {{ _storage: any, _meta: any, _pendingLocal: any, _persistFailed: boolean, _lastPersistError: any, _lastSeenMeta: any, _statusReason: string }} */
   Store.prototype._doLocalFlush = function () {
     if (this._pendingLocal === undefined) return;
@@ -458,10 +459,10 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
       this._persistFailed = false;
       this._lastPersistError = null;
       this._statusReason = null;
-      this._lastSeenMeta = this._meta; /* 多标签写锁基线：本实例已落盘的权威版本 */
+      this._lastSeenMeta = this._meta; /* 多标签写锁基线：本实例已落盘到 LS 的版本（跨标签协议仍以 LS meta 为基线） */
     } catch (e) {
-      /* 存储满（QuotaExceededError / NS_ERROR_DOM_QUOTA_REACHED）等错误：置失败标记。
-       * 数据仍在内存与 IDB 副本侧；若 IDB 也不可用则 hasPersistIssue() 指挥 UI 提示导出 */
+      /* 存储满（QuotaExceededError / NS_ERROR_DOM_QUOTA_REACHED）等错误：置副本失败标记。
+       * 数据仍在内存与 IndexedDB 主快照侧；仅当主快照也不可用时 hasPersistIssue() 指挥 UI 提示导出 */
       this._persistFailed = true;
       this._lastPersistError = e;
       this._statusReason = classifyFailReason(e);
@@ -479,10 +480,10 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     if (this._pendingLocal !== undefined) this._doLocalFlush();
   };
 
-  /* 异步写 IndexedDB。串行队列避免事务竞争；失败静默（localStorage 仍兜底）。
+  /* 异步写 IndexedDB（主快照，真源）。串行队列避免事务竞争；失败静默（localStorage 副本仍兜底）。
    * 只接受调用方显式传入的原始串（明文或密文格式原样落盘），extra 合并进 entry（如加密盐）。
    * undefined/null/空串一律跳过——绝不回退到内存 state 序列化：锁定态下内存是明文空
-   * defaultState，回退写盘会把明文空数据写进 IDB，破坏密文兜底副本（loadIdb 空 IDB 回填路径）。 */
+   * defaultState，回退写盘会把明文空数据写进 IDB，破坏密文主快照（loadIdb 空 IDB 回填路径）。 */
   /** @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _idbWrite: any, _lastJson: string, _rev: number, _idbFailed: boolean, _statusReason: string }} */
   Store.prototype._idbWrite = function (json, extra) {
     if (!idbAvailable()) return;
@@ -499,9 +500,9 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
         return idbPut(db, IDB_KEY, entry);
       });
     }).then(function () {
-      self._idbFailed = false; /* 兜底副本写入成功：解除 IDB 侧失败标记 */
+      self._idbFailed = false; /* 主快照写入成功：解除 IDB 侧失败标记 */
     }).catch(function (err) {
-      /* IDB 写入失败不影响主流程（localStorage 仍兜底），但记失败标记并上报便于发现环境问题 */
+      /* IDB 主快照写入失败：localStorage 副本仍兜底（数据安全），记失败标记并上报便于发现环境问题 */
       self._idbFailed = true;
       if (!self._statusReason) self._statusReason = 'indexeddb_write_failed';
       try { console.error('[Sonder] IndexedDB 写入失败', err); } catch (e) { /* 忽略 */ }
@@ -523,6 +524,10 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
         try { console.error('[Sonder] 加密持久化失败', err); } catch (e) { /* 忽略 */ }
       });
     }
+    /* 双写：LS 副本先同步刷新 meta（版本时间戳基线，IDB 主快照用同一 savedAt），
+     * IDB 主快照紧随异步落盘。顺序不可交换：_idbWrite 依赖 _persistLocal 已设置的 _meta，
+     * 否则 IDB savedAt 恒旧于 LS，读取时永远误判"LS 更新"（④ 主写转换，见 ADR 说明）。
+     * 读取路径按版本取新（loadIdb），任一侧失败另一侧即兜底，数据安全不依赖写序。 */
     else { this._persistLocal(json); this._idbWrite(json); }
   };
 
@@ -573,7 +578,7 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
           if (self._storage) {
             var curMeta = null;
             try { curMeta = self._storage.getItem(STORAGE_META_KEY); } catch (e) { curMeta = null; }
-            /* 权威快照 meta 与本实例基线不一致（另一标签已写/外部变更）→ 让位不覆盖 */
+            /* LS 快照 meta 与本实例基线不一致（另一标签已写/外部变更）→ 让位不覆盖 */
             if (curMeta && curMeta !== self._lastSeenMeta) {
               done = true;
               self._absorbNewer();
@@ -601,7 +606,7 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
         if (!entry) {
           /* IDB 为空：用 localStorage 原始串（密文或明文格式原样）回填。
            * 禁用内存 state 序列化——锁定态下内存是空 defaultState，
-           * 序列化会把明文空数据写进 IDB，破坏密文兜底副本 */
+           * 序列化会把明文空数据写进 IDB，破坏密文主快照 */
           var lsRaw = null;
           if (self._storage) {
             try { lsRaw = self._storage.getItem(STORAGE_KEY); } catch (e) { lsRaw = null; }
@@ -663,12 +668,12 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
   Store.prototype.migrateToIdb = function () {
     var self = this;
     if (!idbAvailable()) return Promise.resolve(false);
-    /* 锁定态守卫：内存是明文空 defaultState，序列化直写会以明文空数据覆盖 IDB 密文兜底 */
+    /* 锁定态守卫：内存是明文空 defaultState，序列化直写会以明文空数据覆盖 IDB 密文主快照 */
     if (this.needsUnlock()) return Promise.resolve(false);
     this._meta = nowISO();
     var json = JSON.stringify(this.state);
     if (this._encKey) {
-      /* 加密态：IDB 兜底必须与 LS 同为密文（走 _encSave 双写），不得写入内存明文 */
+      /* 加密态：IDB 主快照必须与 LS 副本同为密文（走 _encSave 双写），不得写入内存明文 */
       return this._encSave(json).then(function () { return true; }).catch(function () { return false; });
     }
     return openIdb().then(function (db) {
@@ -686,7 +691,8 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
   Store.prototype.isNearQuota = function () {
     return this.storageUsage() > QUOTA_SOFT_LIMIT;
   };
-  /* 持久化健康：localStorage 主快照写入失败，且 IndexedDB 兜底副本也不可用或已失败时，
+  /* 数据安全判定（IndexedDB 主快照 + localStorage 副本双保险）：
+   * localStorage 副本写入失败，且 IndexedDB 主快照不可用或已失败时，
    * 数据只存在于内存（刷新即丢）→ 返回 true。UI 据此显示"立即导出备份"危机警示条
    * （区别于接近上限的温和提醒；危机不写 quotaNoticeDismissed，无法一键永久关闭）。
    * 任一侧后续写入成功即自动复位。 */
@@ -698,17 +704,32 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     return this._lastPersistError;
   };
   /* 结构化存储状态（TrustLayer 契约：返回全新对象，不外泄内部引用）。
-   * ok=true 表示数据有可靠落点（localStorage 主快照成功，或失败但 IDB 兜底副本在）；
-   * degraded=true 表示主后端失败、靠兜底或待重试，功能可用但需留意；
-   * critical=true 表示数据仅存于内存（主失败且兜底不可用）——与 hasPersistIssue() 严格一致，
+   * 主快照 = IndexedDB（真源，容量大）；localStorage = 副本（降级后备镜像）。
+   * ok=true 表示数据有可靠落点（IDB 主快照成功，或主快照不可用但 LS 副本在）；
+   * degraded=true 表示存在存储层异常但不构成危机（主快照失败靠副本兜底，或副本停更）；
+   * critical=true 表示数据仅存于内存（主失败且副本不可用）——与 hasPersistIssue() 严格一致，
    * UI 应显示"立即导出备份"危机警示。
-   * reason 归类：quota / security / indexeddb_write_failed / encryption_failed / storage_error。 */
+   * reason 归类：quota / security / indexeddb_write_failed / indexeddb_unavailable /
+   * encryption_failed / storage_error。 */
   Store.prototype.getStorageStatus = function () {
     var status;
-    if (!this._persistFailed) {
-      status = { ok: true, backend: 'localStorage', degraded: false, critical: false, reason: null };
-    } else if (idbAvailable() && !this._idbFailed) {
-      status = { ok: true, backend: 'indexedDB', degraded: true, critical: false, reason: this._statusReason || 'storage_error' };
+    var primaryDown = !idbAvailable() || !!this._idbFailed;
+    if (!primaryDown) {
+      status = {
+        ok: true,
+        backend: 'indexedDB',
+        degraded: !!this._persistFailed,
+        critical: false,
+        reason: this._persistFailed ? (this._statusReason || 'storage_write_failed') : null
+      };
+    } else if (!this._persistFailed) {
+      status = {
+        ok: true,
+        backend: 'localStorage',
+        degraded: true,
+        critical: false,
+        reason: this._statusReason || (idbAvailable() ? 'indexeddb_write_failed' : 'indexeddb_unavailable')
+      };
     } else {
       status = { ok: false, backend: null, degraded: true, critical: true, reason: this._statusReason || 'storage_unavailable' };
     }
@@ -805,7 +826,7 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
       throw err;
     });
   };
-  /* 解锁：用密码派生密钥并解密主快照（localStorage 优先，缺则 IndexedDB）；
+  /* 解锁：用密码派生密钥并解密持久化快照（localStorage 优先，缺则 IndexedDB）；
    * 成功进入可用状态并复位锁定标记，失败状态原样 */
   Store.prototype.unlock = function (password) {
     var self = this;
@@ -859,7 +880,7 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
       });
     });
   };
-  /* 用给定密钥解密主快照（local 优先，缺则 IDB），失败一律 null */
+  /* 用给定密钥解密持久化快照（local 优先，缺则 IDB），失败一律 null */
   Store.prototype._decryptSnapshotKey = function (key) {
     var self = this;
     if (!Crypto) return Promise.resolve(null);
@@ -885,7 +906,7 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
       });
     }).catch(function () { return null; });
   };
-  /* 读取当前主快照（加密则需已解锁）：source = 'local' | 'idb' | 'any'。
+  /* 读取当前持久化快照（加密则需已解锁）：source = 'local' | 'idb' | 'any'。
    * 返回解析后的 state 对象或 null（读取/解密失败一律 null，绝不抛出覆盖调用方）。 */
   Store.prototype.readSnapshot = function (source) {
     var self = this;
