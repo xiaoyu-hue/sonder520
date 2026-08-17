@@ -11,6 +11,9 @@
  * 撤销语义与既有 remove 一致：删除记录进 store._undoPush 撤销栈。
  *
  * v0.1 边界：仅框架层落地，无生产模块消费；storageKey 粒度持久化属 Phase 7 迁移任务。
+ * v0.1.1（迁移试点前置扩展）：新增可选配置 prepend（add 最新在前，默认 append）
+ * 与 timeField（集合时间戳字段名——新增写入、编辑不刷、配置后不再生成默认
+ * createdAt/updatedAt；用于兼容既有 time 字段的集合）。不配置时行为与 v0.1 完全一致。
  * 集合注册：createModule 时经 store._registerCollection 纳入 normalize 白名单，
  * 保证"新建→刷新→还在"（含导入/解密/清空路径）；destroy 不注销，数据留存。
  * 字段净化：用户输入默认不可信——text/textarea/date 取 trim 字符串、
@@ -51,6 +54,15 @@
     }
     if (!Array.isArray(config.fields) || config.fields.length === 0) {
       throw new TypeError('ModuleFactory: config.fields 必须为非空数组');
+    }
+    if (config.prepend !== undefined && typeof config.prepend !== 'boolean') {
+      throw new TypeError('ModuleFactory: config.prepend 必须为布尔');
+    }
+    if (config.timeField !== undefined &&
+        (typeof config.timeField !== 'string' || !config.timeField.trim() ||
+         RESERVED_KEYS[config.timeField] ||
+         config.fields.some(function (f) { return f.key === config.timeField; }))) {
+      throw new TypeError('ModuleFactory: config.timeField 必须为未占用的字段名');
     }
     var seen = {};
     config.fields.forEach(function (f, i) {
@@ -97,7 +109,11 @@
       storageKey: config.storageKey,
       schemaVersion: config.schemaVersion,
       fields: fields,
-      fieldMap: fieldMap
+      fieldMap: fieldMap,
+      /* v0.1.1：prepend 新增在最前（unshift，默认 append）；
+       * timeField 集合时间戳字段名（新增写入、编辑不刷、不生成默认时间字段） */
+      prepend: config.prepend === true,
+      timeField: (typeof config.timeField === 'string' && config.timeField.trim()) ? config.timeField : null
     };
   }
 
@@ -174,12 +190,15 @@
       config: cfg,
       add: function (data) {
         requireLive();
-        var record = { id: h.uid(), createdAt: h.nowISO(), updatedAt: h.nowISO() };
+        var record = { id: h.uid() };
+        if (cfg.timeField) record[cfg.timeField] = h.nowISO();
+        else { record.createdAt = h.nowISO(); record.updatedAt = h.nowISO(); }
         cfg.fields.forEach(function (f) {
           record[f.key] = sanitize(cfg, f.key, data ? data[f.key] : undefined);
         });
         checkRequired(cfg, record);
-        collection().push(record);
+        if (cfg.prepend) collection().unshift(record);
+        else collection().push(record);
         store.save();
         store._emitChange(cfg.id);
         notify();
@@ -204,7 +223,7 @@
         cfg.fields.forEach(function (f) {
           if (Object.prototype.hasOwnProperty.call(patch, f.key)) rec[f.key] = next[f.key];
         });
-        rec.updatedAt = h.nowISO();
+        if (!cfg.timeField) rec.updatedAt = h.nowISO();
         store.save();
         store._emitChange(cfg.id);
         notify();

@@ -184,6 +184,65 @@ test('add: 触发 _emitChange 与 renderer', () => {
   assert.deepEqual(calls, ['testmod', 'render']);
 });
 
+/* ================= v0.1.1 扩展：prepend + timeField（迁移试点前置） ================= */
+
+test('契约: prepend/timeField 非法配置逐一拒绝', () => {
+  const { F, store } = makeModule();
+  const base = makeConfig();
+  [
+    { prepend: 'yes' },
+    { prepend: 1 },
+    { timeField: '' },
+    { timeField: '   ' },
+    { timeField: 7 },
+    { timeField: 'id' },
+    { timeField: 'createdAt' },
+    { timeField: 'title' } /* 与字段 key 冲突 */
+  ].forEach(bad => {
+    assert.throws(() => F.createModule(store, Object.assign({}, base, bad)), TypeError, JSON.stringify(bad));
+  });
+});
+
+test('prepend: true 时新增记录在最前（unshift）；配置冻结', () => {
+  const { F, store } = makeModule();
+  const m = F.createModule(store, makeConfig({ prepend: true }));
+  assert.equal(m.config.prepend, true);
+  m.add({ title: '一' });
+  m.add({ title: '二' });
+  assert.deepEqual(store.state.testmod.map(x => x.title), ['二', '一'], '最新在前');
+});
+
+test('timeField: 新增写入该字段、不生成默认时间字段；编辑不刷新 time', () => {
+  const { F, store } = makeModule();
+  const m = F.createModule(store, makeConfig({ timeField: 'time' }));
+  assert.equal(m.config.timeField, 'time');
+  const r = m.add({ title: 'A', done: true });
+  assert.ok(r.time && typeof r.time === 'string', '写入 time');
+  assert.ok(!('createdAt' in r), '不生成 createdAt');
+  assert.ok(!('updatedAt' in r), '不生成 updatedAt');
+  const before = r.time;
+  m.update(r.id, { title: 'B' });
+  assert.equal(r.time, before, '编辑不刷新 time（显示创建时间）');
+  assert.ok(!('updatedAt' in r), '编辑不产生 updatedAt 脏字段');
+});
+
+test('timeField + prepend 组合（memo 形态）：最新在前 + time 字段，跨实例持久化保留', async () => {
+  const S = require('../js/store.js');
+  const F = require('../js/framework/ModuleFactory.js');
+  const storage = memStorage();
+  const cfg = makeConfig({ prepend: true, timeField: 'time' });
+  const s1 = S.createStore(storage);
+  const m1 = F.createModule(s1, cfg);
+  m1.add({ title: '一' });
+  m1.add({ title: '二', done: true });
+  assert.equal(s1.state.testmod[0].title, '二');
+  assert.equal(s1.state.testmod[0].done, true, 'boolean 字段仍净化');
+  const s2 = S.createStore(storage);
+  await waitFor(() => s2.state.testmod && s2.state.testmod.length === 2, '跨实例读到持久化记录');
+  assert.deepEqual(s2.state.testmod.map(x => x.title), ['二', '一'], '顺序与字段形状跨实例保留');
+  assert.ok(s2.state.testmod[0].time, 'time 字段持久化');
+});
+
 /* ================= 行为：update ================= */
 
 test('update: 按 id 精确匹配，未命中返回 null', () => {
