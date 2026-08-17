@@ -36,6 +36,9 @@
 - **试点迁移协议 + memo 入厂（Phase 7 起点，Sonder-Frame 渐进式改造首个真实消费）**：确立迁移协议（文件不改名不换位、DOM/Page/store API 契约零变更、数据写同一 state 集合、customRender 复用既有渲染、VisualEngine 暂不进框架、订阅改经 EVENT 表、工厂缺口走配置级纯增量扩展、旧行为测试原样全绿为成功判据）。**ModuleFactory v0.1.1**：新增 `config.prepend`（新增最在前，默认 append）与 `config.timeField`（集合时间戳字段名：新增写入、编辑不刷、不生成默认 createdAt/updatedAt；validate 拒绝非法值）——不配置时与 v0.1 行为完全一致。**memo.js 迁移**：迁入 `createModule`（id=memos + prepend + timeField:time，text/archived 字段声明），模块懒初始化，工厂 renderer 与页面绘制共用函数，删除撤销仍走 `store.undoRemove()`（P5a 守卫保留），home/app 的 `store.addMemo` 调用不变；globals.d.ts `SonderModuleConfig` 补 prepend/timeField 类型。提交 ADR-011。工厂扩展 4 项契约测试。
 - 测试基线 569 → 573（新增工厂扩展契约 4 项，全量绿）。
 - 离线缓存升版 v36 → v37（memo.js / ModuleFactory.js 指纹变化触发 sync-sw 自动升版，ASSETS 40 项不变）。
+- **试点二入厂（today 今日计划，Phase 7 渐进迁移续）**：**ModuleFactory v0.1.2**——新增 `config.orderField`（启用保留键 order：add 自动分配、编辑不刷；validate 仅允许 `'order'` 且与 `prepend: true` 互斥）与 `move(id, dir)` API（'up'/'down' 交换相邻并重写全集合 order，越界/未知 id 返回 false 无副作用，未配置 orderField 时调用抛错）——语义对齐 `store.reorderTask`，不配置时与 v0.1.1 行为完全一致。**today.js 迁移**：迁入 `createModule`（id=tasks + orderField:order，title/note/date/priority/done/doneAt 字段声明），CRUD 与排序改经工厂（add/update/remove/move），订阅改经 EVENT 表并保存 unsubscribe，工厂操作完成统一重绘（路由守卫保留）；done/doneAt 联动为页面层业务规则（勾选写时间戳、取消置空，已完成组按 doneAt 排序）；store.addTask 等保留给其他调用方（home 勾选仍走 store.updateTask，共享同一 state.tasks）；🍅 专注计时器保留原实现；删除撤销仍走 `store.undoRemove()`（P5a 守卫保留）。globals.d.ts `SonderModuleConfig`/`SonderStandardModule` 补 orderField/move 类型。工厂扩展 5 项契约测试；innerhtml.test.js XSS 白名单行号随迁（87 → 129，赋值点语义不变）。
+- 测试基线 573 → 578（新增工厂扩展契约 5 项，全量绿）。
+- 离线缓存升版 v37 → v38（today.js / ModuleFactory.js 指纹变化触发 sync-sw 自动升版，ASSETS 40 项不变）。
 
 ### 计划（来自 38 项审计清单，按优先级）
 

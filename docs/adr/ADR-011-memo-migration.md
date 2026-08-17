@@ -15,4 +15,14 @@
   4. **类型契约同步**：globals.d.ts `SonderModuleConfig` 补 `prepend?: boolean` / `timeField?: string`；消费方配置以 `@type {SonderModuleConfig}` 注解（首个真实消费暴露的缺口：字段 type 字面量需类型收窄，注解后 typecheck 归零）。
 - 代价：memo.js 从 105 行增至 144 行（工厂接线 + 契约注释）；工厂文件增 ~20 行；globals.d.ts 增 2 个可选字段。运行期零新依赖、零行为变化（573 项测试含全部 memo 旧测试原样通过）。
 - 实证（2026-08-17）：工厂扩展 4 项新契约测试（非法配置拒绝 / prepend 最前 / timeField 新增写编辑不刷 / 组合跨实例持久化），全量 573 项绿；typecheck 与 lint 零错误；Playwright E2E 5/5（含「新建→刷新→还在」路径）；sw.js 缓存 v36 → v37。
+
+### 试点 2：today（今日计划）——2026-08-17
+
+- **选型**：today 为第二个标准模块消费方（251 行，集合 `state.tasks`，行为测试安全网 today-v3 / today-home-ux + 共享测试），排序语义（`order` 键）验证工厂对「带顺序的 CRUD」的通用性。quotes 经验证为纯函数工具（无 records 集合/无 CRUD），**不是**迁移候选，划出试点池。
+- **决策**：
+  1. **ModuleFactory v0.1.2 扩展（纯增量）**：`config.orderField`（启用保留键 `order`——add 自动分配 `collection().length`、编辑不刷；validate 仅允许 `'order'` 且与 `prepend: true` 互斥，非法配置立即失败）+ 新 API `move(id, dir)`（'up'/'down' 交换相邻并重写全集合 order 保连续；越界/未知 id 返回 false 无副作用；未配置 orderField 时抛 TypeError）。语义对齐既有 `store.reorderTask`。不配置时与 v0.1.1 行为完全一致（既有工厂测试零改动通过）。globals.d.ts 同步 `orderField?: 'order'` 与 `move(id, dir): boolean`。
+  2. **today 迁移形态**：`id: 'tasks'` + `orderField: 'order'`，字段声明 title（text, required）/ note（textarea）/ date（date）/ priority（select p1-p4）/ done（boolean）/ doneAt（text，仅作 update patch 通道）；模块懒初始化；工厂 renderer 与页面 render 共用函数（路由守卫保留）；**done/doneAt 联动为页面层业务规则**（勾选写时间戳、取消置空——工厂不加钩子，框架克制）；home 的 `store.updateTask` 勾选路径与 `store.addTask` 等保留不动（共享同一 `state.tasks`，双写路径并存）；🍅 专注计时器为页面级瞬态（悬浮窗/通知/测试钩子），不进框架；删除撤销仍走 `store.undoRemove()`（P5a 切页守卫保留）。
+  3. **XSS 白名单随迁**：innerhtml.test.js 人工审查白名单行号 87 → 129（同一赋值点 `listEl.innerHTML = html` 因文件重排位移，赋值点集合与插值安全性语义零变化——非新增赋值点，无需重审）。
+- 实证：工厂扩展 5 项新契约测试（orderField 非法/互斥 / add 自动分配 / move 交换与边界 / 未配置抛错 / 跨实例持久化），全量 578 项绿（含全部 today 旧测试原样通过）；typecheck 与 lint 零错误；Playwright E2E 5/5（含「今日新建任务 → 全局搜索命中 → 跳转高亮」路径）；sw.js 缓存 v37 → v38。
+- 回滚预案：本批两笔独立提交（92933b4 工厂扩展 / f03b984 today 迁移），任一阶段测试失败即停；单批 `git revert` 即可，数据无迁移动作、无需数据回滚（today 记录仍写同一 `state.tasks`，无 storage key / schema 变更）。
 - 回滚预案：三批独立提交（11521dd 工厂扩展 / ec867e9 memo 迁移 / docs），任一阶段测试失败即停；单批 `git revert` 即可，数据无迁移动作、无需数据回滚。
