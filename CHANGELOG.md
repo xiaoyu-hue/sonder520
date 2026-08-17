@@ -44,6 +44,9 @@
 - **绑定收敛回溯（ADR-011 待办关闭）**：memo 卡内按钮由闭包逐个绑统一为**容器级委托**（`data-act` 回查 `store.state.memos` 最新对象 + `delegatedBound` 门闩防常驻容器监听累积）——与 today/dev 三模块写法收敛完成，对齐复盘承诺。DOM 契约零变更（`data-id`/`data-act` 不变），`#memoAdd` 新建按钮保持节点级绑定（与 dev `#devAdd` 一致，委托范围限定卡内行按钮）；顺带消除 stale-closure 竞态（双标签场景归档不再以绘制时刻旧值覆盖新状态）；删除确认 + 撤销 toast + P5a 守卫原样保留。
 - 测试基线 578 → 578（memo 旧测试原样全绿为成功判据；typecheck/lint 零问题，E2E 5/5）。
 - 离线缓存升版 v39 → v40（memo.js 指纹变化触发 sync-sw 自动升版，ASSETS 40 项不变）。
+- **离线状态指示器（CHANGELOG 计划关闭）**：页脚 `#netOnline` / `#netOffline` 早已就位但全库无 JS 控制（半成品）——app.js 补上 `applyNetState()`（按 `navigator.onLine` 切 hidden）+ `online`/`offline` 事件监听 + 启动初始化，断网/恢复即时切换，只动 hidden 属性、无新 DOM/CSS/事件名；harness 支持 `opts.online` 初始状态注入。新增契约测试 `tests/offline-indicator.test.js` 5 项（初始在线 / offline 切换 / online 恢复 / 初始离线 / 不影响其他页脚元素）。
+- 测试基线 578 → 583（新增离线指示器 5 项，全量绿；typecheck/lint 零问题，E2E 5/5）。
+- 离线缓存升版 v40 → v41（app.js 指纹变化触发 sync-sw 自动升版，ASSETS 40 项不变）。
 
 ### 计划（来自 38 项审计清单，按优先级）
 
@@ -69,7 +72,7 @@
   已落地 ESM 试验田（quotes-core.mjs + 双实现一致性测试）持续评估，见上文「已实施」。
 
 #### UX（backlog）
-- 首次使用引导弹窗（3 步）、撤销栈（删除类操作）、键盘快捷键帮助面板、离线状态指示器。
+- 首次使用引导弹窗（3 步）、撤销栈（删除类操作）、键盘快捷键帮助面板。
 - 空状态 / 加载反馈按模块穿插优化（各模块已有部分实现）。
 
 ## [v5.2] - 2026-08-16

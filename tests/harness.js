@@ -56,6 +56,13 @@ function boot(opts = {}) {
     });
   }
 
+  // 可选覆盖初始在线状态（opts.online: false 模拟初始离线）
+  if (opts.online !== undefined) {
+    Object.defineProperty(window.navigator, 'onLine', {
+      value: !!opts.online, configurable: true, writable: true
+    });
+  }
+
   // 可选注入可编程 matchMedia（opts.matchMedia=true 时启用；systemDark 初始系统深浅）
   // 暴露 window.__mm：.dark 当前值、_setDark(v) 切换系统深浅并触发 change 监听器
   if (opts.matchMedia) {

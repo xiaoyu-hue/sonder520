@@ -61,3 +61,13 @@
 - 实证：**578 项全绿**（memo 旧测试原样通过为成功判据，home-memo-ux / smoke / modules-smoke / 快速备忘等未改动）；typecheck 与 lint 零问题；Playwright E2E 5/5；sw.js 缓存 v39 → v40。
 - 结论：绑定写法三模块（memo/today/dev）收敛完成，本轮待办关闭；无新待办引入（行为不变、测试全绿，符合「代码漂亮」级收尾标准）。
 - 回滚预案：单文件单提交，`git revert` 即回闭包写法；无数据动作。
+
+### 离线状态指示器（2026-08-17）
+
+- 背景：CHANGELOG v6.0 计划节 UX backlog 项。查证发现页脚 `#netOnline` / `#netOffline` 骨架与红色高亮样式（style.css `.net-offline`）早已就位，但全库无任何 JS 控制显隐（无 `navigator.onLine`、无 online/offline 监听）——属「骨架已备、逻辑缺失」半成品。
+- **决策**：
+  1. **app.js 补齐逻辑**：新增 `applyNetState()`（按 `navigator.onLine` 切换两个元素 `hidden`）+ `window` 上 `online`/`offline` 事件监听 + 启动初始化。只动 hidden 属性，不新增 DOM/CSS/事件名，不引入网络探活（fetch 周期检测属过度设计，`navigator.onLine` 已覆盖用户感知的断网/恢复场景）。
+  2. **测试注入**：harness `boot()` 支持 `opts.online` 覆盖初始 `navigator.onLine`（初始离线场景）；测试按浏览器真实语义先置 `onLine` 再派发对应事件。
+- 实证：**583 项全绿**（基线 578 + 新增 `tests/offline-indicator.test.js` 5 项，既有 pwa/shell 测试原样通过）；typecheck 与 lint 零问题；Playwright E2E 5/5（断言 v40）；sw.js 缓存 v40 → v41。
+- 结论：CHANGELOG「离线状态指示器」计划关闭；无新待办引入。
+- 回滚预案：单提交（app.js + 测试 + harness + 文档），`git revert` 即回静态占位状态；无数据动作。

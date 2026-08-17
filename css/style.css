@@ -389,6 +389,8 @@ input, select, textarea, button { font-size: 16px; }
 }
 .site-footer a { color: var(--muted); text-decoration: underline; text-underline-offset: 3px; }
 .site-footer a:hover { color: var(--accent); }
+/* 离线状态指示器：复用墨色/危险色 token，不引入新视觉语言 */
+.site-footer .net-offline { color: var(--danger); font-weight: 600; }
 
 /* 印章式标签 */
 .tag {

@@ -335,11 +335,25 @@
       d.getFullYear() + '年' + (d.getMonth() + 1) + '月' + d.getDate() + '日 · 周' + week;
   }
 
+  /* 离线状态指示：按 navigator.onLine 切换页脚 #netOnline / #netOffline。
+   * 只切 hidden 属性，不动其他元素；DOM 骨架与样式早已就位，这里补上缺失的 JS 逻辑。 */
+  var netOnlineEl = document.getElementById('netOnline');
+  var netOfflineEl = document.getElementById('netOffline');
+  function applyNetState() {
+    if (!netOnlineEl || !netOfflineEl) return;
+    var online = typeof navigator !== 'undefined' && !!navigator.onLine;
+    netOnlineEl.hidden = !online;
+    netOfflineEl.hidden = online;
+  }
+  window.addEventListener('online', applyNetState);
+  window.addEventListener('offline', applyNetState);
+
   applyTheme();
   applyWallpaper();
   applyFrame();
   buildNav();
   todayLine();
+  applyNetState();
   bindQuotaBar();
   /* 另一标签已接管编辑（多标签让位协议）：本页未保存的输入已被放弃，即时提示用户 */
   var yieldBus = globalThis.SonderBus && globalThis.SonderBus.bus;
