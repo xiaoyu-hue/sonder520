@@ -118,7 +118,7 @@ https://sonder520.netlify.app/
 
 - 应用为纯 HTML/CSS/原生 JS，构建/运行零依赖，不需要 npm 安装即可使用。
 
-- 运行全部测试：npm test（当前 538 项全部通过，覆盖存储/加密（含竞态与未来版本韧性）/结构化存储状态（TrustLayer 契约）/UI/各模块/样式/动效/壁纸/移动端自动适配/性能/游戏引擎/交互质量回归/PWA/搜索/XSS 净化（含属性注入）/对比度/IndexedDB/通知/Web Worker/持久化危机兜底/动态交互层契约与行为/file:// 直开环境/ESM 试验田双实现一致性）。
+- 运行全部测试：npm test（当前 561 项全部通过，覆盖存储/加密（含竞态与未来版本韧性）/结构化存储状态（TrustLayer 契约）/标准模块工厂（ModuleFactory 契约与行为）/UI/各模块/样式/动效/壁纸/移动端自动适配/性能/游戏引擎/交互质量回归/PWA/搜索/XSS 净化（含属性注入）/对比度/IndexedDB/通知/Web Worker/持久化危机兜底/动态交互层契约与行为/file:// 直开环境/ESM 试验田双实现一致性）。
 
 - 类型检查（零构建）：npm run typecheck（JSDoc + tsc --noEmit，契约以 globals.d.ts 锁定）。
 

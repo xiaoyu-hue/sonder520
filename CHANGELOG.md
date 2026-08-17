@@ -27,6 +27,9 @@
 - **IndexedDB 优先写（Phase 2，Sonder-Frame ④ 核心遗留项落地）**：主/副本语义反转——IndexedDB 成为主快照、localStorage 降级为副本。双写写序不变量 `_persistLocal → _idbWrite` 保持（不交换行序，`_meta` 刷新与 IDB `savedAt` 一致性依赖该序）；跨标签写锁/让位协议仍以 LS 的 `sonder_meta_v1` 为基线（LS 同步可见性最适合做锁协议载体），读取按「哪个版本更新且完整」取新。`getStorageStatus()` 三分支重写：主成功 → `ok/indexedDB`（副本失败标 `degraded`）；主失败但 LS 正常 → `ok/localStorage` 降级（`reason: indexeddb_write_failed / indexeddb_unavailable`）；双失败 → `critical`。`_persistFailed`/`_idbFailed` 字段与 `hasPersistIssue()` 公式保持不变（对称公式，UI 行为零变化，quota-fail 既有测试原样通过）。契约测试 `tests/store-trustlayer-status.test.js` 11 → 14 项（副本停更但 IDB 正常 → 仍全健康 / 主失败 LS 降级 / 副本恢复回主 / 无 IDB 环境 reason 断言）。
 - 测试基线 535 → 538（全量绿）。
 - 离线缓存升版 v33 → v34（store.js 内容指纹变化触发 sync-sw 自动升版，ASSETS 39 项不变）。
+- **标准模块工厂（Phase 3，Sonder-Frame ② ModuleFactory 层 v0.1）**：新增 `js/framework/ModuleFactory.js`（UMD 自包含，store 实例由 `createModule(store, config)` 注入）——config 三件套（validate → normalize → freeze），第一版字段类型只开放 text/textarea/date/boolean/number/select/array；记录生命周期「净化 → required 校验（临时副本）→ 落盘 → 广播」，校验失败不污染内存；`id/createdAt/updatedAt` 工厂生成，id 为保留键；query 纯净（不改 state、不触 render、外发浅拷贝）；删除进 `_undoPush` 撤销栈；destroy 仅使模块失效不碰数据。**数据安全关键**：`_registerCollection` 将集合纳入 normalize 白名单（store.js 新增 `EXTRA_COLLECTIONS` 注册表 + defaultState 保底），重载/导入/解密/清空全路径保留工厂数据（E2E「新建→刷新→还在」成立）；storageKey 粒度持久化留待 Phase 7。提交 ADR-009。新增契约测试 `tests/module-factory.test.js` 23 项。
+- 测试基线 538 → 561（全量绿）。
+- 离线缓存升版 v34 → v35（新增 ModuleFactory 进 ASSETS 40 项，sync-sw 自动升版）。
 
 ### 计划（来自 38 项审计清单，按优先级）
 
