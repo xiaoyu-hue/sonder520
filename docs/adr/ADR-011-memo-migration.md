@@ -84,3 +84,18 @@
 - 实证：**583 项全绿**（数量不变——工厂零扩展 → 无新契约测试；news 旧测试原样通过为成功判据）；typecheck 与 lint 零问题；Playwright E2E 5/5（断言 v41）；sw.js 缓存 v41 → v42。innerhtml 无新增赋值点（news 原唯一赋值为清空 `innerHTML=''`，白名单不动）。
 - 结论：四模块（memo/today/dev/news）工厂化完成，零扩展轨迹延续；筛选状态留页面的边界决策首次落账。无新待办引入。
 - 回滚预案：两笔独立提交（74ec1a4 news 迁移 / docs 批次），任一阶段测试失败即停；单笔 `git revert` 即可，数据无迁移动作、无 storage key / schema 变更。
+
+### 试点 5：selfmedia（自媒体）——2026-08-18
+
+- **选型**：selfmedia 为全项目最大标准模块（383 行，单集合 `state.posts`），字段 title/platform/account/tags/status/publishDate/views/likes/comments/favorites/note/progress，时间字段 createdAt——作为复杂业务模块的压测：月历拖拽排期（桌面 DnD + 移动端长按）、统计区（publishedStats + SVG 折线图）、CSV 导出、筛选、数字反馈输入、进度条等页面级能力在工厂模型下的边界验证。领域 API（addPost/updatePost/removePost）消费方只读（search.js 索引、store-report.js 周报 summarize——工厂写同一集合，读法零变更）。
+- **决策**：
+  1. **零工厂扩展**：单实例 `id: 'posts'`，`prepend: true` 对齐 addPost 的 unshift（最新在前）；**不配 timeField**——工厂默认生成 createdAt/updatedAt 恰对齐 postFactory 的 createdAt 语义（edited 不刷 createdAt，工厂 update 刷 updatedAt，UI/搜索/周报均不读 updatedAt，无现实差异）。platform select options `['', '公众号', '小红书', 'B站', '抖音']` 空串首项——保住「未设置平台」显示语义不被 normalize 强改（空值经 sanitize 匹配首项原样保存）。
+  2. **页面级能力不进工厂（本试点核心结论）**：月历视图（renderCalendar + 拖拽 DnD + 移动端长按/触摸清理）、统计区（statsSection + miniLine SVG）、CSV 导出（带筛选）、筛选/视图状态（`state.status/tag/view`）、日历状态（`cal`）、数字反馈输入框（data-fb）与进度条（data-prog）全部留页面层——与 today done/doneAt、dev tabState、news status/tag 同属「页面业务规则不进工厂」边界；`progress` 声明为 number 字段仅作正常化通道，进度条更新仍经工厂 update。
+  3. **绑定委托化**：卡内按钮（edit/del）改容器级委托（`data-act` 回查 `store.state.posts` 最新对象 + `delegatedBound` 门闩），四模块写法收敛；**数字反馈输入框与进度条为控件，维持节点级绑定**（非行内按钮，不进委托，先例 memo #memoAdd / dev #devAdd）。
+  4. **数字字段 clamp 由页面层预处理承担**：onSubmit（表单）与 data-fb change（反馈输入）经 `S._h.num0` 夹非负、progress 夹 0-100——对齐 store.updatePost 的 num0 语义（工厂 number 类型仅 Number() 转义不夹负/不夹百，差异在提交前收敛，行为等价）。进度条 range 天然 0-100 无需夹。
+  5. **publishDate null 语义保留**：onSubmit `!v.publishDate → null` 预处理（工厂 date 类型会将空串存 `''`，预处理保 null）；拖拽落账 `update(id, { publishDate: dateStr })` 走工厂。
+  6. **行为保留**：月历全交互（切月/本月/拖拽/移动端长按/touchcancel 清理）、统计+折线图+色值常量、CSV 导出、筛选+视图切换+清除、已发布卡反馈输入/进度条即时更新、「未设置平台」显示语义、删除确认+撤销 toast 原样（selfmedia 无 P5a 切页守卫，与 news 一致）。
+  7. **XSS 白名单随迁**：innerhtml.test.js 白名单行号 250 → 307（同一赋值点 statsSection `wrap.innerHTML` 因文件重排位移，赋值点集合与插值安全性语义零变化——非新增赋值点）。
+- 实证：**583 项全绿**（数量不变——工厂零扩展 → 无新契约测试；selfmedia-v3 8 项 + selfmedia-stats 4 项旧测试原样通过为成功判据，含拖拽/统计/图表/筛选全套）；typecheck 与 lint 零问题（清理 1 处迁移残留未用变量）；Playwright E2E 5/5（断言 v42）；sw.js 缓存 v42 → v43（ASSET_SIG f3e431c123e3 → 726dcd387e91，ASSETS 40 项不变）。
+- 结论：最大标准模块（383 行）压测通过——工厂模型对复杂业务模块无失控（统计/月历/CSV/反馈控件全部自然留在页面层，工厂仅管理记录 CRUD）；零扩展轨迹延续五试点。剩余候选 consulting/reading/design 均为顺水推舟。无新待办引入。
+- 回滚预案：两笔独立提交（001 selfmedia 迁移 / 002 文档批次），任一阶段测试失败即停；单笔 `git revert` 即可，数据无迁移动作、无 storage key / schema 变更（posts 集合照旧写主快照）。

@@ -51,6 +51,10 @@
 - **试点四入厂（news 看新闻计划，Phase 7 渐进迁移续）**：**零工厂扩展**（v0.1.2 能力全覆盖，延续「无新通用缺口」实证）。**news.js 迁移**：单实例模块 `news`（prepend 对齐 addNews 的 unshift 最新在前 + timeField:time 对齐既有 time 字段，title 必填 + url/source/note + tags 声明 array 仅默认保底 + status select）；**筛选状态不进工厂**（status/tag 下拉筛选为视图层派生状态留页面，与 today done/doneAt、dev tabState 同边界）；卡内按钮（mark/fav/unfav/edit/del）闭包逐个绑统一为容器委托（data-* 回查 state 最新对象 + delegatedBound 门闩），四模块写法收敛；删除撤销走工厂 _undoPush；订阅改经 EVENT 表保存 unsubscribe；DOM/Pages/store API 契约零变更（search/home 只读 state.news 不受影响），文件不改名不换位；innerhtml 无新增赋值点白名单不动。
 - 测试基线 583 → 583（news 旧测试原样全绿为成功判据；typecheck/lint 零问题，E2E 5/5）。
 - 离线缓存升版 v41 → v42（news.js 指纹变化触发 sync-sw 自动升版，ASSETS 40 项不变）。
+- **试点五入厂（selfmedia 自媒体，Phase 7 渐进迁移续，最大模块压测）**：**零工厂扩展**（v0.1.2 能力全覆盖，延续「无新通用缺口」实证）。**selfmedia.js 迁移**：单实例模块 `posts`（prepend 对齐 addPost 的 unshift 最新在前；不配 timeField——工厂默认生成 createdAt/updatedAt 恰对齐 postFactory 的 createdAt 语义；title 必填 + platform select `['', '公众号','小红书','B站','抖音']` 空串首项保住「未设置平台」显示语义 + account/tags/status/publishDate/note + views/likes/comments/favorites/progress number）。**页面级能力不进工厂（本试点核心结论）**：月历视图（桌面拖拽 DnD + 移动端长按/touchcancel 清理）、统计区（publishedStats + SVG 折线图）、CSV 导出（带筛选）、筛选/视图状态、数字反馈输入框（data-fb）与进度条（data-prog）全部留页面层——工厂仅管理记录 CRUD。卡内按钮（edit/del）统一容器委托（data-* 回查 state 最新对象 + delegatedBound 门闩），数字反馈与进度条为控件维持节点级绑定；数字字段负数/超百夹紧由 onSubmit 与反馈输入预处理（num0 对齐 store.updatePost 语义）；publishDate 空→null 预处理保留；拖拽落账走工厂 update；删除撤销走工厂 _undoPush；/data/posts 订阅保留（领域 API 双写路径兜底）；innerhtml.test.js XSS 白名单行号随迁（250 → 307，语义不变）。
+
+- 测试基线 583 → 583（selfmedia 旧测试原样全绿为成功判据，含拖拽/统计/图表/筛选全套；typecheck/lint 零问题，E2E 5/5 断言 v42）。
+- 离线缓存升版 v42 → v43（selfmedia.js 指纹变化触发 sync-sw 自动升版，ASSET_SIG f3e431c123e3 → 726dcd387e91，ASSETS 40 项不变）。
 
 ### 计划（来自 38 项审计清单，按优先级）
 
