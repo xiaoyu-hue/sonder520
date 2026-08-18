@@ -1,9 +1,57 @@
-/* reading.js - 阅读计划：书单三状态、进度、读书笔记、阅读计时、摘抄金句、我的书摘页 */
+/* reading.js - 阅读计划：书单三状态、进度、读书笔记、阅读计时、摘抄金句、我的书摘页
+ * 已迁移至标准模块工厂（Sonder-Frame v0.1.2，试点七）——协议见 docs/adr/ADR-011：
+ * 文件不改名不换位、Pages/DOM/store API 契约零变更、数据写同一 state 集合；
+ * 书单为单工厂模块 books（prepend：最新在前，createdAt 由工厂默认生成；
+ * notes/readingMinutes/readingLog 声明后工厂 add 自动补齐默认值，对齐 addBook 契约）；
+ * 阅读计时（addReadingSession 嵌套字段累计业务规则）、嵌套笔记（restore 闭包撤销）、
+ * 书摘集合（excerpts，独立平级集合不在本试点范围）继续走领域 API，不进工厂（试点七结论）；
+ * finishedAt 联动（已读完自动记录完成日期/改回清除）为页面层业务规则留 onSubmit；
+ * 统计区/时钟/切页恢复留页面层；卡内按钮统一容器 click 委托（data-* 回查 state 最新对象），
+ * 计时按钮例外：与 clock 节点联动且 detached-click 契约要求节点级绑定（见 bookCard）；
+ * 书籍删除撤销走工厂 _undoPush；/data/books 订阅保留（addReadingSession 等领域 API
+ * 仍可能被外部调用方写入，bus 兜底重绘，双写路径并存）。
+ */
 (function () {
   'use strict';
   var Pages = window.Pages = window.Pages || {};
   var S = window.SonderStore;
   var currentEl = null, currentCtx = null;
+  var mod = null;
+  var delegatedBound = false;
+  var unsubs = [];
+
+  /* 单工厂模块配置：id 对应 state.books（与 store.addBook 等同一集合）
+   * prepend 对齐 addBook 的 unshift（最新在前）；不配 timeField——createdAt/updatedAt 由工厂默认生成；
+   * 工厂 add 无条件 sanitize 所有声明字段：readingMinutes → 0、readingLog/notes → []、
+   * progress → 0、status → options 首项'想读'、finishedAt → ''（falsy，等价原 null），对齐 addBook 默认值；
+   * title required 与表单 required 双保险（领域 API「未命名书籍」兜底保留在 store-content.js） */
+  /** @type {SonderModuleConfig} */
+  var CONFIG = {
+    id: 'books', displayName: '阅读计划', storageKey: 'sonder_data_v1', schemaVersion: 1, prepend: true,
+    fields: [
+      { key: 'title', type: 'text', label: '书名', required: true },
+      { key: 'author', type: 'text', label: '作者' },
+      { key: 'status', type: 'select', label: '状态', options: ['想读', '在读', '已读完'] },
+      { key: 'progress', type: 'number', label: '进度(%)' },
+      { key: 'finishedAt', type: 'date', label: '读完日期' },
+      { key: 'notes', type: 'array', label: '笔记' },
+      { key: 'readingMinutes', type: 'number', label: '累计分钟' },
+      { key: 'readingLog', type: 'array', label: '阅读日志' }
+    ]
+  };
+
+  function routeIs(p) {
+    return (location.hash || '').replace(/^#\/?/, '').split('/')[0] === p;
+  }
+
+  function ensureMod(ctx) {
+    if (!mod) {
+      mod = globalThis.SonderModuleFactory.createModule(ctx.store, CONFIG);
+      /* 工厂操作（书籍 add/update/remove）完成即统一重绘（仅当前路由为本页） */
+      mod.render(function () { if (currentEl && currentCtx && routeIs('reading')) render(currentCtx); });
+    }
+    return mod;
+  }
 
   /* ---------- 阅读计时（当前正在计时的书，会话结束才落账） ---------- */
   var timer = null; // { bookId, startTs }
@@ -123,7 +171,7 @@
   }
 
   function bookCard(container, ctx, b) {
-    var UI = ctx.UI, store = ctx.store;
+    var UI = ctx.UI;
     var timing = timerOn(b.id);
     var card = UI.el(
       '<div class="list-item" data-id="' + b.id + '">' +
@@ -148,43 +196,22 @@
       '<button class="small-btn danger" data-act="del">删除</button>' +
       '</div>'
     );
-    card.querySelector('[data-act="edit"]').onclick = function () { openBook(ctx, b); };
-    card.querySelector('[data-act="note"]').onclick = function () { openNote(ctx, b.id); };
-    card.querySelector('[data-excerpt]').onclick = function () { openExcerpt(ctx, b); };
+    /* 计时按钮保留节点级绑定（不计入容器委托）：
+     * ① 计时按钮与 clock 节点/文本联动，click 语义是「切换计时状态」而非记录 CRUD，委托无增益；
+     * ② store 异步 persist 迟到广播会重建卡片，旧节点 detached 后 jsdom click 不冒泡到容器，
+     *    委托收不到停止事件 → clockTick 链永生挂进程；节点级绑定在 detached 节点上依然触发。
+     * 计时器本就是页面层业务例外（试点七结论），其按钮随计时器留在页面层。 */
     card.querySelector('[data-timerbtn]').onclick = function () {
       if (timerOn(b.id)) stopTimer(ctx);
       else startTimer(ctx, b.id);
     };
-    card.querySelector('[data-act="del"]').onclick = function () {
-      UI.confirmBox('删除这本书？').then(function (ok) {
-        if (ok) {
-          store.removeBook(b.id);
-          render(ctx);
-          UI.toast('书籍已删除', null, { label: '撤销', onClick: function () {
-            store.undoRemove();
-            render(ctx);
-          } });
-        }
-      });
-    };
-    card.querySelectorAll('[data-note="del"]').forEach(function (btn) {
-      btn.onclick = function () {
-        var noteId = btn.closest('[data-noteitem]').dataset.id;
-        store.removeBookNote(b.id, noteId);
-        render(ctx);
-        UI.toast('笔记已删除', null, { label: '撤销', onClick: function () {
-          store.undoRemove();
-          render(ctx);
-        } });
-      };
-    });
     return card;
   }
 
   function notesArea(b, ctx) {
     if (!b.notes || !b.notes.length) return '';
     return '<div style="margin-top:6px">' + b.notes.map(function (n) {
-      return '<div class="notes-area" data-noteitem data-id="' + n.id + '" style="background:var(--glass-2);padding:6px 8px;border-radius:6px;margin-bottom:4px">' +
+      return '<div class="notes-area" data-noteitem data-noteid="' + n.id + '" style="background:var(--glass-2);padding:6px 8px;border-radius:6px;margin-bottom:4px">' +
         ctx.UI.esc(n.text) + ' <button class="small-btn" data-note="del">✕</button></div>';
     }).join('') + '</div>';
   }
@@ -200,8 +227,13 @@
       ],
       onSubmit: function (v) {
         if (v.progress !== null && (v.progress < 0 || v.progress > 100)) return '进度需在 0~100 之间';
-        if (target) ctx.store.updateBook(target.id, v);
-        else ctx.store.addBook(v);
+        /* 页面层业务规则（对齐 store.updateBook 联动语义）：
+         * 已读完 → 自动记录完成日期（已有保留/缺省补今天）；从已读完改回 → 清除；
+         * 其余不动（patch 无 finishedAt key，工厂 update hasOwnProperty 门保留旧值） */
+        if (v.status === '已读完') v.finishedAt = (target && target.finishedAt) || S.todayStr();
+        else if (target && target.finishedAt && v.status !== target.status) v.finishedAt = null;
+        if (target) ensureMod(ctx).update(target.id, v);
+        else ensureMod(ctx).add(v);
         ctx.UI.toast('已保存'); render(ctx); return true;
       }
     });
@@ -264,7 +296,7 @@
         UI.toast('已删除该条书摘', null, { label: '撤销', onClick: function () {
           store.undoRemove();
           /* P5a：撤销只恢复数据；仍在书摘页才重渲染书摘视图（避免渲染成阅读列表页顶替当前页） */
-          if (((location.hash || '').replace(/^#\/?/, '').split('/')[0]) === 'excerpts') renderExcerpts(container, ctx);
+          if (routeIs('excerpts')) renderExcerpts(container, ctx);
           else UI.toast('书摘已恢复');
         } });
       });
@@ -281,9 +313,52 @@
     };
   }
 
+  /* 书卡按钮容器 click 委托（与 memo/today/dev/news/selfmedia/consulting 写法收敛）：
+   * data-* 回查 state.books 最新对象（书卡经 .list-item[data-id]，笔记行经 [data-noteitem]）；
+   * 编辑/笔记/删除/摘抄/笔记删除走委托；#rdAdd 为非行内按钮维持节点级绑定；
+   * 计时按钮例外：与 clock 节点联动 + detached-click 契约，保留节点级绑定（见 bookCard） */
+  function bindDelegated(ctx) {
+    var container = currentEl, store = ctx.store, UI = ctx.UI;
+    if (delegatedBound) return; /* 常驻容器只绑一次，防监听累积 */
+    delegatedBound = true;
+    container.addEventListener('click', function (e) {
+      var b = e.target.closest && e.target.closest(
+        '[data-act],[data-excerpt],[data-note="del"]');
+      if (!b) return;
+      var card = b.closest('[data-id]');
+      var book = card && store.state.books.filter(function (x) { return x.id === card.dataset.id; })[0];
+      if (!book) return;
+      if (b.dataset.act === 'edit') { openBook(ctx, book); return; }
+      if (b.dataset.act === 'note') { openNote(ctx, book.id); return; }
+      if (b.dataset.act === 'del') {
+        UI.confirmBox('删除这本书？').then(function (ok) {
+          if (ok) {
+            ensureMod(ctx).remove(book.id);
+            render(ctx);
+            UI.toast('书籍已删除', null, { label: '撤销', onClick: function () {
+              store.undoRemove();
+              render(ctx);
+            } });
+          }
+        });
+        return;
+      }
+      if ('excerpt' in b.dataset) { openExcerpt(ctx, book); return; }
+      if (b.dataset.note === 'del') {
+        var noteId = b.closest('[data-noteitem]').dataset.noteid;
+        store.removeBookNote(book.id, noteId);
+        render(ctx);
+        UI.toast('笔记已删除', null, { label: '撤销', onClick: function () {
+          store.undoRemove();
+          render(ctx);
+        } });
+      }
+    });
+  }
+
   Pages.reading = {
     title: '阅读计划',
-    render: function (container, ctx) { currentEl = container; currentCtx = ctx; render(ctx); },
+    render: function (container, ctx) { currentEl = container; currentCtx = ctx; bindDelegated(ctx); render(ctx); },
     add: function (ctx) { openBook(ctx); }
   };
   Pages.excerpts = {
@@ -291,23 +366,24 @@
     render: function (container, ctx) { currentEl = container; currentCtx = ctx; renderExcerpts(container, ctx); }
   };
 
-  /* 数据变更自动重绘（SonderBus）：书籍/书摘/设置变更时仅当前路由为本页才刷新 */
+  /* 数据变更自动重绘（EventBridge）：书/书摘/设置变更时仅当前路由为本页才刷新
+   * /data/books、/data/excerpts 订阅保留：addReadingSession/addBookNote/addExcerpt 等领域 API
+   * 仍可能被外部调用方写入，bus 兜底重绘（双写路径并存）；
+   * unsubscribe 保存（模块销毁清理契约，当前页面常驻） */
   (function () {
     var bus = globalThis.SonderBus && globalThis.SonderBus.bus;
     if (!bus) return;
     ['/data/books', '/data/settings', '/data/all'].forEach(function (p) {
-      bus.on(p, function () {
-        if (currentEl && currentCtx && ((location.hash || '').replace(/^#\/?/, '').split('/')[0] === 'reading')) {
-          render(currentCtx);
-        }
+      var off = bus.on(p, function () {
+        if (currentEl && currentCtx && routeIs('reading')) render(currentCtx);
       });
+      unsubs.push(off);
     });
     ['/data/excerpts', '/data/settings', '/data/all'].forEach(function (p) {
-      bus.on(p, function () {
-        if (currentEl && currentCtx && ((location.hash || '').replace(/^#\/?/, '').split('/')[0] === 'excerpts')) {
-          renderExcerpts(currentEl, currentCtx);
-        }
+      var off = bus.on(p, function () {
+        if (currentEl && currentCtx && routeIs('excerpts')) renderExcerpts(currentEl, currentCtx);
       });
+      unsubs.push(off);
     });
   })();
 })();

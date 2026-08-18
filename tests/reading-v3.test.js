@@ -188,6 +188,23 @@ test('我的书摘页：无摘抄时空状态引导', () => {
   assert.ok(h.window.document.body.textContent.includes('还没有摘抄'));
 });
 
+test('阅读页：笔记行渲染后可经容器委托删除并撤销恢复（回归：data-noteid 不与书卡 data-id 冲突）', () => {
+  const h = boot();
+  h.goto('reading');
+  const b = h.store.addBook({ title: '百年孤独', status: '在读' });
+  h.goto('reading');
+  h.store.addBookNote(b.id, '许多年之后，面对行刑队');
+  h.goto('reading'); /* 重渲染让笔记行入 DOM */
+  const btn = h.window.document.querySelector('[data-note="del"]');
+  assert.ok(btn, '笔记行应渲染删除按钮');
+  btn.click();
+  assert.equal(h.store.state.books[0].notes.length, 0, '委托删除生效');
+  const undo = h.window.document.querySelector('.toast .toast-act');
+  assert.ok(undo, '应出现撤销按钮');
+  undo.click();
+  assert.equal(h.store.state.books[0].notes.length, 1, '撤销恢复笔记');
+});
+
 /* ================= UI：首页每日金句位置 ================= */
 
 test('首页：有摘抄时每日金句位置展示随机书摘（附书名页码），无摘抄保持原金句', () => {
