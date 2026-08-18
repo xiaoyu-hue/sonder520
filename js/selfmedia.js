@@ -1,10 +1,20 @@
-/* selfmedia.js - 自媒体：选题/内容、标签与状态筛选、导出 CSV */
+/* selfmedia.js - 自媒体：选题/内容、标签与状态筛选、导出 CSV
+ * 已迁移至标准模块工厂（Sonder-Frame v0.1.2，试点五）——协议见 docs/adr/ADR-011：
+ * 文件不改名不换位、Pages/DOM/store API 契约零变更、数据写同一 state 集合；
+ * selfmedia 为单工厂模块（prepend：最新在前，createdAt 由工厂默认生成）；
+ * 页面筛选（status/tag）、视图（list/cal）、月历（cal）、统计、CSV、数字反馈、进度条是页面层能力进页面；
+ * 卡内按钮（编辑/删除）统一容器委托绑定（data-* 回查 state 最新对象）；
+ * 删除撤销走工厂 _undoPush；/data/posts 订阅保留（addPost 等领域 API 仍可能被外部调用，bus 兜底重绘）。
+ * 数字字段负数/超百夹紧由 onSubmit 与反馈输入预处理承担（对齐 store.updatePost 的 num0 语义）。
+ */
 (function () {
   'use strict';
   var Pages = window.Pages = window.Pages || {};
   var S = window.SonderStore;
   var currentEl = null, currentCtx = null;
   var state = { status: '', tag: '', view: 'list' };
+  var mod = null;
+  var delegatedBound = false;
   var CHANNELS = ['公众号', '小红书', 'B站', '抖音'];
   var cal = { year: null, month: null };
   function initCal() {
@@ -18,10 +28,62 @@
     cal.month = d.getMonth();
   }
 
+  /* 统计区的口袋数字：发布数据反馈口径（select/number/表单控件） */
+  var METRICS = [
+    { key: 'views', label: '播放', color: '#3b4a6b' },
+    { key: 'likes', label: '点赞', color: '#2e7d63' },
+    { key: 'comments', label: '评论', color: '#b0723f' },
+    { key: 'favorites', label: '收藏', color: '#c23b2e' }
+  ];
+
   function writeTags(tags) {
     return (tags || []).map(function (t) { return '<span class="tag">' + currentCtx.UI.esc(t) + '</span>'; }).join('');
   }
   var num0 = S._h.num0;
+
+  /* 单工厂模块配置：id 对应 state 同名集合（与 store.addPost 等同一集合）
+   * prepend 对齐 addPost 的 unshift（最新在前）；不配 timeField——createdAt/updatedAt 由工厂默认生成，
+   * 恰对齐 postFactory 的 createdAt 语义；platform 空串首项保住「未设置平台」显示语义 */
+  /** @type {SonderModuleConfig} */
+  var CONFIG = {
+    id: 'posts', displayName: '自媒体', storageKey: 'sonder_data_v1', schemaVersion: 1, prepend: true,
+    fields: [
+      { key: 'title', type: 'text', label: '标题', required: true },
+      { key: 'platform', type: 'select', label: '发布渠道', options: ['', '公众号', '小红书', 'B站', '抖音'] },
+      { key: 'account', type: 'text', label: '账号' },
+      { key: 'tags', type: 'array', label: '标签' },
+      { key: 'status', type: 'select', label: '状态', options: ['draft', 'queue', 'published'] },
+      { key: 'publishDate', type: 'date', label: '发布日期' },
+      { key: 'views', type: 'number', label: '播放量' },
+      { key: 'likes', type: 'number', label: '点赞' },
+      { key: 'comments', type: 'number', label: '评论' },
+      { key: 'favorites', type: 'number', label: '收藏' },
+      { key: 'note', type: 'textarea', label: '备注' },
+      { key: 'progress', type: 'number', label: '制作进度' }
+    ]
+  };
+
+  function routeIs() {
+    return (location.hash || '').replace(/^#\/?/, '').split('/')[0] === 'selfmedia';
+  }
+
+  function ensureMod(ctx) {
+    if (!mod) {
+      mod = globalThis.SonderModuleFactory.createModule(ctx.store, CONFIG);
+      /* 工厂操作（add/update/remove）完成即统一重绘（仅当前路由为本页） */
+      mod.render(function () { if (currentEl && currentCtx && routeIs()) render(currentCtx); });
+    }
+    return mod;
+  }
+
+  /* 表单数字字段预处理：补齐 store.updatePost 的 num0 语义
+   * （负数夹 0、进度夹 100——工厂 number 类型仅做 Number() 转义，差异由提交前收敛） */
+  function clampNumbers(v) {
+    ['views', 'likes', 'comments', 'favorites'].forEach(function (k) { v[k] = num0(v[k]); });
+    var pr = num0(v.progress);
+    v.progress = pr > 100 ? 100 : pr;
+    return v;
+  }
 
   function openAdd(ctx, target) {
     ctx.UI.formModal({
@@ -43,8 +105,9 @@
       onSubmit: function (v) {
         v.tags = String(v.tags || '').split(/[,，]/).map(function (t) { return t.trim(); }).filter(Boolean);
         if (!v.publishDate) v.publishDate = null;
-        if (target) ctx.store.updatePost(target.id, v);
-        else ctx.store.addPost(v);
+        clampNumbers(v);
+        if (target) ensureMod(ctx).update(target.id, v);
+        else ensureMod(ctx).add(v);
         ctx.UI.toast('已保存');
         render(ctx);
         return true;
@@ -98,7 +161,7 @@
       if (!list.length) {
         box.appendChild(UI.emptyState('还没有内容', '＋ 新增内容', function () { openAdd(ctx); }));
       }
-      list.forEach(function (p) { box.appendChild(itemEl(p, ctx)); });
+      else list.forEach(function (p) { box.appendChild(itemEl(p, ctx)); });
     }
 
     /* 已发布数据统计可视化 */
@@ -189,7 +252,7 @@
         chip.classList.remove('dragging');
         grid.querySelectorAll('.cal-day.drop-target').forEach(function (d) { d.classList.remove('drop-target'); });
         if (lt && lt.on && chip._stayDate) {
-          store.updatePost(chip.dataset.post, { publishDate: chip._stayDate });
+          ensureMod(ctx).update(chip.dataset.post, { publishDate: chip._stayDate });
           UI.toast('已排期到 ' + chip._stayDate);
           render(ctx);
         }
@@ -212,7 +275,7 @@
         if (!id) return;
         var p = store.state.posts.find(function (x) { return x.id === id; });
         if (!p) return;
-        store.updatePost(id, { publishDate: day.dataset.date });
+        ensureMod(ctx).update(id, { publishDate: day.dataset.date });
         UI.toast('已排期到 ' + day.dataset.date);
         dragId = null;
         render(ctx);
@@ -220,12 +283,6 @@
     });
   }
 
-  var METRICS = [
-    { key: 'views', label: '播放', color: '#3b4a6b' },
-    { key: 'likes', label: '点赞', color: '#2e7d63' },
-    { key: 'comments', label: '评论', color: '#b0723f' },
-    { key: 'favorites', label: '收藏', color: '#c23b2e' }
-  ];
   function statsSection(store, ctx) {
     var UI = ctx.UI, stats = S.publishedStats(store.state.posts);
     var wrap = UI.el('<div id="smStats"></div>');
@@ -288,8 +345,36 @@
     return tags.map(function (t) { return '<option value="' + esc(t) + '">' + esc(t) + '</option>'; }).join('');
   }
 
+  /* 卡内按钮（编辑/删除）容器委托（与 memo/today/dev/news 写法收敛）：data-* 回查 state 最新对象 */
+  function bindDelegated(ctx) {
+    var container = currentEl, store = ctx.store, UI = ctx.UI;
+    if (delegatedBound) return; /* 常驻容器只绑一次，防监听累积 */
+    delegatedBound = true;
+    container.addEventListener('click', function (e) {
+      var b = e.target.closest && e.target.closest('[data-act="edit"],[data-act="del"]');
+      if (!b) return;
+      var row = b.closest('[data-id]');
+      var p = row && store.state.posts.filter(function (x) { return x.id === row.dataset.id; })[0];
+      if (!p) return;
+      var act = b.dataset.act;
+      if (act === 'edit') { openAdd(ctx, p); return; }
+      if (act === 'del') {
+        UI.confirmBox('确定删除这条内容？').then(function (ok) {
+          if (ok) {
+            ensureMod(ctx).remove(p.id);
+            render(ctx);
+            UI.toast('内容已删除', null, { label: '撤销', onClick: function () {
+              store.undoRemove();
+              render(ctx);
+            } });
+          }
+        });
+      }
+    });
+  }
+
   function itemEl(p, ctx) {
-    var UI = ctx.UI, store = ctx.store;
+    var UI = ctx.UI;
     var pill = p.status === 'published' ? '<span class="pill lo">已发布</span>'
       : p.status === 'queue' ? '<span class="pill mid">排队</span>'
       : '<span class="pill">草稿</span>';
@@ -317,35 +402,23 @@
       '<button class="small-btn danger" data-act="del">删除</button>' +
       '</div>'
     );
-    row.querySelector('[data-act="edit"]').onclick = function () { openAdd(ctx, p); };
+    /* 数字反馈输入框与进度条是控件，走节点级绑定（数据反馈与滑块语义非行内按钮，不进委托） */
     row.querySelectorAll('[data-fb]').forEach(function (inp) {
       inp.addEventListener('change', function () {
         var patch = {};
-        patch[inp.dataset.fb] = inp.value;
-        store.updatePost(p.id, patch);
+        patch[inp.dataset.fb] = num0(inp.value);
+        ensureMod(ctx).update(p.id, patch);
         UI.toast('已更新' + (inp.dataset.fb === 'views' ? '阅读量' : '点赞'));
       });
     });
     var prog = row.querySelector('[data-prog]');
     if (prog) {
       prog.addEventListener('change', function () {
-        ctx.store.updatePost(p.id, { progress: Number(prog.value) });
+        ensureMod(ctx).update(p.id, { progress: num0(prog.value) });
         var lab = row.querySelector('[data-proglabel]');
         if (lab) lab.textContent = prog.value + '%';
       });
     }
-    row.querySelector('[data-act="del"]').onclick = function () {
-      UI.confirmBox('确定删除这条内容？').then(function (ok) {
-        if (ok) {
-          store.removePost(p.id);
-          render(ctx);
-          UI.toast('内容已删除', null, { label: '撤销', onClick: function () {
-            store.undoRemove();
-            render(ctx);
-          } });
-        }
-      });
-    };
     return row;
   }
 
@@ -364,11 +437,12 @@
 
   Pages.selfmedia = {
     title: '自媒体',
-    render: function (container, ctx) { currentEl = container; currentCtx = ctx; render(ctx); },
+    render: function (container, ctx) { currentEl = container; currentCtx = ctx; bindDelegated(ctx); render(ctx); },
     add: function (ctx) { openAdd(ctx); }
   };
 
-  /* 数据变更自动重绘（SonderBus）：内容/设置变更时仅当前路由为本页才刷新 */
+  /* 数据变更自动重绘（EventBridge）：内容/设置变更时仅当前路由为本页才刷新
+   * /data/posts 订阅保留：addPost 等领域 API 仍可能被 home 等调用方写入，bus 兜底重绘（双写路径并存） */
   (function () {
     var bus = globalThis.SonderBus && globalThis.SonderBus.bus;
     if (!bus) return;
