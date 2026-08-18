@@ -50,7 +50,7 @@ IDB（Primary） + localStorage（Fallback/元数据） + Crypto
 
 ## 测试纪律
 
-- **现有 583 项测试是迁移安全网，不是旧包袱**——不得因"更干净"而大规模删除；旧测试验证行为则保留，仅验证废弃内部实现才可重写。
+- **现有 584 项测试是迁移安全网，不是旧包袱**——不得因"更干净"而大规模删除；旧测试验证行为则保留，仅验证废弃内部实现才可重写。
 - 分层保持：Unit / Contract（createModule 必须成功且有 add/getById/query/update/delete/destroy）/ Integration（Factory+TrustLayer、Factory+VisualEngine、Module+EventBridge）/ E2E（用户可见行为：新建→刷新→还在）。
 - 迁移前 `npm test` 必须过；迁移后必须再过；失败先判断（真 bug / 依赖旧内部实现 / 有意行为改变），**禁止"先改测试"逃避**；必须确认行为改变是否有意。
 - 测试预算参考：全量约 124s（motion Toast 5.4s / games-worker 3.3s / today 3.2s 最慢），超时阈值 30s。
