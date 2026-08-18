@@ -17,7 +17,7 @@ test('扫雷移动端：棋盘容器可横向滚动，格子保持触控尺寸',
 });
 
 test('扫雷移动端：大棋盘不被 max-width 钳制，保留 26px 触控尺寸并可横向滚动', () => {
-  const mq = /@media \(max-width:\s*720px\)\s*\{[^@]*?\.ms-board\s*\{[^}]*\}/s.exec(CSS);
+  const mq = /@media \(max-width:\s*720px\)\s*\{[^@]*?\.ms-board-wrap\s+\.ms-board\s*\{[^}]*\}/s.exec(CSS);
   assert.ok(mq, '存在 720px 移动端断点');
   assert.ok(/width:\s*max\(100%,\s*calc\(var\(--cols\)\s*\*\s*26px\)\)/.test(mq[0]), '棋盘按列数撑开 >26px×列数');
   assert.ok(/max-width:\s*none/.test(mq[0]), '移动端必须清除 max-width 钳制（基础规则的 min(100%,540px) 会压扁困难棋盘）');
