@@ -99,3 +99,17 @@
 - 实证：**583 项全绿**（数量不变——工厂零扩展 → 无新契约测试；selfmedia-v3 8 项 + selfmedia-stats 4 项旧测试原样通过为成功判据，含拖拽/统计/图表/筛选全套）；typecheck 与 lint 零问题（清理 1 处迁移残留未用变量）；Playwright E2E 5/5（断言 v42）；sw.js 缓存 v42 → v43（ASSET_SIG f3e431c123e3 → 726dcd387e91，ASSETS 40 项不变）。
 - 结论：最大标准模块（383 行）压测通过——工厂模型对复杂业务模块无失控（统计/月历/CSV/反馈控件全部自然留在页面层，工厂仅管理记录 CRUD）；零扩展轨迹延续五试点。剩余候选 consulting/reading/design 均为顺水推舟。无新待办引入。
 - 回滚预案：两笔独立提交（001 selfmedia 迁移 / 002 文档批次），任一阶段测试失败即停；单笔 `git revert` 即可，数据无迁移动作、无 storage key / schema 变更（posts 集合照旧写主快照）。
+
+### 试点 6：consulting（咨询工作）——2026-08-18
+
+- **选型**：consulting 是唯一「主记录 + 三个嵌套子集合」的标准模块（`state.clients`，每客户内嵌 projects/followups/income 数组）——作为嵌套边界压测：工厂整记录模型与局部子集合操作（增删改/勾选/删除撤销）的边界验证。领域 API（addClient/updateClient/removeClient + 子集合各三对）消费方只读（search.js:37-38 索引读 `c.name` + `c.note`，工厂写同一集合，读法零变更）。
+- **决策**：
+  1. **零工厂扩展**：单实例 `id: 'clients'`，`prepend: true` 对齐 addClient 的 unshift（最新在前）；**不配 timeField**——工厂默认生成 createdAt/updatedAt 对齐 addClient 的 createdAt 语义（UI 不读时间字段，无现实差异）。fields：name(text, required) + contact(text) + note(textarea) + projects/followups/income（array 仅声明默认保底 `[]`，形状由领域 API 维护）。
+  2. **嵌套集合边界收口（本试点核心结论）**：客户记录进出工厂（`ensureMod(ctx).add/update/remove`，删除走 `_undoPush` 整记录撤销）；**三个嵌套子集合继续走领域 API**（addClientProject/updateClientProject/removeClientProject、addClientFollowup/updateClientFollowup/removeClientFollowup、addClientIncome/updateClientIncome/removeClientIncome）——子项 remove 的 restore 闭包撤销工厂不提供，嵌套边界留领域层，与 dev 试点「任务不进工厂」同边界；语义一致：整记录删除可整体撤销（toast undoRemove），子项删除靠闭包局部恢复（toast undoRemove 调闭包）。嵌套写入经领域 API 的 save + emitChange → /data/clients 总线兜底重绘（双写路径先例）。
+  3. **绑定委托化**：卡内 12 种按钮（data-cx 展开/data-cedit/data-cdel 客户、data-spadd/data-pe/data-pd 项目、data-fuadd/data-fe/data-fd 跟进、data-inadd/data-ie/data-idel 收入）统一容器级 click 委托（回查 `store.state.clients` 最新对象 + `delegatedBound` 门闩，常驻容器只绑一次）；跟进勾选（data-fcheck）走 change 委托 → `updateClientFollowup(c.id, id, {done: b.checked})`；展开折叠状态（expanded 缓存）与编辑对话框均在委托内取最新数据。
+  4. **页面层规则保留**：收入合计 `sum.reduce` + `Math.round`、新增/编辑金额负数拦截（`amount >= 0`，formModal 返回校验串）、客户/子项删除二次确认（confirmBox + data-act="yes"）、子项新增默认日期（S.todayStr）全部留页面层——工厂只管记录 CRUD，与各试点「页面业务规则不进工厂」边界一致。
+  5. **订阅收敛**：`var unsubs = []` + `unsubs.push(off)` 收集，订阅 `/data/clients`（领域 API 双写路径兜底重绘）+ `/data/settings` + `/data/all`（同 news/selfmedia）；`mod.render` 回调与 `Pages.consulting.render` 均经 `routeIs()` 守卫。
+  6. **XSS 白名单随迁**：innerhtml.test.js 白名单行号 79/113/153 → 105/118/131（同一赋值点 clientCard/renderProjects/renderIncomes 的 innerHTML 因文件重排位移，赋值点集合与插值安全性语义零变化）。
+- 实证：**583 项全绿**（数量不变——工厂零扩展 → 无新契约测试；consulting-ux 6 项旧测试原样通过为成功判据）；typecheck 与 lint 零问题；Playwright E2E 5/5（断言 v43）；真实 Chromium 冒烟 15/15（空态/新建/展开/子项落库/收入合计/负数拦截/勾选/改名/删除+撤销/刷新持久化/零页面错误——window.SonderStore 无实例 state，断言全走 DOM）；sw.js 缓存 v43 → v44（ASSET_SIG 726dcd387e91 → 02795342269f，ASSETS 40 项不变）。
+- 结论：嵌套边界压测通过——dev「任务不进工厂」在 consulting 三嵌套数组上复证并收口为规则（**嵌套集合局部操作不进工厂，整记录 CRUD 进工厂**），嵌套删除撤销两侧语义自洽（整记录整体撤销 vs 子项闭包局部撤销）；零扩展轨迹延续六试点，factory 能力边界冻结于 v0.1.2。无新待办引入。
+- 回滚预案：两笔独立提交（001 consulting 迁移 / 002 文档批次），任一阶段测试失败即停；单笔 `git revert` 即可，数据无迁移动作、无 storage key / schema 变更（clients 集合照旧写主快照）。

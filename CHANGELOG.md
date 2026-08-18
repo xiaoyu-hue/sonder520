@@ -56,6 +56,10 @@
 - 测试基线 583 → 583（selfmedia 旧测试原样全绿为成功判据，含拖拽/统计/图表/筛选全套；typecheck/lint 零问题，E2E 5/5 断言 v42）。
 - 离线缓存升版 v42 → v43（selfmedia.js 指纹变化触发 sync-sw 自动升版，ASSET_SIG f3e431c123e3 → 726dcd387e91，ASSETS 40 项不变）。
 
+- **试点六入厂（consulting 咨询工作，Phase 7 渐进迁移续，嵌套边界压测）**：**零工厂扩展**（v0.1.2 能力全覆盖，延续「无新通用缺口」实证）。**consulting.js 迁移**：单实例模块 `clients`（prepend 对齐 addClient 的 unshift 最新在前；不配 timeField——工厂默认生成 createdAt/updatedAt 对齐 addClient 的 createdAt 语义；name 必填 + contact/note + projects/followups/income 三个 array 字段仅声明默认保底）。**嵌套集合边界收口（本试点核心结论）**：客户记录进出工厂（add/update/remove），三个嵌套子集合（项目/跟进/收入）继续走领域 API（addClientProject/updateClientProject/removeClientProject、addClientFollowup/updateClientFollowup/removeClientFollowup、addClientIncome/updateClientIncome/removeClientIncome）——子项 remove 的 restore 闭包撤销工厂不提供，嵌套边界留领域层，与 dev 试点「任务不进工厂」同边界且语义一致（整记录删除可整体撤销，子项删除靠闭包局部撤销）；嵌套删除撤销经 store.undoRemove()（闭包内恢复）。卡内按钮（data-cx/data-cedit/data-cdel/data-spadd/data-fuadd/data-inadd/data-pe/data-pd/data-fe/data-fd/data-ie/data-idel）统一容器委托（data-* 回查 state 最新对象 + delegatedBound 门闩），跟进勾选走 change 委托（data-fcheck）；收入合计 round 与负数拦截（amount >= 0）为页面层规则留 onSubmit；删除确认二次弹窗（confirmBox + data-act="yes"）保留；/data/clients 订阅保留（领域 API 双写路径兜底）；innerhtml.test.js XSS 白名单行号随迁（79/113/153 → 105/118/131，语义不变）。
+- 测试基线 583 → 583（consulting 旧测试原样全绿为成功判据，含六项 UX 契约；typecheck/lint 零问题，E2E 5/5 断言 v43，真实 Chromium 冒烟 15/15：新建/展开/子项落库/负数拦截/勾选/改名/删除+撤销/刷新持久化/零页面错误）。
+- 离线缓存升版 v43 → v44（consulting.js 指纹变化触发 sync-sw 自动升版，ASSET_SIG 726dcd387e91 → 02795342269f，ASSETS 40 项不变）。
+
 ### 计划（来自 38 项审计清单，按优先级）
 
 #### 文档与工程治理
