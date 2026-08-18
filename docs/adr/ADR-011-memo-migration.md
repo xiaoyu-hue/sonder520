@@ -113,3 +113,17 @@
 - 实证：**583 项全绿**（数量不变——工厂零扩展 → 无新契约测试；consulting-ux 6 项旧测试原样通过为成功判据）；typecheck 与 lint 零问题；Playwright E2E 5/5（断言 v43）；真实 Chromium 冒烟 15/15（空态/新建/展开/子项落库/收入合计/负数拦截/勾选/改名/删除+撤销/刷新持久化/零页面错误——window.SonderStore 无实例 state，断言全走 DOM）；sw.js 缓存 v43 → v44（ASSET_SIG 726dcd387e91 → 02795342269f，ASSETS 40 项不变）。
 - 结论：嵌套边界压测通过——dev「任务不进工厂」在 consulting 三嵌套数组上复证并收口为规则（**嵌套集合局部操作不进工厂，整记录 CRUD 进工厂**），嵌套删除撤销两侧语义自洽（整记录整体撤销 vs 子项闭包局部撤销）；零扩展轨迹延续六试点，factory 能力边界冻结于 v0.1.2。无新待办引入。
 - 回滚预案：两笔独立提交（001 consulting 迁移 / 002 文档批次），任一阶段测试失败即停；单笔 `git revert` 即可，数据无迁移动作、无 storage key / schema 变更（clients 集合照旧写主快照）。
+
+### 试点 7：reading（阅读计划）——2026-08-18
+
+- **选型**：reading 是最后一个大标准模块（389 行），且是唯一「标准记录 CRUD + 实时计时器 + 独立书摘页」组合的模块——作为**页面层业务例外边界压测**：工厂模型对带实时状态（计时/时钟）模块是否仍无失控。领域 API（addBook/updateBook/removeBook/removeBookNote）消费方只读（search.js 索引读、home 每日摘抄经 `S.excerptsByBook`/`S.dailyExcerpt` 纯函数读 state），工厂写同一集合，读法零变更。
+- **决策**：
+  1. **零工厂扩展**：单实例 `id: 'books'`，`prepend: true` 对齐 addBook 的 unshift（最新在前）；**不配 timeField**——工厂默认生成 createdAt/updatedAt 对齐 addBook 的 createdAt 语义（UI 不读时间字段，无现实差异）。fields：title(text, required) + author(text) + status(select) + progress(number) + finishedAt(date，工厂 add 默认 null 对齐 addBook) + readingMinutes(number) + readingLog/notes（array 仅声明默认保底 `[]`），工厂 add 自动补齐默认值对齐 addBook 契约（新建书 readingMinutes=0 / readingLog=[] / notes=[] / finishedAt=null）。
+  2. **finishedAt 三分支留页面层（本试点页面规则边界复证）**：已读完 → 自动记录完成日期（已有保留 / 缺省补今天）；从已读完改回 → 清除；其余 patch 不动（工厂 update hasOwnProperty 门保留旧值）——对齐 store.updateBook 联动语义，页面层 onSubmit 承担，工厂只管字段写入。
+  3. **计时器页面层例外（本试点核心结论）**：计时按钮保留节点级绑定（不进容器委托）——① 按钮与 clock 节点/文本联动，click 语义是「切换计时状态」而非记录 CRUD，委托无增益；② **detached-click 契约（修复的挂起 bug 根因）**：store 异步 persist 迟到广播会重建卡片，旧按钮节点 detached 后 jsdom click 不冒泡到容器，委托收不到停止事件 → clockTick 链永不终止 → 测试进程挂起；节点级绑定在 detached 节点上依然触发。计时器本就是页面层业务例外（Specialized 例外先例：游戏/Dashboard/统计/拖拽日历/复杂编辑器），其按钮随计时器留在页面层。
+  4. **绑定委托化 + 数据-* 命名空间收口**：编辑/笔记/删除/摘抄/笔记删除统一容器级 click 委托（data-* 回查 `store.state.books` 最新对象 + delegatedBound 门闩）；**修复**：笔记行原 `data-id`（笔记 id）与书卡 `data-id`（书 id）同属性名，`b.closest('[data-id]')` 从笔记删除按钮向上**误命中笔记行** → book 回查失败 → 删除静默失效（原版节点级 onclick 闭包持有 bookId 不受影响，迁移暴露）；笔记行改 `data-noteid` 独立命名空间，补回归测试 1 条（委托删除 + 撤销恢复）。
+  5. **页面层保留**：统计区（累计分钟/读书数）、状态筛选、路由守卫（routeIs 仅在当前路由重绘）、P5a 守卫、无缝迁移（__readingDbg 测试钩子保留）；书摘页 renderExcerpts 独立容器渲染，bookCard 不承载书摘 DOM。
+  6. **订阅收敛**：`var unsubs = []` + `unsubs.push(off)` 收集，订阅 `/data/books`（领域 API 双写路径兜底重绘）+ `/data/settings` + `/data/all`；`mod.render` 回调与 `Pages.reading.render` 均经 `routeIs()` 守卫；innerhtml 赋值点随迁（bookCard/notesArea/renderExcerpts，语义零变化，白名单无新增赋值点）。
+- 实证：**584 项全绿**（+1：笔记行 data-noteid 委托删除回归；其余 reading 旧测试原样全绿为成功判据）；typecheck 与 lint 零问题；Playwright E2E 5/5（断言 v44）；真实 Chromium 冒烟 9/9（打开零错误 / 新建已读完自动记日期 / 计时停止落账 / 计时中切页切回时钟恢复走动 / 编辑进度 / 笔记增删撤销 / 书摘增删撤销 / 删书撤销 / 刷新持久化 + 清理零错误）；sw.js 缓存 v44 → v45（ASSET_SIG 02795342269f → 20eec82f7346，ASSETS 40 项不变）。
+- 结论：标准模块收官——七个标准模块（memo/today/dev/news/selfmedia/consulting/reading）全部迁入工厂，零扩展轨迹延续七试点，factory 能力边界冻结于 v0.1.2；**实时状态组件（计时器）是页面层业务例外**，工厂模型对带实时状态的模块无失控（例外组件与其按钮一起留页面层，边界可判据：click 语义是切换实时状态而非记录 CRUD）。数据-* 属性名教训沉淀：**子行 data-* 属性须与书卡 data-id 查询链隔离命名空间**（closest 向上回查的误命中风险）。无新待办引入。
+- 回滚预案：两笔独立提交（001 reading 迁移 / 002 文档批次），任一阶段测试失败即停；单笔 `git revert` 即可，数据无迁移动作、无 storage key / schema 变更（books 集合照旧写主快照）。

@@ -60,6 +60,10 @@
 - 测试基线 583 → 583（consulting 旧测试原样全绿为成功判据，含六项 UX 契约；typecheck/lint 零问题，E2E 5/5 断言 v43，真实 Chromium 冒烟 15/15：新建/展开/子项落库/负数拦截/勾选/改名/删除+撤销/刷新持久化/零页面错误）。
 - 离线缓存升版 v43 → v44（consulting.js 指纹变化触发 sync-sw 自动升版，ASSET_SIG 726dcd387e91 → 02795342269f，ASSETS 40 项不变）。
 
+- **试点七入厂（reading 阅读计划，Phase 7 渐进迁移收官，实时状态模块压测）**：**零工厂扩展**（v0.1.2 能力全覆盖，延续「无新通用缺口」实证）。**reading.js 迁移**：单实例模块 `books`（prepend 对齐 addBook 的 unshift 最新在前；不配 timeField——工厂默认生成 createdAt/updatedAt 对齐 addBook 的 createdAt 语义；title 必填 + author/status/progress + finishedAt + readingMinutes + readingLog/notes 两 array 仅声明默认保底，工厂 add 自动补齐默认值对齐 addBook 契约）。**finishedAt 三分支留页面层**（已读完→自动记日期（已有保留/缺省补今天）；改回→清除；其余 patch 不动——对齐 store.updateBook 联动语义，onSubmit 承担）。**计时器页面层例外（本试点核心结论）**：计时按钮保留节点级绑定（不进容器委托）——按钮与 clock 节点联动、click 语义是切换计时状态而非记录 CRUD；且修复了迁移暴露的挂起 bug（detached-click 契约：store 异步 persist 迟到广播重建卡片 → 旧节点 detached 后 jsdom click 不冒泡到容器 → 委托收不到停止事件 → clockTick 链永生挂进程；节点级绑定 detached 仍触发）。**修复数据-* 命名冲突**：笔记行原 data-id（笔记 id）与书卡 data-id（书 id）同属性名，委托 `b.closest('[data-id]')` 从笔记删除按钮向上误命中笔记行 → book 回查失败 → 删除静默失效；笔记行改 data-noteid 独立命名空间，补回归测试 1 条。编辑/笔记/删除/摘抄/笔记删除其余按钮统一容器委托（data-* 回查 state 最新对象 + delegatedBound 门闩）；统计/筛选/路由守卫/P5a/__readingDbg 全部保留；书摘页 renderExcerpts 独立容器；/data/books 订阅保留（领域 API 双写路径兜底）；unsubs 收敛订阅。
+- 测试基线 583 → 584（+1 笔记行 data-noteid 委托删除回归；reading 旧测试原样全绿为成功判据；typecheck/lint 零问题，E2E 5/5 断言 v44，真实 Chromium 冒烟 9/9：打开零错误/新建已读完自动记日期/计时落账/切页恢复时钟/编辑进度/笔记增删撤销/书摘增删撤销/删书撤销/刷新持久化/零页面错误）。
+- 离线缓存升版 v44 → v45（reading.js 指纹变化触发 sync-sw 自动升版，ASSET_SIG 02795342269f → 20eec82f7346，ASSETS 40 项不变）。
+
 ### 计划（来自 38 项审计清单，按优先级）
 
 #### 文档与工程治理
