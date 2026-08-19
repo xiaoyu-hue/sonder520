@@ -127,3 +127,17 @@
 - 实证：**584 项全绿**（+1：笔记行 data-noteid 委托删除回归；其余 reading 旧测试原样全绿为成功判据）；typecheck 与 lint 零问题；Playwright E2E 5/5（断言 v44）；真实 Chromium 冒烟 9/9（打开零错误 / 新建已读完自动记日期 / 计时停止落账 / 计时中切页切回时钟恢复走动 / 编辑进度 / 笔记增删撤销 / 书摘增删撤销 / 删书撤销 / 刷新持久化 + 清理零错误）；sw.js 缓存 v44 → v45（ASSET_SIG 02795342269f → 20eec82f7346，ASSETS 40 项不变）。
 - 结论：标准模块收官——七个标准模块（memo/today/dev/news/selfmedia/consulting/reading）全部迁入工厂，零扩展轨迹延续七试点，factory 能力边界冻结于 v0.1.2；**实时状态组件（计时器）是页面层业务例外**，工厂模型对带实时状态的模块无失控（例外组件与其按钮一起留页面层，边界可判据：click 语义是切换实时状态而非记录 CRUD）。数据-* 属性名教训沉淀：**子行 data-* 属性须与书卡 data-id 查询链隔离命名空间**（closest 向上回查的误命中风险）。无新待办引入。
 - 回滚预案：两笔独立提交（001 reading 迁移 / 002 文档批次），任一阶段测试失败即停；单笔 `git revert` 即可，数据无迁移动作、无 storage key / schema 变更（books 集合照旧写主快照）。
+
+### 试点 8:design(设计计划)——2026-08-19,Phase 7 标准模块收官
+
+- **选型**:七个试点后唯一剩余的标准模块(114 行,试点序列中最薄一页)——无嵌套集合、无独立第二集合、无计时器,顺水推舟收官。type ∈ {idea, project} 同一集合两类记录,双节分栏(灵感/项目 + 计数)。
+- **决策**:
+  1. **零工厂扩展**(延续八试点轨迹):单实例 `id: 'designs'`,`prepend: true` 对齐 addDesign 的 unshift(最新在前)+ `timeField: 'time'` 对齐既有 time 字段(news 先例——新增写 time、编辑不刷、不生成默认时间字段,逐字段对齐 addDesign/updateDesign 语义)。fields:type(select `['idea','project']`) + title(text, required) + category(text) + link(text) + note(textarea) + stage(select `['构想','进行','定稿']`)。
+  2. **type/stage 声明为 select 仅作工厂 sanitize 通道(本试点核心结论)**:type 是业务字段(双节分栏依赖)但**必须声明**——工厂 add 只写声明字段,未声明字段不进入记录(type 会丢);select 白名单外回落 options[0]='idea',**逐字段等价 addDesign「非 project 归一 idea」**;stage 白名单外回落首项'构想',等价 addDesign 默认。页面表单不含 type(由 onSubmit 赋值 v.type = type),update hasOwnProperty 门保留旧值。
+  3. **title required 与表单双保险**:"未命名"兜底保留在 store-content.js(领域 API 直接调用方仍可达);工厂 required 拒绝空名,页面路径表单层已拦截。
+  4. **绑定委托化(第八个消费方,写法收敛收官)**:卡内 edit/del 统一容器级 click 委托(data-* 回查 `store.state.designs` 最新对象 + delegatedBound 门闩,消除 stale-closure 竞态);data-dadd 两个 hbar 新建按钮维持节点级绑定(非行内按钮,memo #memoAdd / dev #devAdd / reading #rdAdd / consulting 先例)。DOM 契约(data-id / data-act / data-dadd)零变更。
+  5. **页面层保留**:双节分栏与计数、阶段 pill(构想/进行 mid、定稿 lo)、空态、链接渲染(sanitizeUrl + target=_blank rel=noopener)、删除确认二次弹窗(confirmBox + data-act="yes"、consulting 先例)、删除撤销(toast undoRemove)。
+  6. **订阅收敛**:`var unsubs = []` + `unsubs.push(off)` 收集,订阅 `/data/designs`(领域 API 双写路径兜底重绘)+ `/data/settings` + `/data/all`;`mod.render` 回调与 `Pages.design.render` 均经 `routeIs()` 守卫;innerhtml 白名单**零条目**(渲染全经 UI.el + esc + sanitizeUrl),零随迁。
+- 实证:**584 项全绿**(数量不变——工厂零扩展无新契约测试;design-ux 6 项 + modules-smoke + store 直调 2 项旧测试原样全绿为成功判据);typecheck 与 lint 零问题;Playwright E2E 5/5(断言 v46);真实 Chromium 冒烟 9/9(打开零错误 / 收集灵感入库 / 新建项目入库 / 编辑推进定稿 / 链接渲染 / 删除确认生效 / 撤销恢复 / 刷新持久化 / 全程零页面错误);sw.js 缓存 v46 → v47(ASSET_SIG 61af91a9962e → 4f44c601ae33,ASSETS 40 项不变)。
+- 结论:**Phase 7 标准模块收官——八个标准模块(memo/today/dev/news/selfmedia/consulting/reading/design)全部迁入工厂**,零扩展轨迹延续八试点,factory 能力边界冻结于 v0.1.2;type/stage 等业务字段声明为 select 的 sanitize 通道做法是 type 字段集合的通用迁移形态(select 白名单可等价领域归一规则)。剩余 design 外无标准模块;storageKey 粒度持久化(ADR-009 决策 7)仍为明面遗留项,暂缓评估。无新待办引入。
+- 回滚预案:两笔独立提交(001 design 迁移 / 002 文档批次),任一阶段测试失败即停;单笔 `git revert` 即可,数据无迁移动作、无 storage key / schema 变更(designs 集合照旧写主快照)。

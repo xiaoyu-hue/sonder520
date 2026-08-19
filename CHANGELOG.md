@@ -66,6 +66,9 @@
 - **移动端适配层叠覆盖修复（真机验收发现，2026-08 引入至今未生效）**：手机适配块位于文件前部，同特异性选择器按"后定义者胜"被后方全部基础规则覆盖——弹窗底部抽屉（.modal 82dvh / .overlay flex-end / popUpIn）被基础居中 + popIn 覆盖（违反 device-acceptance D 区契约）、.field/.hbar 输入 16px 被 14px/13px 覆盖（iOS 聚焦缩放风险）、.st-row/.rd-grid 单列被 160px/220px 双列覆盖、.modal body/foot 边距（≤360px）被 20px 覆盖。修复：720px / 360px / 横屏三个手机适配块整体移至文件末尾（基础规则之后），块头注释说明缘由。Playwright 验收脚本（Android Chrome + 桌面 Edge）11/11 过。
 - 测试盲区修复：mobile.test.js 文本存在断言（includes('align-items: flex-end')）改**层叠顺序断言**（抽屉规则须在基础规则之后）——584 全绿仍漏检的根源；minesweeper-mobile.test.js 正则限定 .ms-board-wrap .ms-board 避免误命中基础规则。全量 584 绿 + typecheck/lint 零问题。
 - 离线缓存升版 v45 → v46（css/style.css 指纹变化触发 sync-sw 自动升版，ASSET_SIG 20eec82f7346 → 61af91a9962e，ASSETS 40 项不变）。
+- **试点八入厂（design 设计计划，Phase 7 标准模块收官，试点序列最后一页）**：**零工厂扩展**（v0.1.2 能力全覆盖，八试点轨迹延续）。**design.js 迁移**：单实例模块 `designs`（prepend 对齐 addDesign 的 unshift 最新在前 + timeField:'time' 对齐既有 time 字段——新增写 time、编辑不刷、不生成默认时间字段，与 news 试点同形态；title 必填 + category/link/note + type select `['idea','project']` + stage select `['构想','进行','定稿']`）。**业务字段声明为 select 仅作 sanitize 通道（本试点核心结论）**：type 是双节分栏依赖的业务字段但必须声明——工厂 add 只写声明字段，未声明字段不进入记录（type 会丢）；select 白名单外回落 options[0]='idea'，逐字段等价 addDesign「非 project 归一 idea」；stage 白名单外回落'构想'等价 addDesign 默认；页面表单不含 type（onSubmit 赋值 v.type）且 update hasOwnProperty 门保留旧值。「未命名」兜底保留在领域 API（store-content.js 直接调用方仍可达）。**绑定委托化收口**：卡内 edit/del 闭包统一为容器委托（data-* 回查 state 最新对象 + delegatedBound 门闩），data-dadd 两个 hbar 新建按钮维持节点级绑定（memo/dev/reading/consulting 先例）；删除确认二次弹窗 + toast 撤销（_undoPush + undoRemove）；双节分栏与计数/阶段 pill/空态/链接渲染（sanitizeUrl + noopener）留页面层；unsubs 收敛订阅，/data/designs 订阅保留（领域 API 双写路径兜底）；innerhtml 白名单零条目零随迁。
+- 测试基线 584 → 584（数量不变——工厂零扩展无新契约测试；design-ux 6 项旧测试原样全绿为成功判据；typecheck/lint 零问题，E2E 5/5 断言 v46，真实 Chromium 冒烟 9/9：打开零错误/收集灵感入库/新建项目入库/编辑推进定稿/链接渲染/删除确认生效/撤销恢复/刷新持久化/零页面错误）。
+- 离线缓存升版 v46 → v47（design.js 指纹变化触发 sync-sw 自动升版，ASSET_SIG 61af91a9962e → 4f44c601ae33，ASSETS 40 项不变）。
 
 ### 计划（来自 38 项审计清单，按优先级）
 

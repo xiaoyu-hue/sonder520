@@ -38,7 +38,7 @@ https://xiaoyu-hue.github.io/sonder520/
 | **v5.0** | **两轮评审修复 + 一轮补丁（16 项）：统计语义、CSV 注入、扫雷死局、认输归属、渲染副作用、引擎校验、存储韧性、搜索索引、对比度 token、壳降级、测试 flake 加固、扫雷首击插旗暂存、终局认输防重记、AI 重入守卫、撤销不顶替当前页；测试深化至 423 项** |
 | **v5.1** | **性能与可靠性四补丁：PBKDF2 派生密钥缓存（解锁提速）、SonderBus 事件总线（跨模块解耦自动刷新）、五子棋 AI 异步化（Web Worker + 同步兜底 + 过期应手丢弃）、持久化危机兜底（双写失效红色警示条强制引导导出）；测试深化至 451 项** |
 | **v5.2** | **工程防线补强 + 可靠性（9 项）：表单注入转义（data-k 属性 + getAttribute 匹配）、waitFor 条件轮询（消除固定延时竞态）、测试超时硬性兜底（npm 30s + CI 10min）、__SONDER_TEST__ 门闩（测试钩子隔离）、死代码清理、重复逻辑收敛（num0/esc/hashStr/copyText）、弱覆盖域页面交互补测 29 项、CI Node 20 弃用警告消除、PWA 导航 Network First（刷新即拿新版，离线仍回退）；测试深化至 514 项** |
-| **v6.0** | **Sonder-Frame 渐进式框架（规划中，未发布）：TrustLayer 结构化存储状态（getStorageStatus/persistResult/diagnostics）+ IndexedDB 优先写（主快照反转，LS 降级副本）+ 标准模块工厂（ModuleFactory CRUD/Schema/净化/注册表，prepend/timeField/orderField/move 扩展）+ EventBridge 事件契约（EVENT 常量表）+ 试点迁移（memo/today/dev/news/selfmedia/consulting/reading 七个标准模块全部入厂，嵌套边界/委托绑定收敛/最大模块压测/实时状态模块例外）+ 离线状态指示器；测试基线 514 → 584 项** |
+| **v6.0** | **Sonder-Frame 渐进式框架（规划中，未发布）：TrustLayer 结构化存储状态（getStorageStatus/persistResult/diagnostics）+ IndexedDB 优先写（主快照反转，LS 降级副本）+ 标准模块工厂（ModuleFactory CRUD/Schema/净化/注册表，prepend/timeField/orderField/move 扩展）+ EventBridge 事件契约（EVENT 常量表）+ 试点迁移（memo/today/dev/news/selfmedia/consulting/reading/design 八个标准模块全部入厂——Phase 7 标准模块收官，嵌套边界/委托绑定收敛/最大模块压测/实时状态模块例外/业务字段 select 白名单归一）+ 离线状态指示器；测试基线 514 → 584 项** |
 
 ### v5.0 更新摘要（本版）
 
@@ -173,7 +173,7 @@ https://xiaoyu-hue.github.io/sonder520/
   - 五子棋大棋盘 ≤720px：棋盘宽 `min(97vw,480px)`、格距 2px、内边距 8px、格子方形、棋子 86% 填充；≤360px 进一步压缩；棋盘始终不横向溢出（照顾 iPhone SE 一档小屏）
   - 扫雷棋盘手机端：棋盘宽 `max(100%, 列数×26px)` 横向滚动容器，格子 ≥26px 触控尺寸
   - 安全区 `env(safe-area-inset-bottom)`、`100vh→100dvh` 回退（老 iOS/安卓）、触控目标 ≥44px、输入控件 16px 防 iOS 聚焦缩放、`color-scheme` 同步表单与滚动条
-- **PWA 友好**：`viewport-fit=cover` + `apple-mobile-web-app-capable`，支持「添加到主屏幕」作为 App 打开；Service Worker 离线缓存（当前缓存版本 v46，`npm run sync-sw` 自动同步清单并递增版本）；导航请求网络优先（刷新即拿新版，离线回退缓存首页），静态资源缓存优先。
+- **PWA 友好**：`viewport-fit=cover` + `apple-mobile-web-app-capable`，支持「添加到主屏幕」作为 App 打开；Service Worker 离线缓存（当前缓存版本 v47，`npm run sync-sw` 自动同步清单并递增版本）；导航请求网络优先（刷新即拿新版，离线回退缓存首页），静态资源缓存优先。
 
 ---
 
@@ -301,7 +301,7 @@ https://xiaoyu-hue.github.io/sonder520/
 9. 娱乐游戏六款：井字棋 / 五子棋（AI 三档难度 / 双人，悔棋认输开局确认制，全规则回归锁定）+ 猜数字 / 扫雷 / 猜成语 / 脑筋急转弯（战绩并入对战记录，含 solo 模式与备注、AI 难度显示；小游戏最佳纪录统一存储）。
 10. 数据与设置：导出/导入/统计（完成率分母=今日到期任务）/清空战绩/主题/模块开关/动画帧率（60/90/120）/数据迁移（IndexedDB）/加密（向导+锁屏+免密会话+韧性防线）/桌面通知/本周报告一键复制/壁纸上传。
 11. 统一交互：弹窗规则、二次确认、Esc 关闭、Toast、确认框防叠、弹层焦点管理（落焦/陷阱/归还）。
-12. 可靠性：PWA 离线可用（缓存 v46 自动同步；导航网络优先，刷新即新版）、存储双写双存、存储超 4.5MB 顶部警示条、双写后端同时失效时红色危机警示条强制引导导出、XSS 全模块净化（含属性注入与表单字段 key 转义）、可选加密、性能优化（序列化去重/搜索索引缓存/AI 剪枝/派生密钥缓存）、错误上报与壳层降级。
+12. 可靠性：PWA 离线可用（缓存 v47 自动同步；导航网络优先，刷新即新版）、存储双写双存、存储超 4.5MB 顶部警示条、双写后端同时失效时红色危机警示条强制引导导出、XSS 全模块净化（含属性注入与表单字段 key 转义）、可选加密、性能优化（序列化去重/搜索索引缓存/AI 剪枝/派生密钥缓存）、错误上报与壳层降级。
 13. 工程防线：eslint 全绿、零构建类型契约（d.ts + tsc）、innerHTML 白名单审计、状态双轨契约、store 领域拆分、脚本清单单一真源。
 14. 自动化测试 584 项全绿（各版本全量验证）。
 
