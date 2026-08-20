@@ -114,7 +114,7 @@ Notes:
 
 - Pure HTML/CSS/vanilla JS — zero build/run dependencies, no npm install needed to use the app.
 
-- Run all tests: npm test (currently 584 passing, covering storage/encryption (incl. races & future-version resilience)/structured storage status (TrustLayer contract)/standard module factory (ModuleFactory contracts & behavior, incl. v0.1.1 prepend/timeField & v0.1.2 orderField/move extensions)/event-bus contract (EventBridge: EVENT constant table & payload contract)/UI/all modules/styles/animations/wallpaper/mobile adaptation/perf/game engines/interaction regressions/PWA/search/offline indicator/XSS (incl. attribute injection)/contrast/IndexedDB/notifications/Web Worker/crisis fallback/motion-layer contracts & behavior).
+- Run all tests: npm test (currently 592 passing, covering storage/encryption (incl. races & future-version resilience)/structured storage status (TrustLayer contract)/collection-level persistence (ADR-009 decision 7: per-collection keys read/write/migration/backfill/encrypted per-collection bundles)/standard module factory (ModuleFactory contracts & behavior, incl. v0.1.1 prepend/timeField & v0.1.2 orderField/move extensions)/event-bus contract (EventBridge: EVENT constant table & payload contract)/UI/all modules/styles/animations/wallpaper/mobile adaptation/perf/game engines/interaction regressions/PWA/search/offline indicator/XSS (incl. attribute injection)/contrast/IndexedDB/notifications/Web Worker/crisis fallback/motion-layer contracts & behavior).
 
 - Type check (zero-build): npm run typecheck (JSDoc + tsc --noEmit, contracts locked in globals.d.ts).
 

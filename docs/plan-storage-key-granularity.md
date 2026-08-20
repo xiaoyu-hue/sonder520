@@ -23,7 +23,8 @@
 - 导入（importBackup, store.js:992-1049）：parse → normalize → state 整份替换 → save()（明文）/ _encSave（加密态）；返回 Promise<{ok, error?}>。
 - 领域 API 变更入口（store-tasks/media/content/settings + games.js 散点，约 40 处）：全部「直接改 `this.state.<集合>` → `this.save()` → `_emitChange('<集合>')`」模式。
 - **工厂 config.storageKey 是死配置**（ModuleFactory.js:53-54 仅校验非空字符串，持久化从不消费）：八个模块 config 全部写 `'sonder_data_v1'`（memo 是历史残留 `'sonder_memos_v1'`，从未被持久化层读过，无兼容负担）。
-- 测试对整份 key 的依赖：harness.js:98 用 `sonder_data_v1` seed；encryption-ui.test.js:31/38/79/103/149/154 字面量读 `sonder_data_v1`；upgrade.test.js:6；enc-race.test.js:7；store.test.js:275；theme-auto.test.js:76/99；wallpaper-upload.test.js:110；notification.test.js:123（seed 经 boot）。
+- 测试对整份 key 的依赖：harness.js:98 用 `sonder_data_v1` seed（走 legacy 迁移零改动自动兼容）；encryption-ui.test.js:31/38/79/103/149/154 字面量读 `sonder_data_v1`；upgrade.test.js:6；enc-race.test.js:7；store.test.js:275；theme-auto.test.js:76/99；wallpaper-upload.test.js:110；notification.test.js:123。
+- **测试对整份内部实现的直断言（改造后必须升级断言，行为语义不变）**：perf.test.js:60-70 断言 `_lastJson` 复用 + `storageUsage() === _lastJson.length`（→ 改断言集合级去重：单集合变更后 usage 增量只反映变更集合）；idb.test.js:30/91 断言 IDB 恢复后 `STORAGE_KEY` 回写非空（→ 断言集合级 LS key 逐端就位）；persist-debounce.test.js:39-67 断言 idle 前 `STORAGE_KEY` 为空（→ 断言集合级 key）；store-write-lock.test.js:90-236 用整份 `STORAGE_KEY` 模拟另一标签落盘/`encryptState` 塞整份密文（→ 模拟对象改集合级 key，让位/写锁协议断言不变）。
 
 ## 迁移形态（核心设计）
 
@@ -51,7 +52,8 @@
 ### 3. 读路径：逐集合合并 + legacy 迁移
 
 - **loadIdb 改造**：`idbGetKeys(db)`（现有 `state` store 的 `getAllKeys`/`openCursor` 遍历）列出全部集合 key → 逐集合与 LS 对应 key 比较（`STORAGE_META_KEY > entry.savedAt` → 取 LS；IDB 缺该集合 → 取 LS；各集合独立判定）→ 解密（加密态）→ 合并进 defaultState → `_emitChange('all')`。局部缺失：单集合在 LS/IDB 均不存在 → 保底空数组/空对象（normalize 语义不变）。
-- **legacy 迁移（一次性，幂等，回滚安全）**：检测 LS `sonder_data_v1` 存在 **或** IDB `state` key 存在 → 读整份（现 `_decryptParse` 逻辑复用）→ normalize → 逐集合写集合级（LS + IDB）→ **旧 key/entry 保留不删**（回滚安全：单笔 revert 后旧代码仍能读到整份旧数据；新旧同存一版本的窗口期）→ 迁移完成标记（LS `sonder_granular_v1='1'`）。重开判定：legacy 存在即重新拆分（put 幂等，覆盖半成品）。
+- **legacy 迁移（一次性，幂等，回滚安全）**：检测 LS `sonder_data_v1` 存在 **或** IDB `state` key 存在 → 读整份（现 `_decryptParse` 逻辑复用）→ normalize → 逐集合写集合级（LS + IDB）→ **旧 key/entry 保留不删**（回滚安全：单笔 revert 后旧代码仍能读到整份旧数据；新旧同存一版本的窗口期）→ 迁移完成标记（LS `sonder_granular_v1='1'`）。重开判定：**标记存在 → 直接走集合级读，不重复拆检**（避免每次启动多一份整份读写）；标记缺失且 legacy 存在 → 拆分（put 幂等，覆盖半成品）。
+- **读路径解密失败语义**：某集合密文解密失败 → 集合级读继续（不阻塞整页）；启动 → 该集合保底 defaultState；让位（_absorbNewer）→ 该集合**保持内存现状**；两者均不覆盖密文（数据留在原处，可回退读取）。
 - `_absorbNewer`（多标签让位）：逐集合读 LS 集合级 key（legacy 态走整份）→ 解密合并 → state 替换 → `_emitChange('all')`；`/store/yielded` 广播不变。
 - `migrateToIdb`：逐集合写（锁定态守卫、加密态 _encSave 语义不变）。
 
@@ -91,13 +93,14 @@
 - **测试脚**：凡字面量读 `sonder_data_v1` 的测试（encryption-ui/upgrade/enc-race/theme-auto/wallpaper/notification/harness seed）——
   - harness seed（写整份）**零改动自动兼容**（legacy 迁移路径）；
   - 断言"存储里是密文/明文"的测试改读集合级 key（断言对象从整份变 14 个 key，断言不变性，位置变）；
-  - 断言"meta 协议/让位/写锁"的测试（store-write-lock 等）**协议不变应兼容**，逐项验证。
+  - 断言"meta 协议/让位/写锁"的测试（store-write-lock 等）**协议不变应兼容**，逐项验证；
+  - **整份内部实现直断言升级**（perf.test / idb.test / persist-debounce.test / store-write-lock.test）：`_lastJson` → `_colJson` 集合级去重、`STORAGE_KEY` 回写/idle 断言 → 集合级 key、另一标签模拟 → 集合级 key，**行为语义（防抖/回写/让位/usage 反映最新体积）判定不变**。
 
 ## 验证计划
 
-- 全量 `npm test`：584 + 新增（不删旧判据；新增迁移/隔离/加密集合级/导入兼容契约测试若干）。
-- `npm run typecheck` + `npm run lint` 零错误。
-- `npm run test:e2e`：既有 5 项（002 阶段断言缓存 v47——sw.js 未动；004 文档批 sync-sw v47 → v48 后再断言 v48）。
+- 全量 `npm test`：584 + 新增（不删旧判据；新增迁移/隔离/加密集合级/导入兼容契约测试若干）。**已执行：592 项全绿。**
+- `npm run typecheck` + `npm run lint` 零错误。**已执行：零错误零警告。**
+- `npm run test:e2e`：既有 5 项（002 阶段断言缓存 v47——sw.js 未动；004 文档批 sync-sw v47 → v48 后再断言 v48）。**已执行：5/5，断言缓存 sonder-v48。**
 - 新契约测试（拟）：
   1. legacy 拆分迁移（seed 整份 → 启动 → 14 个集合级 key 就位 + 旧 key 保留 + 数据逐集合正确）；
   2. 迁移幂等（半成品重跑覆盖）；
@@ -110,13 +113,13 @@
 
 ## 提交计划（按层拆分，4 笔，任一阶段失败即停）
 
-1. **001 方案文档**：`docs/plan-storage-key-granularity.md`（本文件，先行落库）。
-2. **002 TrustLayer 核心**：`store.js` 注册表 + 集合级写/读/迁移/加密/备份改造 + `_commit` 收口 + 领域 API/工厂触发点适配 → 全量测试 → typecheck/lint → 新增契约测试。
-3. **003 模块 config storageKey 激活**：八模块 `js/*.js` config `storageKey` 改 `sonder_col_<id>_v1` → 全量回归（行为零变化，纯声明）。
-4. **004 文档同步**：`npm run sync-sw`（v47 → v48）→ ADR-009 决策 7 更新（已落地 + 本方案记录）+ ADR-011 追加 → CHANGELOG → AGENTS 基线（测试数/提交数/缓存 v48）→ PRD 缓存描述 v47 → v48 → 方案文档标注已完成。
+1. **001 方案文档**：`docs/plan-storage-key-granularity.md`（本文件，先行落库）。**已提交 `5cd3c69`。**
+2. **002 TrustLayer 核心**：`store.js` 注册表 + 集合级写/读/迁移/加密/备份改造 + `_commit` 收口 + 领域 API/工厂触发点适配 → 全量测试 → typecheck/lint → 新增契约测试。**已完成：592 项全绿 + typecheck/lint 零问题 + 新增 `tests/store-granular.test.js`。**
+3. **003 模块 config storageKey 激活**：八模块 `js/*.js` config `storageKey` 改 `sonder_col_<id>_v1` → 全量回归（行为零变化，纯声明）。**（代码层已由 `_commit` 收口覆盖，无独立 storageKey 改造需求，行为验证并入 002 回归。）**
+4. **004 文档同步**：`npm run sync-sw`（v47 → v48）→ ADR-009 决策 7 更新（已落地 + 本方案记录）+ ADR-011 追加 → CHANGELOG → AGENTS 基线（测试数/提交数/缓存 v48）→ PRD 缓存描述 v47 → v48 → 方案文档标注已完成。**已完成：sync-sw v48（ASSET_SIG 4f44c601ae33 → 15050c9e7b83，ASSETS 40 项）、CHANGELOG/README/README.en/PRD/device-acceptance 基线同步至 592、ADR-009 决策 7 待提交时更新。**
 
 ## 回滚预案
 
 - 任一批测试失败即停；单笔 `git revert` 即可——**旧整份 key 在迁移后保留**，回退到任意旧提交，旧代码照读 `sonder_data_v1`/IDB `state` key，数据零丢失（此为"旧 key 不删"的硬理由：AGENTS「失败绝不得覆盖原始数据」「严禁先删旧 key 再写新 key」）。
 - 中途失败（迁移半成品）：legacy 仍存在 → 下次启动重新拆分（幂等覆盖）。
-- 加密中途失败：bundle 逐集合独立，已写集合密文与未写集合旧密文并存——解锁路径按集合判定，半途状态可继续（解密失败集合保底空，不阻塞整页）；最坏情况回退旧版本，整份密文仍在 legacy key 中。
+- 加密中途失败：bundle 逐集合独立，已写集合密文与未写集合旧密文并存——解锁路径按集合判定，半途状态可继续（读路径解密失败集合：启动保底空、让位保持现状，密文不覆盖，可回退读取）；最坏情况回退旧版本，整份密文仍在 legacy key 中。
