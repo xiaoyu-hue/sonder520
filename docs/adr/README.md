@@ -18,7 +18,7 @@
 | ADR-006 | 渲染模型与搜索契约 | 已采纳；局部更新改造评估中 |
 | ADR-007 | 多标签写锁（Web Locks 让位协议） | 已采纳 |
 | ADR-008 | 全局符号契约（JSDoc @this 模板为成员真源） | 已采纳 |
-| ADR-009 | 标准模块工厂（ModuleFactory v0.1：CRUD/Schema/净化/注册） | 已采纳 |
+| ADR-009 | 标准模块工厂（ModuleFactory v0.1：CRUD/Schema/净化/注册）＋集合级持久化（决策 7，2026-08-20 落地） | 已采纳 |
 | ADR-010 | 跨模块事件总线契约（EventBridge v0.1：EVENT 常量表 + payload 契约） | 已采纳 |
 | ADR-011 | 试点迁移协议与 memo 入厂（ModuleFactory v0.1.1：prepend/timeField 扩展） | 已采纳 |
 
