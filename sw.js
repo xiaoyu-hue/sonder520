@@ -4,12 +4,13 @@
  * 内容变了而版本没升说明部署流程漏跑 sync-sw。 */
 'use strict';
 
-var CACHE = 'sonder-v48';
+var CACHE = 'sonder-v49';
 
 var ASSETS = [
   './',
   './index.html',
   './css/style.css',
+  './css/desktop-pet.css',
   './js/encryption.js',
   './js/event-bus.js',
   './js/store-stats.js',
@@ -41,6 +42,7 @@ var ASSETS = [
   './js/games-mini.js',
   './js/games-battle.js',
   './js/games.js',
+  './js/desktop-pet.js',
   './js/settings.js',
   './js/app.js',
   './manifest.json',
@@ -48,7 +50,7 @@ var ASSETS = [
   './assets/icon.svg',
   './js/game-worker.js'
 ];
-var ASSET_SIG = '15050c9e7b83';;;;;;;;;;;;;;;;;;;;;;;;;
+var ASSET_SIG = 'd8d03bb35c65';;;;;;;;;;;;;;;;;;;;;;;;;;
 
 /* install：预缓存全部资源，立即接管 */
 self.addEventListener('install', function (e) {

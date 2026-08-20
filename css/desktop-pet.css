@@ -1,0 +1,172 @@
+/* ============================================================
+ * desktop-pet.css - 小莫灵家族桌面玩偶
+ * 复用既有设计 token（墨色/宣纸/液态玻璃），不创造第二套视觉语言。
+ * 规格基准：docs/desktop-pet-spec.md（v2.1，附录 C.8/9.6）
+ * ============================================================ */
+
+/* 角色参与默认关闭：入口由设置页开关 + Task 3 autoInit 控制 */
+
+/* 单只玩偶挂载点（页面/悬浮共用） */
+.dp-pet {
+  --dp-body: #e8a84c;
+  --dp-body-light: #fff3d6;
+  --dp-body-dark: #b87a2a;
+  --dp-eye: #3a2a12;
+  --dp-mouth: #a5571e;
+  --dp-bubble-bg: rgba(252, 246, 240, 0.92);
+  --dp-bubble-ink: #2a2520;
+  display: block;
+  position: relative;
+  width: 84px;
+  height: 84px;
+  line-height: 0;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: none;
+  cursor: pointer;
+  transform: translateZ(0);
+  z-index: 5;
+}
+
+.dp-pet svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+/* 角色渐进式覆盖：body/高光/暗部/眼/嘴 + 体型（scale 而非改尺寸，保持布局盒稳定） */
+.pet-xiaomo {
+  --dp-body: #e8a84c;
+  --dp-body-light: #fff3d6;
+  --dp-body-dark: #b87a2a;
+  --dp-eye: #3a2a12;
+  --dp-mouth: #a5571e;
+  --dp-bubble-bg: rgba(252, 246, 240, 0.92);
+  transform: scale(0.95);
+}
+
+.pet-xiaoyu {
+  --dp-body: #4a6fa5;
+  --dp-body-light: #d6e4f5;
+  --dp-body-dark: #2e4a7a;
+  --dp-eye: #1c2a45;
+  --dp-mouth: #26384f;
+  --dp-bubble-bg: rgba(238, 244, 252, 0.92);
+  transform: scale(1, 1.08);
+  cursor: pointer;
+}
+
+.pet-lanling {
+  --dp-body: #7ab89a;
+  --dp-body-light: #d6f0e4;
+  --dp-body-dark: #4a8a6a;
+  --dp-eye: #1d3a2c;
+  --dp-mouth: #3a6a50;
+  --dp-bubble-bg: rgba(240, 250, 244, 0.92);
+  transform: scale(1.12, 1.05);
+}
+
+/* 呼吸：BreatheConfig（规格 C.1，随角色幅度呼吸） */
+.dp-pet .dp-body-group {
+  transform-origin: 50% 62%;
+  animation: dp-breathe 3.2s ease-in-out infinite;
+}
+
+@keyframes dp-breathe {
+  0%, 100% { transform: scale(1, 1); }
+  50% { transform: scale(1, 0.97); }
+}
+
+/* 眨眼（svg 眼睛元素在 JS 内做 scaleY，动画留给状态切换） */
+.dp-pet .dp-eye {
+  transform-origin: 50% 45%;
+  transition: transform 0.08s ease-out;
+}
+
+.dp-pet.dp-eyes-closed .dp-eye {
+  transform: scaleY(0.08);
+}
+
+/* 表情装饰 */
+.dp-pet .dp-decor {
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+.dp-pet.dp-show-decor .dp-decor {
+  opacity: 1;
+}
+
+/* 气泡：文字用 textContent 注入，宽度自适应；隐藏父级动画由引用父 tab 持有 */
+.dp-bubble {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 6px);
+  transform: translateX(-50%);
+  max-width: 150px;
+  padding: 5px 10px;
+  border-radius: 10px;
+  background: var(--dp-bubble-bg);
+  color: var(--dp-bubble-ink);
+  font-size: 12px;
+  line-height: 1.5;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(42, 37, 32, 0.12);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.18s ease;
+}
+
+.dp-bubble.dp-show {
+  opacity: 1;
+}
+
+/* 弹跳/滑入滑出（待机动作、进出场） */
+.dp-pet.dp-bounce {
+  animation: dp-bounce 0.55s ease;
+}
+
+@keyframes dp-bounce {
+  0%, 100% { transform: scale(1, 1); }
+  30% { transform: scale(1.06, 0.94); }
+  60% { transform: scale(0.96, 1.08); }
+}
+
+.dp-pet.dp-slide-in {
+  animation: dp-slide-in 0.4s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+
+@keyframes dp-slide-in {
+  from { transform: translateY(16px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+/* 拖拽状态 */
+.dp-pet.dp-dragging {
+  cursor: grabbing;
+  opacity: 0.85;
+}
+
+/* 移动端（<640px）：单只尺寸 64px、半透明 0.8，避免遮挡 */
+@media (max-width: 639px) {
+  .dp-pet {
+    width: 64px;
+    height: 64px;
+    opacity: 0.8;
+  }
+  .dp-bubble {
+    max-width: 110px;
+    font-size: 11px;
+  }
+}
+
+/* 无障碍：用户偏好减少动效时停用全部动画/过渡 */
+@media (prefers-reduced-motion: reduce) {
+  .dp-pet *,
+  .dp-pet,
+  .dp-bubble {
+    animation: none !important;
+    transition: none !important;
+  }
+}
