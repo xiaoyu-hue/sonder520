@@ -12,7 +12,7 @@
   Store.prototype.addMemo = function (text) {
     var m = { id: h.uid(), text: String(text || '').trim(), time: h.nowISO(), archived: false };
     this.state.memos.unshift(m);
-    this.save();
+    this._commit('memos');
     this._emitChange('memos');
     return m;
   };
@@ -22,7 +22,7 @@
     if (typeof patch.text === 'string') m.text = patch.text.trim();
     if (patch.archived === true) m.archived = true;
     if (patch.archived === false) m.archived = false;
-    this.save();
+    this._commit('memos');
     this._emitChange('memos');
     return m;
   };
@@ -32,7 +32,7 @@
       var memos = this.state.memos.splice(at, 1); /* P4c 记录供撤销 */
       this._undoPush({ list: 'memos', at: at, data: memos[0] });
     }
-    this.save();
+    this._commit('memos');
     this._emitChange('memos');
   };
 
@@ -49,7 +49,7 @@
       order: this.state.tasks.length
     };
     this.state.tasks.push(t);
-    this.save();
+    this._commit('tasks');
     this._emitChange('tasks');
     return t;
   };
@@ -64,7 +64,7 @@
       t.done = patch.done;
       t.doneAt = patch.done ? h.nowISO() : null;
     }
-    this.save();
+    this._commit('tasks');
     this._emitChange('tasks');
     return t;
   };
@@ -74,7 +74,7 @@
       var tasks = this.state.tasks.splice(at, 1); /* P4c 记录供撤销 */
       this._undoPush({ list: 'tasks', at: at, data: tasks[0] });
     }
-    this.save();
+    this._commit('tasks');
     this._emitChange('tasks');
   };
   Store.prototype.reorderTask = function (id, dir) {
@@ -84,7 +84,7 @@
     var arr = this.state.tasks;
     var tmp = arr[idx]; arr[idx] = arr[swap]; arr[swap] = tmp;
     for (var i = 0; i < arr.length; i++) arr[i].order = i;
-    this.save();
+    this._commit('tasks');
     this._emitChange('tasks');
     return true;
   };

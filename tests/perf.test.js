@@ -57,17 +57,15 @@ test('性能：保存幂等并单次序列化（内容未变零 IO，_rev 用于
   store.save();
   const st = store;
   const revAfterFirst = st._rev;
-  const jsonAfterFirst = st._lastJson;
+  const usageAfterFirst = st.storageUsage();
   assert.ok(revAfterFirst >= 1, '首次保存应递增版本');
   st.save();
   assert.equal(st._rev, revAfterFirst, '内容未变再次保存不应重复序列化与写入');
-  assert.equal(st._lastJson, jsonAfterFirst, '序列化快照应复用');
-  assert.equal(st.storageUsage(), jsonAfterFirst.length, '体积估算应复用快照而非重算');
+  assert.equal(st.storageUsage(), usageAfterFirst, '体积估算应复用集合级缓存而非重算');
   st.state.tasks.push({ id: 'x', title: '新任务', date: '', priority: '中', done: false, order: 0 });
   st.save();
   assert.equal(st._rev, revAfterFirst + 1, '内容变化应递增版本');
-  assert.ok(st._lastJson.length > jsonAfterFirst.length, '快照应随之更新');
-  assert.equal(st.storageUsage(), st._lastJson.length, '更新后体积应反映新快照');
+  assert.ok(st.storageUsage() > usageAfterFirst, '快照应随之更新');
 });
 
 test('性能：搜索索引按 _rev 缓存，重复查询不重建', () => {

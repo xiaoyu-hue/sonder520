@@ -6,11 +6,11 @@
  *      + 最小 render 挂点 + destroy。
  * 不负责：IndexedDB 原始操作 / 加密 / PWA / 游戏 AI / 特殊图表 / 页面级业务流程。
  *
- * 落盘语义与既有领域方法一致：store.save() + store._emitChange(collectionKey)，
+ * 落盘语义与既有领域方法一致：store._commit(集合id) + store._emitChange(collectionKey)，
  * 记录写入 store.state.<id> 数组（页面/搜索/周报的既有读法不受影响）。
  * 撤销语义与既有 remove 一致：删除记录进 store._undoPush 撤销栈。
  *
- * v0.1 边界：仅框架层落地，无生产模块消费；storageKey 粒度持久化属 Phase 7 迁移任务。
+ * 持久化走 TrustLayer 集合级 key（ADR-009 决策 7）；工厂 CRUD 经 store._commit(id)。
  * v0.1.1（迁移试点前置扩展）：新增可选配置 prepend（add 最新在前，默认 append）
  * 与 timeField（集合时间戳字段名——新增写入、编辑不刷、配置后不再生成默认
  * createdAt/updatedAt；用于兼容既有 time 字段的集合）。不配置时行为与 v0.1 完全一致。
@@ -212,7 +212,7 @@
         checkRequired(cfg, record);
         if (cfg.prepend) collection().unshift(record);
         else collection().push(record);
-        store.save();
+        store._commit(cfg.id);
         store._emitChange(cfg.id);
         notify();
         return record;
@@ -237,7 +237,7 @@
           if (Object.prototype.hasOwnProperty.call(patch, f.key)) rec[f.key] = next[f.key];
         });
         if (!cfg.timeField) rec.updatedAt = h.nowISO();
-        store.save();
+        store._commit(cfg.id);
         store._emitChange(cfg.id);
         notify();
         return rec;
@@ -250,7 +250,7 @@
           var removed = arr.splice(at, 1);
           store._undoPush({ list: cfg.id, at: at, data: removed[0] });
         }
-        store.save();
+        store._commit(cfg.id);
         store._emitChange(cfg.id);
         notify();
       },
@@ -266,7 +266,7 @@
         if (idx < 0 || swap < 0 || swap >= arr.length) return false;
         var tmp = arr[idx]; arr[idx] = arr[swap]; arr[swap] = tmp;
         for (var i = 0; i < arr.length; i++) arr[i][cfg.orderField] = i;
-        store.save();
+        store._commit(cfg.id);
         store._emitChange(cfg.id);
         notify();
         return true;

@@ -10,12 +10,12 @@
   /* ====== 设置 ====== */
   Store.prototype.setTheme = function (t) {
     this.state.settings.theme = (t === 'auto' || t === 'dark') ? t : 'light';
-    this.save();
+    this._commit('settings');
     this._emitChange('settings');
   };
   Store.prototype.setWallpaperOpacity = function (v) {
     this.state.settings.wallpaperOpacity = h.clampOpacity(v);
-    this.save();
+    this._commit('settings');
     this._emitChange('settings');
     return this.state.settings.wallpaperOpacity;
   };
@@ -37,27 +37,27 @@
   };
   Store.prototype.setTaskReminder = function (on) {
     this.state.settings.taskReminder = !!on;
-    this.save();
+    this._commit('settings');
     this._emitChange('settings');
     return this.state.settings.taskReminder;
   };
   Store.prototype.setModuleEnabled = function (key, on) {
     if (!(key in this.state.settings.modules)) return;
     this.state.settings.modules[key] = !!on;
-    this.save();
+    this._commit('settings');
     this._emitChange('settings');
   };
   Store.prototype.setGameDifficulty = function (d) {
     var v = d === 'easy' || d === 'hard' ? d : 'normal';
     this.state.settings.gameDifficulty = v;
-    this.save();
+    this._commit('settings');
     this._emitChange('settings');
     return v;
   };
   Store.prototype.setFrameRate = function (f) {
     var v = f === 60 || f === 90 ? f : 120;
     this.state.settings.frameRate = v;
-    this.save();
+    this._commit('settings');
     this._emitChange('settings');
     return v;
   };

@@ -4,7 +4,8 @@ const { test } = require('node:test');
 const assert = require('node:assert');
 const S = require('../js/store.js');
 
-const KEY = 'sonder_data_v1';
+/* 集合级持久化：密文落在逐集合 key（tasks 集合必然存在——测试只写任务） */
+const COL = id => 'sonder_col_' + id + '_v1';
 const PWD = 'race-2026-强密码';
 
 function memStorage() {
@@ -30,7 +31,7 @@ test('加密竞态：连续多次 save 后落盘必须是最后状态', async ()
 
   await s._encChain;
 
-  const raw = JSON.parse(st._data[KEY]);
+  const raw = JSON.parse(st._data[COL('tasks')]);
   assert.equal(raw.e, 1, '落盘应为密文格式');
 
   const s2 = S.createStore(st);
@@ -50,7 +51,7 @@ test('加密竞态：落盘后 IDB 侧也应与最终状态一致', async () => 
   await s._idbPromise;
 
   /* IDB 内容与 LS 一致（同一 payload 写入） */
-  const lsRaw = JSON.parse(st._data[KEY]);
-  assert.equal(lsRaw.data, lsRaw.data, 'LS 存在密文');
-  assert.ok(!st._data[KEY].includes('任务'), '密文不含明文');
+  const lsRaw = JSON.parse(st._data[COL('tasks')]);
+  assert.equal(lsRaw.e, 1, 'LS 存在密文');
+  assert.ok(!st._data[COL('tasks')].includes('任务'), '密文不含明文');
 });

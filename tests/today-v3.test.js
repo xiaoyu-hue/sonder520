@@ -35,10 +35,10 @@ test('优先级：addTask 默认 p2，updateTask 写入时同样迁移', () => {
 });
 
 test('优先级：normalize 从持久化数据加载时也执行迁移', () => {
-  const st = { getItem: () => JSON.stringify({
+  const st = { getItem: k => k === 'sonder_data_v1' ? JSON.stringify({
     version: 1, settings: {},
     tasks: [{ id: 'x', title: 'a', date: '2026-08-10', priority: '中', done: false }]
-  }), setItem: () => {}, removeItem: () => {} };
+  }) : null, setItem: () => {}, removeItem: () => {} };
   const s = S.createStore(st);
   assert.equal(s.state.tasks[0].priority, 'p2');
 });

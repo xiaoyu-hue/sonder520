@@ -4,7 +4,7 @@
  * 内容变了而版本没升说明部署流程漏跑 sync-sw。 */
 'use strict';
 
-var CACHE = 'sonder-v47';
+var CACHE = 'sonder-v48';
 
 var ASSETS = [
   './',
@@ -48,7 +48,7 @@ var ASSETS = [
   './assets/icon.svg',
   './js/game-worker.js'
 ];
-var ASSET_SIG = '4f44c601ae33';;;;;;;;;;;;;;;;;;;;;;;;
+var ASSET_SIG = '15050c9e7b83';;;;;;;;;;;;;;;;;;;;;;;;;
 
 /* install：预缓存全部资源，立即接管 */
 self.addEventListener('install', function (e) {

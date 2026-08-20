@@ -44,6 +44,41 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
   var ENC_FORMAT = 'sonder-enc-v1';
   var BACKUP_ENC_FORMAT = 'sonder-enc-backup-v1';
 
+  /* ---------- 集合级持久化（ADR-009 决策 7）----------
+   * 每集合独立 key：LS `sonder_col_<id>_v1` / IDB key `<id>`（现有 state store，entry {savedAt,data} 不变）。
+   * 写路径只序列化+落盘变更集合；读路径逐集合按 savedAt 取新合并；
+   * legacy 整份（STORAGE_KEY / IDB 'state'）作迁移来源一次性拆分，旧 key 保留不删（回滚安全）。 */
+  var GRANULAR_FLAG = 'sonder_granular_v1';
+  var COLL_PREFIX = 'sonder_col_';
+  var COLL_SUFFIX = '_v1';
+  function colLsKey(id) { return COLL_PREFIX + id + COLL_SUFFIX; }
+  /* 核心集合（defaultState 固定 14 项）；工厂模块集合经 _registerCollection 动态并入 */
+  var CORE_COLLECTIONS = ['settings', 'memos', 'tasks', 'posts', 'devProjects', 'devNotes',
+    'devSnippets', 'clients', 'books', 'excerpts', 'news', 'designs', 'gameRecords', 'miniRecords'];
+  var COLLECTIONS = CORE_COLLECTIONS.slice();
+  /* settings 集合的序列化形态：{version, settings}（版本号随 settings 走，不单独立 key） */
+  function colPayload(state, col) {
+    if (col === 'settings') {
+      return { version: typeof state.version === 'number' ? state.version : 1, settings: state.settings || {} };
+    }
+    return state[col];
+  }
+  /* 把集合 payload 合并进 base（读路径装配；settings 特殊：version + settings 均并入） */
+  function mergeColInto(base, col, payload) {
+    if (col === 'settings') {
+      if (!isPlainObject(payload)) return;
+      if (isPlainObject(payload.settings)) base.settings = payload.settings;
+      if (typeof payload.version === 'number') base.version = payload.version;
+      return;
+    }
+    if (Array.isArray(payload)) base[col] = payload.slice();
+    else if (isPlainObject(payload)) base[col] = deepClone(payload);
+  }
+  /* 明文密文探测（轻量正则：本站密文 payload 恒以 {"e":1 开头，避免全量 JSON.parse） */
+  function isEncRaw(raw) {
+    return !!raw && /^\s*\{\s*"e"\s*:\s*1[\s,}]/.test(raw);
+  }
+
   /* ---------- IndexedDB 层 ----------
    * 主快照 = IndexedDB（真源，容量大）；localStorage = 副本（降级后备镜像，
    * 兼跨标签写锁协议基线）。每次保存双写双存，任一被清空时另一份恢复。
@@ -276,33 +311,46 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
   }
 
   /* ---------- Store ---------- */
-  /** @constructor @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _idbWrite: any, _lastJson: string, _rev: number, _encKey: any, _encSize: number, _hasEncSnapshot: Function, _idbEncLocked: boolean, _undo: any[], _pendingLocal: any, _localFlushHandle: any, _bus: any, _emitChange: Function, _persistFailed: boolean, _idbFailed: boolean, _lastPersistError: any, _statusReason: string, _lastSeenMeta: any }} */
+  /** @constructor @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _idbWriteCols: any, _colJson: any, _rev: number, _encKey: any, _hasEncSnapshot: Function, _hasLegacySnapshot: Function, _readLocalColsRaw: Function, _idbEncLocked: boolean, _undo: any[], _pendingLocalCols: any, _localFlushHandle: any, _bus: any, _emitChange: Function, _persistFailed: boolean, _idbFailed: boolean, _lastPersistError: any, _statusReason: string, _lastSeenMeta: any }} */
   function Store(storage) {
     this._storage = storage || (typeof localStorage !== 'undefined' ? localStorage : null);
     /* SonderBus 数据变更广播总线（浏览器 window.SonderBus / 测试注入；缺省静默） */
     this._bus = (globalThis.SonderBus && globalThis.SonderBus.bus) ? globalThis.SonderBus.bus : null;
-    var persisted = null;
-    if (this._storage) {
-      try { persisted = JSON.parse(this._storage.getItem(STORAGE_KEY)); }
-      catch (e) { persisted = null; }
-    }
-    /* 最近一次确认的权威快照 meta（多标签写锁的版本基线）。
-     * 构造时记录当前值；_doLocalFlush 成功落盘后更新为自己写入的 meta。 */
     this._lastSeenMeta = null;
     if (this._storage) {
       try { this._lastSeenMeta = this._storage.getItem(STORAGE_META_KEY) || null; }
       catch (e) { this._lastSeenMeta = null; }
     }
-    this.state = normalize(this._hasEncSnapshot() ? null : persisted);
+    /* 构造期同步读 LS 集合级 key（逐集合明文合并；密文集合跳过——等异步 loadIdb/unlock）。
+     * 无集合级数据 → 回落 legacy 整份（STORAGE_KEY），保持旧行为。 */
+    var localCols = this._readLocalColsRaw();
+    if (Object.keys(localCols).length > 0) {
+      var base = defaultState();
+      for (var id in localCols) {
+        var parsed = null;
+        try { parsed = JSON.parse(localCols[id]); } catch (e) { parsed = null; }
+        /* 集合 key 内存的就是 payload（settings 为 {version,settings}，其余为数组/对象），
+         * 不得再经 colPayload 当整份 state 解——否则 memos 等会变成 parsed.memos === undefined。 */
+        if (!parsed || parsed.e === 1) continue;
+        mergeColInto(base, id, parsed);
+      }
+      this.state = normalize(base);
+    } else {
+      var persisted = null;
+      if (this._storage) {
+        try { persisted = JSON.parse(this._storage.getItem(STORAGE_KEY)); }
+        catch (e) { persisted = null; }
+      }
+      this.state = normalize(this._hasLegacySnapshot() ? null : persisted);
+    }
     this._meta = null;
     this._idbPromise = null;
-    this._lastJson = null;
+    this._colJson = {};      /* 集合 id → 最近一次落盘串（明文/密文），写路径去重 + storageUsage 体积 */
     this._rev = 0;
     this._encKey = null;
-    this._encSize = 0;
     this._idbEncLocked = false;
     this._undo = []; /* P4c 删除撤销栈（内存态，不持久化）：{list,at,data} 或 {restore} */
-    this._pendingLocal = undefined; /* 副本快照待写（批量防抖：一次 idle 只落最新一份） */
+    this._pendingLocalCols = null; /* 待写集合 map（批量防抖：一次 idle 落最新；null=无待写） */
     this._localFlushHandle = null;  /* 已调度的 requestIdleCallback 句柄（无 idle 时为 null） */
     this._persistFailed = false;    /* localStorage 副本最近一次写入失败（配额满等；主快照 IndexedDB 不受影响） */
     this._idbFailed = false;        /* IndexedDB 主快照最近一次写入失败 */
@@ -310,16 +358,38 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     this._statusReason = null;      /* 最近一次持久化失败的原因分类（quota 等，结构化状态派生用） */
   }
 
+  /* 逐注册集合读 LS 原始串（缺失 key 不进入 map）；密文/明文原样返回 */
+  Store.prototype._readLocalColsRaw = function () {
+    var map = {};
+    if (!this._storage) return map;
+    for (var i = 0; i < COLLECTIONS.length; i++) {
+      try {
+        var raw = this._storage.getItem(colLsKey(COLLECTIONS[i]));
+        if (raw !== null && raw !== undefined) map[COLLECTIONS[i]] = raw;
+      } catch (e) { /* 忽略 */ }
+    }
+    return map;
+  };
+  /* 是否存在尚未集合化的 legacy 密文整份（LS STORAGE_KEY 为密文） */
+  Store.prototype._hasLegacySnapshot = function () {
+    if (!this._storage) return false;
+    try { return isEncRaw(this._storage.getItem(STORAGE_KEY)); }
+    catch (e) { return false; }
+  };
+
   /* P4c：删除撤销——记录删除条目（容量 10，超出丢最旧），undoRemove 恢复 */
   Store.prototype._undoPush = function (u) {
     this._undo.push(u);
     if (this._undo.length > 10) this._undo.shift();
   };
   /* 工厂扩展：注册标准模块集合 key（幂等；ModuleFactory.createModule 调用）。
-   * 使该集合进入 normalize 白名单——重载/导入/解密后数据不被丢弃，并保底为空数组。 */
+   * 使该集合进入 normalize 白名单——重载/导入/解密后数据不被丢弃，并保底为空数组；
+   * 同时并入 COLLECTIONS——集合级读写路径（LS 每集合 key / IDB entry / 启动合并）必须覆盖工厂集合。
+   * 注意：Store 构造期注册前已用 CORE 集合读 LS；工厂集合数据由 loadIdb 逐集合合并补全。 */
   Store.prototype._registerCollection = function (key) {
     if (typeof key !== 'string' || !key) return;
     if (EXTRA_COLLECTIONS.indexOf(key) < 0) EXTRA_COLLECTIONS.push(key);
+    if (COLLECTIONS.indexOf(key) < 0) COLLECTIONS.push(key);
   };
   /* P4c：撤销最近一次删除；成功返回被恢复的数据，无可撤销返回 null */
   Store.prototype.undoRemove = function () {
@@ -332,7 +402,7 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
       if (!Array.isArray(arr)) return null;
       arr.splice(Math.min(u.at, arr.length), 0, u.data);
     }
-    this.save();
+    this._commit(u.list); /* 撤销恢复写回被撤销的集合（多文档删除跨集合时全量兜底） */
     this._emitChange(u.list || 'all'); /* 撤销恢复：广播受影响数据 */
     return u.data || true;
   };
@@ -344,18 +414,22 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     if (this._bus) this._bus.emit(dataEvent('data', list));
   };
 
-  /* 主快照是否为密文（未解锁时据此判定"需要解锁"）。
-   * 只看加密标记 e===1：未知/未来版本（v !== ENC_FORMAT）同样认定加密 → 走锁定流，
+  /* 是否存在密文快照（LS 任一集合 key 为密文，或遗留整份为密文）。
+   * 未解锁时据此判定"需要解锁"：只看密文标记 e===1——未知/未来版本同样认定加密 → 走锁定流，
    * 防止旧客户端把新密文当明文解析、normalize 清空数据后明文覆盖（不可逆丢失）。
-   * 轻量探测：本站密文 payload 恒以 {"e":1 开头（store._encSave 固定格式），
-   * 用正则判定避免每次 needsUnlock 全量 JSON.parse 主快照（save 热路径，未加密用户每写必走）。 */
+   * 轻量探测：本站密文 payload 恒以 {"e":1 开头（store._encSave 固定格式），正则判定避免全量 JSON.parse。
+   * 只对已知集合 key 逐个探测，不依赖 localStorage 遍历 API（内存存储/测试环境兼容）。 */
   Store.prototype._hasEncSnapshot = function () {
     if (!this._storage) return false;
     try {
-      var raw = this._storage.getItem(STORAGE_KEY);
-      if (!raw) return false;
-      return /^\s*\{\s*"e"\s*:\s*1[\s,}]/.test(raw);
-    } catch (e) { return false; }
+      if (isEncRaw(this._storage.getItem(STORAGE_KEY))) return true;
+    } catch (e) { /* 继续 */ }
+    for (var i = 0; i < COLLECTIONS.length; i++) {
+      try {
+        if (isEncRaw(this._storage.getItem(colLsKey(COLLECTIONS[i])))) return true;
+      } catch (e) { /* 继续 */ }
+    }
+    return false;
   };
   Store.prototype._encSalt = function () {
     if (!this._storage || !Crypto) return null;
@@ -366,21 +440,26 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
       return bytes && bytes.length === 16 ? bytes : null;
     } catch (e) { return null; }
   };
-  /* 盐获取（localStorage 缺失时从 IndexedDB 冗余读取，配合双写恢复） */
+  /* 盐获取（localStorage 缺失时从 IndexedDB 冗余读取，配合双写恢复）。
+   * 集合级：盐存于各集合 entry.extra；回退读 CORE 首集合（settings），再回退 legacy 整份 entry。 */
   Store.prototype._encSaltAsync = function () {
     var local = this._encSalt();
     if (local) return Promise.resolve(local);
     if (!idbAvailable()) return Promise.resolve(null);
     return openIdb().then(function (db) {
-      return idbGet(db, IDB_KEY).then(function (entry) {
-        if (!entry || typeof entry !== 'object') return null;
-        if (entry.salt && Crypto) {
-          try {
-            var bytes = Crypto.b64ToBytes(entry.salt);
-            if (bytes.length === 16) return bytes;
-          } catch (e) { /* 继续 */ }
-        }
-        return null;
+      function saltFrom(entry) {
+        if (!entry || typeof entry !== 'object' || !entry.salt || !Crypto) return null;
+        try {
+          var bytes = Crypto.b64ToBytes(entry.salt);
+          return bytes.length === 16 ? bytes : null;
+        } catch (e) { return null; }
+      }
+      return idbGet(db, COLLECTIONS[0]).then(function (entry) {
+        var s = saltFrom(entry);
+        if (s) return s;
+        return idbGet(db, IDB_KEY).then(function (legacy) {
+          return saltFrom(legacy);
+        });
       });
     }).catch(function () { return null; });
   };
@@ -390,16 +469,19 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
   };
 
   /* 副本快照（LS）setItem 批量防抖：放入 requestIdleCallback 执行，页面空闲时统一落盘。
-   * 一次 idle 周期内多次 save 只写最新快照（_pendingLocal 覆盖），避免密集保存
+   * 一次 idle 周期内多次保存只落最新内容（_pendingLocalCols 按集合合并覆盖），避免密集保存
    * 反复序列化写 localStorage 阻塞主线程。无 requestIdleCallback 的环境
    * （Node/测试/旧浏览器）同步落盘，保证存储一致性。
    * 加密盐/壁纸等一次性关键 setItem 保持同步（正确性优先，非热路径）。
-   * 可传入 save 已序列化的 json 避免二次 stringify。 */
-  /** @this {{ _storage: any, state: any, _meta: any, _pendingLocal: any, _localFlushHandle: any, _doLocalFlush: Function, _lockedLocalFlush: Function }} */
-  Store.prototype._persistLocal = function (json) {
-    if (!this._storage) return;
+   * map = {集合id: 序列化串}（明文或密文原样落盘）；key 需先于 _meta 刷新调用。 */
+  /** @this {{ _storage: any, state: any, _meta: any, _pendingLocalCols: any, _localFlushHandle: any, _doLocalFlush: Function, _lockedLocalFlush: Function }} */
+  Store.prototype._persistLocal = function (map) {
+    if (!this._storage || !map) return;
     this._meta = nowISO();
-    this._pendingLocal = json || JSON.stringify(this.state);
+    /* 按集合合并待写内容：后写覆盖先写（防抖合并，一次 idle 只落最新） */
+    var target = this._pendingLocalCols;
+    if (target === null || target === undefined) target = this._pendingLocalCols = {};
+    for (var k in map) target[k] = map[k];
     if (this._localFlushHandle !== null) return; /* 已调度 idle：仅更新待写内容（防抖合并） */
     var self = this;
     if (typeof globalThis.requestIdleCallback === 'function') {
@@ -447,23 +529,57 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
   };
 
   /* 让位：放弃本次旧快照覆盖，改为吸收 localStorage 中的最新 LS 快照（其他标签已写更新）。
-   * 重载后重置内存基线并广播全量重绘；密文快照走 _decryptParse（有会话密钥时）。
-   * 无论吸收结果如何（含解析失败保持现状），先广播让位事件——另一标签已接管，
-   * 本标签未保存的输入已被放弃，UI 应即时提示用户。 */
-  /** @this {{ _storage: any, state: any, _lastJson: string, _rev: number, _lastSeenMeta: any, _emitChange: Function, _decryptParse: Function, _pendingLocal: any, _bus: any }} */
+   * 集合级：逐集合读 LS 集合 key（解密失败/密文未解锁的集合保持内存现状，不覆盖不清空）；
+   * legacy 态（无集合级 key）回落整份读取（等价旧行为）。
+   * 重载后重置内存基线并广播全量重绘；无论吸收结果如何（含解析失败保持现状），
+   * 先广播让位事件——另一标签已接管，本标签未保存的输入已被放弃，UI 应即时提示用户。 */
+  /** @this {{ _storage: any, state: any, _colJson: any, _rev: number, _lastSeenMeta: any, _readLocalColsRaw: Function, _emitChange: Function, _decryptParse: Function, _pendingLocalCols: any, _bus: any }} */
   Store.prototype._absorbNewer = function () {
     if (this._bus) this._bus.emit(dataEvent('yielded'));
-    this._pendingLocal = undefined;
+    this._pendingLocalCols = null;
     var self = this;
-    var raw = null;
+    var map = null;
     if (this._storage) {
-      try { raw = this._storage.getItem(STORAGE_KEY); } catch (e) { raw = null; }
+      map = this._readLocalColsRaw();
+      if (Object.keys(map).length === 0) {
+        /* legacy 态：整份读取（旧行为） */
+        var raw0 = null;
+        try { raw0 = this._storage.getItem(STORAGE_KEY); } catch (e) { raw0 = null; }
+        if (raw0 === null || raw0 === undefined) return;
+        this._decryptParse(raw0).then(function (parsed) {
+          if (!parsed) return; /* 密文未解锁/解析失败：不覆盖也不吸收，保持现状 */
+          self.state = normalize(parsed);
+          self._colJson = {};
+          self._rev++;
+          if (self._storage) {
+            try { self._lastSeenMeta = self._storage.getItem(STORAGE_META_KEY) || null; } catch (e) { /* 忽略 */ }
+          }
+          self._emitChange('all'); /* 采纳新快照：全量重绘 */
+        });
+        return;
+      }
     }
-    if (raw === null || raw === undefined) return;
-    this._decryptParse(raw).then(function (parsed) {
-      if (!parsed) return; /* 密文未解锁/解析失败：不覆盖也不吸收，保持现状 */
-      self.state = normalize(parsed);
-      self._lastJson = JSON.stringify(self.state);
+    if (!map) return;
+    var jobs = [];
+    COLLECTIONS.forEach(function (id) {
+      if (!map[id]) return;
+      jobs.push(self._decryptParse(map[id]).then(function (parsed) {
+        return { id: id, parsed: parsed };
+      }));
+    });
+    Promise.all(jobs).then(function (results) {
+      /* 集合级吸收：以当前内存为基座（保留本标签未被另一标签更新的集合），
+       * 仅用另一标签已写（且本标签成功解密）的集合覆盖对应键；与整份吸收语义等价且不清空其他集合 */
+      var base = deepClone(self.state);
+      var any = false;
+      results.forEach(function (r) {
+        if (!r || !r.parsed) return; /* 解密失败集合：保持内存现状（不覆盖不清空） */
+        mergeColInto(base, r.id, r.parsed);
+        if (base[r.id] !== undefined) any = true;
+      });
+      if (!any) return;
+      self.state = normalize(base);
+      self._colJson = {};
       self._rev++;
       if (self._storage) {
         try { self._lastSeenMeta = self._storage.getItem(STORAGE_META_KEY) || null; } catch (e) { /* 忽略 */ }
@@ -473,15 +589,21 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
   };
 
   /* 实际写 localStorage（降级后备副本；写满只停副本停更，IndexedDB 主快照不受影响）。
-   * 只写 _pendingLocal 最新一份 */
-  /** @this {{ _storage: any, _meta: any, _pendingLocal: any, _persistFailed: boolean, _lastPersistError: any, _lastSeenMeta: any, _statusReason: string }} */
+   * 只写 _pendingLocalCols 最新内容（逐集合 key，与 _colJson 比较去重——同一值不重复写） */
+  /** @this {{ _storage: any, _meta: any, _pendingLocalCols: any, _colJson: any, _persistFailed: boolean, _lastPersistError: any, _lastSeenMeta: any, _statusReason: string }} */
   Store.prototype._doLocalFlush = function () {
-    if (this._pendingLocal === undefined) return;
-    var json = this._pendingLocal;
-    this._pendingLocal = undefined;
+    if (this._pendingLocalCols === null || this._pendingLocalCols === undefined) return;
+    var map = this._pendingLocalCols;
+    this._pendingLocalCols = null;
     try {
-      this._storage.setItem(STORAGE_KEY, json);
+      for (var id in map) {
+        var json = map[id];
+        if (json === this._colJson[id]) continue; /* 已按该值落盘过：去重（等价整份 _lastJson 比较） */
+        this._storage.setItem(colLsKey(id), json);
+      }
       this._storage.setItem(STORAGE_META_KEY, this._meta);
+      /* 全部 setItem 成功后再刷新内存缓存：中途配额失败不得把未落盘集合标成已写 */
+      for (var id2 in map) this._colJson[id2] = map[id2];
       this._persistFailed = false;
       this._lastPersistError = null;
       this._statusReason = null;
@@ -495,35 +617,34 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     }
   };
 
-  /* 立即执行待写快照并作废已调度的 idle 写入。加密启用/停用/回读验证等
+  /* 立即执行待写内容并作废已调度的 idle 写入。加密启用/停用/回读验证等
    * 正确性关键路径调用（这些路径依赖落盘与后续读取在同一时机）。 */
-  /** @this {{ _storage: any, _localFlushHandle: any, _pendingLocal: any, _doLocalFlush: Function }} */
+  /** @this {{ _storage: any, _localFlushHandle: any, _pendingLocalCols: any, _doLocalFlush: Function }} */
   Store.prototype.flushPersist = function () {
     if (this._localFlushHandle !== null) {
       if (typeof globalThis.cancelIdleCallback === 'function') globalThis.cancelIdleCallback(this._localFlushHandle);
       this._localFlushHandle = null;
     }
-    if (this._pendingLocal !== undefined) this._doLocalFlush();
+    if (this._pendingLocalCols !== null && this._pendingLocalCols !== undefined) this._doLocalFlush();
   };
 
-  /* 异步写 IndexedDB（主快照，真源）。串行队列避免事务竞争；失败静默（localStorage 副本仍兜底）。
-   * 只接受调用方显式传入的原始串（明文或密文格式原样落盘），extra 合并进 entry（如加密盐）。
-   * undefined/null/空串一律跳过——绝不回退到内存 state 序列化：锁定态下内存是明文空
+  /* 异步写 IndexedDB（主快照，真源，逐集合 key）。串行队列避免事务竞争；失败静默（localStorage 副本仍兜底）。
+   * 只接受调用方显式传入的原始串 map（明文或密文格式原样落盘，{集合id: 串}），extra 合并进 entry（如加密盐）。
+   * undefined/null/空 map 一律跳过——绝不回退到内存 state 序列化：锁定态下内存是明文空
    * defaultState，回退写盘会把明文空数据写进 IDB，破坏密文主快照（loadIdb 空 IDB 回填路径）。 */
-  /** @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _idbWrite: any, _lastJson: string, _rev: number, _idbFailed: boolean, _statusReason: string }} */
-  Store.prototype._idbWrite = function (json, extra) {
-    if (!idbAvailable()) return;
-    if (json === undefined || json === null || json === '') return;
-    var useJson = json;
+  /** @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _idbWriteCols: any, _colJson: any, _rev: number, _idbFailed: boolean, _statusReason: string }} */
+  Store.prototype._idbWriteCols = function (map, extra) {
+    if (!idbAvailable() || !map) return;
     var meta = this._meta || nowISO();
     var prev = this._idbPromise || Promise.resolve();
     var self = this;
     this._idbPromise = prev.then(function () {
       return openIdb().then(function (db) {
-        var entry = extra ? Object.assign({}, extra) : {};
-        entry.savedAt = meta;
-        entry.data = useJson;
-        return idbPut(db, IDB_KEY, entry);
+        var jobs = [];
+        for (var id in map) {
+          jobs.push(idbPut(db, id, Object.assign({}, extra || {}, { savedAt: meta, data: map[id] })));
+        }
+        return Promise.all(jobs);
       });
     }).then(function () {
       self._idbFailed = false; /* 主快照写入成功：解除 IDB 侧失败标记 */
@@ -535,45 +656,114 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     });
   };
 
-  /** @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _idbWrite: any, _lastJson: string, _rev: number, _encKey: any, _encSize: number, _encSave: Function, needsUnlock: Function }} */
+  /* 序列化某集合为 payload 串并与 _colJson 比较：变 → 返回串；未变/非法 → null（零序列化承诺的去重单元） */
+  Store.prototype._colPayloadJson = function (id) {
+    var payload;
+    try { payload = colPayload(this.state, id); } catch (e) { return null; }
+    if (payload === undefined || payload === null) return null;
+    var json = JSON.stringify(payload);
+    if (json === this._colJson[id]) return null;
+    return json;
+  };
+  /* 全量序列化：逐集合与缓存比较，返回变更 map（全部未变 → null） */
+  Store.prototype._collectAll = function () {
+    var map = null;
+    for (var i = 0; i < COLLECTIONS.length; i++) {
+      var json = this._colPayloadJson(COLLECTIONS[i]);
+      if (json !== null) {
+        if (!map) map = {};
+        map[COLLECTIONS[i]] = json;
+      }
+    }
+    return map;
+  };
+  /* 全量序列化（不去重）：强制返回全部注册集合 map（加解密切换/迁移/导入等需全量场景） */
+  Store.prototype._collectAllRaw = function () {
+    var map = {};
+    for (var i = 0; i < COLLECTIONS.length; i++) {
+      try {
+        var payload = colPayload(this.state, COLLECTIONS[i]);
+        if (payload === undefined || payload === null) continue;
+        map[COLLECTIONS[i]] = JSON.stringify(payload);
+      } catch (e) { /* 单集合序列化失败：跳过该集合（其余继续） */ }
+    }
+    return map;
+  };
+
+  /** @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _idbWriteCols: any, _colJson: any, _rev: number, _encKey: any, _collectAll: Function, _encSave: Function, needsUnlock: Function }} */
   Store.prototype.save = function () {
-    var json = JSON.stringify(this.state);
-    if (json === this._lastJson) return; /* 内容未变：零序列化零 IO */
+    var map = this._collectAll();
+    if (!map) return; /* 全集合与最近落盘一致：零序列化零 IO */
     /* 锁定态守卫：快照为密文但无会话密钥时禁止明文落盘——
      * 锁定后残留的定时器/异步回调若触发 save，明文会覆盖密文并静默解除加密 */
     if (this.needsUnlock()) return;
-    this._lastJson = json;
     this._rev++;
     if (this._encKey) {
-      this._encSave(json).catch(function (err) {
+      this._encSave(map).catch(function (err) {
         /* 加密写盘失败：下次 save 会重试；上报便于发现（数据仍在上次持久化版本） */
         try { console.error('[Sonder] 加密持久化失败', err); } catch (e) { /* 忽略 */ }
       });
+      return;
     }
     /* 双写：LS 副本先同步刷新 meta（版本时间戳基线，IDB 主快照用同一 savedAt），
-     * IDB 主快照紧随异步落盘。顺序不可交换：_idbWrite 依赖 _persistLocal 已设置的 _meta，
+     * IDB 主快照紧随异步落盘。顺序不可交换：_idbWriteCols 依赖 _persistLocal 已设置的 _meta，
      * 否则 IDB savedAt 恒旧于 LS，读取时永远误判"LS 更新"（④ 主写转换，见 ADR 说明）。
      * 读取路径按版本取新（loadIdb），任一侧失败另一侧即兜底，数据安全不依赖写序。 */
-    else { this._persistLocal(json); this._idbWrite(json); }
+    this._persistLocal(map);
+    this._idbWriteCols(map);
   };
 
-  /* 加密落盘：AES-GCM 异步（微任务级，用户操作间隙完成）。
-   * 串行队列保证加密按调用顺序落盘：encryptText 为异步，连续多次 save
+  /* 集合级变更收口（ADR-009 决策 7 的写路径唯一入口之一）：
+   * 只序列化+落盘指定集合；非法集合 id 回落全量 save（防呆兜底——绝不丢数据）。
+   * 与 save() 等价语义：内容未变 → 零 IO；锁定态拒绝明文落盘。 */
+  /** @this {{ _storage: any, _rev: number, _colPayloadJson: Function, needsUnlock: Function, _encKey: any, _encSave: Function, _persistLocal: Function, _idbWriteCols: Function, save: Function }} */
+  Store.prototype._commit = function (col) {
+    if (typeof col !== 'string' || COLLECTIONS.indexOf(col) < 0) {
+      this.save(); /* 未收口集合：全量兜底（性能退化，绝不丢数据） */
+      return;
+    }
+    var json = this._colPayloadJson(col);
+    if (json === null) return; /* 该集合与最近落盘一致：零序列化零 IO */
+    if (this.needsUnlock()) return;
+    this._rev++;
+    var map = {};
+    map[col] = json;
+    if (this._encKey) {
+      this._encSave(map).catch(function (err) {
+        try { console.error('[Sonder] 加密持久化失败', err); } catch (e) { /* 忽略 */ }
+      });
+      return;
+    }
+    this._persistLocal(map);
+    this._idbWriteCols(map);
+  };
+
+  /* 加密落盘：AES-GCM 异步（微任务级，用户操作间隙完成），逐集合独立 bundle（每集合新 iv）。
+   * 串行队列保证加密按调用顺序落盘：encryptText 为异步，连续多次并发保存
    * 若不排队，后发起的加密可能先完成并覆盖落盘 → 旧状态覆盖新状态（丢最新变更）。
-   * 落盘前经 _lockedEncWrite 走写锁让位协议（同明文 _lockedLocalFlush，ADR-007）。 */
-  /** @this {{ _storage: any, _encKey: any, _encSize: number, _persistLocal: any, _idbWrite: any, _encChain: Promise, flushPersist: Function, _lockedEncWrite: Function, _statusReason: string }} */
-  Store.prototype._encSave = function (json) {
+   * 落盘前经 _lockedEncWrite 走写锁让位协议（同明文 _lockedLocalFlush，ADR-007）。
+   * map = {集合id: 明文串}；返回 Promise（失败由调用方捕获，存储停留在上次成功版本）。 */
+  /** @this {{ _encKey: any, _persistLocal: any, _idbWriteCols: any, _encChain: Promise, flushPersist: Function, _lockedEncWrite: Function, _statusReason: string, _storage: any }} */
+  Store.prototype._encSave = function (map) {
     var self = this;
     if (!this._encKey || !Crypto) return Promise.resolve();
+    if (!map) return Promise.resolve();
+    var ids = Object.keys(map);
+    if (ids.length === 0) return Promise.resolve();
     var prev = self._encChain || Promise.resolve();
     self._encChain = prev.then(function () {
-      return Crypto.encryptText(json, self._encKey).then(function (bundle) {
-        var payload = JSON.stringify({ e: 1, v: bundle.v, iv: bundle.iv, data: bundle.data });
-        self._encSize = payload.length;
-        return self._lockedEncWrite(payload).then(function (written) {
+      var jobs = ids.map(function (id) {
+        return Crypto.encryptText(map[id], self._encKey).then(function (bundle) {
+          return { col: id, payload: JSON.stringify({ e: 1, v: bundle.v, iv: bundle.iv, data: bundle.data }) };
+        });
+      });
+      return Promise.all(jobs).then(function (results) {
+        var encMap = {};
+        results.forEach(function (r) { encMap[r.col] = r.payload; });
+        return self._lockedEncWrite(encMap).then(function (written) {
           if (!written) return; /* 让位：本次密文不落盘，新快照吸收后由后续 save 跟进 */
           var salt = self._storage ? self._storage.getItem(STORAGE_SALT_KEY) : null;
-          self._idbWrite(payload, salt ? { salt: salt } : {});
+          self._idbWriteCols(encMap, salt ? { salt: salt } : {});
         });
       });
     }).catch(function (err) {
@@ -590,14 +780,14 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
    * Promise 化保证 enableEncryption 的回读验证在锁回调完成后才执行；
    * 无锁环境降级直接落盘（等价旧行为）。 */
   /** @this {{ _storage: any, _lastSeenMeta: any, _absorbNewer: Function, _persistLocal: Function, flushPersist: Function }} */
-  Store.prototype._lockedEncWrite = function (payload) {
+  Store.prototype._lockedEncWrite = function (encMap) {
     var self = this;
     var locks = (typeof navigator !== 'undefined' && navigator.locks && typeof navigator.locks.request === 'function')
       ? navigator.locks : null;
-    if (!locks) { self._persistLocal(payload); self.flushPersist(); return Promise.resolve(true); }
+    if (!locks) { self._persistLocal(encMap); self.flushPersist(); return Promise.resolve(true); }
     return new Promise(function (resolve) {
       var done = false;
-      var fallback = function () { if (done) return; done = true; self._persistLocal(payload); self.flushPersist(); resolve(true); };
+      var fallback = function () { if (done) return; done = true; self._persistLocal(encMap); self.flushPersist(); resolve(true); };
       var p = null;
       try {
         p = locks.request('sonder-writer', function () {
@@ -613,7 +803,7 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
             }
           }
           done = true;
-          self._persistLocal(payload);
+          self._persistLocal(encMap);
           self.flushPersist();
           resolve(true);
         });
@@ -622,54 +812,209 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     });
   };
 
-  /* 启动时调用：优先从 IndexedDB 恢复（若更新）。返回 Promise<是否采用 IDB 数据> */
-  /** @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _idbWrite: any, _lastJson: string, _rev: number, save: Function, _encKey: any, _decryptParse: Function, _idbEncLocked: boolean, flushPersist: Function, _emitChange: Function }} */
+  /* 启动时调用：优先从 IndexedDB 恢复（逐集合按 savedAt 取新，LS meta 为版本基线）。
+   * 集合级读路径：对每个注册集合比较 LS 原文与 IDB entry（LS 存在且 (IDB 缺 或 LS meta 更新) → 取 LS；
+   * 否则取 IDB）→ 逐集合解密合并 → state 替换 → 缺口回填（LS 缺从 IDB 补、IDB 缺从 LS 补，原文不转换）。
+   * legacy 整份（LS STORAGE_KEY / IDB 'state'）存在且未集合化 → 先一次性拆分迁移（旧 key 保留不删）。
+   * 返回 Promise<是否采用持久化数据需重绘>：IDB 数据被采用（任一集合来自 IDB 且 state 变更）→ true；
+   * 仅 LS 数据（构造期已同步合并）→ false（等价旧行为：不重绘）。 */
+  /** @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _idbWriteCols: any, _colJson: any, _rev: number, save: Function, _encKey: any, _decryptParse: Function, _idbEncLocked: boolean, flushPersist: Function, _emitChange: Function, _migrateLegacyIfNeeded: Function, _loadColsMerge: Function, _backfillCols: Function }} */
   Store.prototype.loadIdb = function () {
     var self = this;
     if (!idbAvailable()) return Promise.resolve(false);
     return openIdb().then(function (db) {
-      return idbGet(db, IDB_KEY).then(function (entry) {
-        if (!entry) {
-          /* IDB 为空：用 localStorage 原始串（密文或明文格式原样）回填。
-           * 禁用内存 state 序列化——锁定态下内存是空 defaultState，
-           * 序列化会把明文空数据写进 IDB，破坏密文主快照 */
-          var lsRaw = null;
-          if (self._storage) {
-            try { lsRaw = self._storage.getItem(STORAGE_KEY); } catch (e) { lsRaw = null; }
-          }
-          self._idbWrite(lsRaw || undefined);
-          return false;
-        }
-        var idbSavedAt = (entry && typeof entry === 'object' && !Array.isArray(entry)) ? entry.savedAt : '';
-        var idbData = (entry && typeof entry === 'object' && !Array.isArray(entry)) ? entry.data : entry;
-        var localMeta = null, localRaw = null;
-        if (self._storage) {
-          try { localMeta = self._storage.getItem(STORAGE_META_KEY); localRaw = self._storage.getItem(STORAGE_KEY); } catch (e) { localMeta = null; }
-        }
-        /* localStorage 更新 → 用本地原文（明文或密文）追平 IDB，不采用 IDB */
-        if (localMeta && localMeta > idbSavedAt && localRaw) {
-          self._idbWrite(localRaw);
-          return false;
-        }
-        return self._decryptParse(idbData).then(function (parsed) {
-          if (!parsed) {
-            var isEnc = false;
-            try { isEnc = !!(JSON.parse(idbData) && JSON.parse(idbData).e === 1); } catch (e) { isEnc = false; }
-            if (isEnc) self._idbEncLocked = true; /* IDB 侧有待解锁密文：提示 UI 走解锁流程 */
-            return false;
-          }
-          self._idbEncLocked = false;
-          self.state = normalize(parsed);
-          self._lastJson = JSON.stringify(self.state);
+      return self._migrateLegacyIfNeeded(db).then(function () {
+        return self._loadColsMerge(db).then(function (merged) {
+          if (!merged) return false; /* 全新库：两端均无集合级数据 */
+          self.state = normalize(merged.state);
+          self._colJson = {};
           self._rev++;
-          self._persistLocal(idbData);
-          self.flushPersist(); /* IDB 恢复回写 localStorage：采用后立即可见 */
-          self._idbWrite(idbData);
-          self._emitChange('all'); /* 恢复采用：全量数据替换，各页重绘 */
-          return true;
+          self._backfillCols(db, merged);
+          /* 恢复采用：IDB 数据被采用，或存在构造期后注册集合（工厂模块）的数据
+           * 逐集合合并首次并入 → 需全量重绘；纯 CORE 集合的 LS 数据构造期已同步吸收并渲染 → 不重绘（等价旧行为）
+           * 密文未解锁（merged.locked）：不采用（needsUnlock 走锁屏流），绝不按明文合并 */
+          if (merged.fromIdb || merged.hasExtra) self._emitChange('all');
+          return merged.fromIdb && !merged.locked;
         });
       });
     }).catch(function () { return false; });
+  };
+  /* legacy 整份是否待迁移（LS STORAGE_KEY 或 IDB 'state' 存在，且未置集合化标记） */
+  /* 一次性拆分迁移（幂等，put 语义覆盖半成品；旧 key/entry 保留不删——回滚安全）。
+   * 明文整份：逐集合写 LS + IDB；加密已解锁：逐集合加密写（集合级密文）；未解锁：不迁移（保留整份，
+   * 解锁路径 unlock 后全量密文落盘自然完成集合化）。迁移完成置 GRANULAR_FLAG。 */
+  Store.prototype._migrateLegacyIfNeeded = function (db) {
+    var self = this;
+    var flag = false;
+    if (this._storage) {
+      try { flag = !!this._storage.getItem(GRANULAR_FLAG); } catch (e) { flag = false; }
+    }
+    if (flag) return Promise.resolve();
+    var lsRaw = null;
+    if (this._storage) {
+      try { lsRaw = this._storage.getItem(STORAGE_KEY); } catch (e) { lsRaw = null; }
+    }
+    return idbGet(db, IDB_KEY).then(function (entry) {
+      if (!lsRaw && !entry) return; /* 无 legacy 来源 */
+      return self._splitLegacy(lsRaw, entry);
+    });
+  };
+  /* 拆分整份 legacy（lsRaw / idbEntry 至多其一非空；两者都有时取更新者——LS meta 更新取 LS，否则 IDB）。
+   * 返回 Promise；迁移失败（密文未解锁等）静默跳过——数据仍在 legacy key，解锁后由 unlock 完成集合化。 */
+  Store.prototype._splitLegacy = function (lsRaw, idbEntry) {
+    var self = this;
+    var useRaw = lsRaw;
+    if (idbEntry) {
+      var idbData = (idbEntry && typeof idbEntry === 'object' && !Array.isArray(idbEntry)) ? idbEntry.data : idbEntry;
+      if (!lsRaw) {
+        useRaw = idbData;
+      } else {
+        var idbSavedAt = (idbEntry && typeof idbEntry === 'object' && !Array.isArray(idbEntry)) ? idbEntry.savedAt : '';
+        var lsMeta = null;
+        try { lsMeta = this._storage ? this._storage.getItem(STORAGE_META_KEY) : null; } catch (e) { lsMeta = null; }
+        /* 取更新者：仅当 IDB savedAt 严格大于 LS meta 才用 IDB（相等/缺 meta → LS，同毫秒双写不误判） */
+        if (!(idbSavedAt && lsMeta && idbSavedAt > lsMeta)) useRaw = lsRaw;
+      }
+    }
+    if (!useRaw) return Promise.resolve();
+    return this._decryptParse(useRaw).then(function (parsed) {
+      if (!parsed) {
+        /* 密文未解锁/解析失败：不迁移（数据在 legacy key 原样保留） */
+        return;
+      }
+      var state = normalize(parsed);
+      var map = null;
+      for (var i = 0; i < COLLECTIONS.length; i++) {
+        var id = COLLECTIONS[i];
+        var payload;
+        try { payload = colPayload(state, id); } catch (e) { continue; }
+        if (payload === undefined || payload === null) continue;
+        var json = JSON.stringify(payload);
+        if (!map) map = {};
+        map[id] = json;
+      }
+      if (!map) { self._markGranular(); return; }
+      if (self._encKey) {
+        /* 加密已解锁：_encSave 已按集合密文双写（含即时 flush），切勿再用明文 map 覆盖 LS */
+        return self._encSave(map).then(function () {
+          self._markGranular();
+        });
+      }
+      /* 明文：先 LS 后 IDB（写序不变量），即时完成（不经防抖，迁移窗口一次性） */
+      self._meta = nowISO();
+      try {
+        for (var id2 in map) self._storage.setItem(colLsKey(id2), map[id2]);
+        if (self._storage) self._storage.setItem(STORAGE_META_KEY, self._meta);
+        self._lastSeenMeta = self._meta;
+      } catch (e) { /* LS 迁移写失败：IDB 仍写（主快照兜底） */ }
+      return openIdb().then(function (db) {
+        var jobs = [];
+        for (var id3 in map) jobs.push(idbPut(db, id3, { savedAt: self._meta, data: map[id3] }));
+        return Promise.all(jobs);
+      }).then(function () {
+        self._markGranular();
+      }).catch(function () { /* IDB 迁移写失败：LS 副本兜底 */ });
+    });
+  };
+  /* 加密态拆分迁移的 LS 侧落盘（_encSave 已写 IDB；此处补 LS 密文） */
+  Store.prototype._persistLocalColsSync = function (map) {
+    if (!this._storage) return Promise.resolve();
+    this._meta = nowISO();
+    try {
+      for (var id in map) this._storage.setItem(colLsKey(id), map[id]);
+      this._storage.setItem(STORAGE_META_KEY, this._meta);
+      this._lastSeenMeta = this._meta;
+      return Promise.resolve();
+    } catch (e) {
+      return Promise.reject(e);
+    }
+  };
+  /* 迁移完成标记（LS；旧 key 保留不删） */
+  Store.prototype._markGranular = function () {
+    if (!this._storage) return;
+    try { this._storage.setItem(GRANULAR_FLAG, '1'); } catch (e) { /* 忽略 */ }
+  };
+  /* 逐集合合并（LS vs IDB 取新）。返回 null（两端全空）或
+   * {state, fromIdb, lsRaw, idbRaw}（lsRaw/idbRaw 为回填用原文映射）。
+   * 解密失败/密文未解锁的集合：不合并（保底空）、不落盘、不覆盖（数据留在原处）。
+   * 密文集合探测到锁定 → _idbEncLocked = true。 */
+  Store.prototype._loadColsMerge = function (db) {
+    var self = this;
+    var lsMeta = null;
+    if (this._storage) {
+      try { lsMeta = this._storage.getItem(STORAGE_META_KEY); } catch (e) { lsMeta = null; }
+    }
+    var jobs = COLLECTIONS.map(function (id) {
+      var lsRaw = null;
+      if (self._storage) {
+        try { lsRaw = self._storage.getItem(colLsKey(id)); } catch (e) { lsRaw = null; }
+      }
+      return idbGet(db, id).then(function (entry) {
+        var idbRaw = (entry && typeof entry === 'object' && !Array.isArray(entry)) ? entry.data : entry;
+        var idbSavedAt = (entry && typeof entry === 'object' && !Array.isArray(entry)) ? entry.savedAt : '';
+        var useRaw = null;
+        var fromIdb = false;
+        /* LS 优先：仅当 IDB 明确更新（savedAt 严格大于 LS meta）才换 IDB。
+         * 双写同批落盘时 LS meta 与 IDB savedAt 相同——相等必须取 LS（构造期已同步吸收），
+         * 否则迁移/回填的同毫秒双写会被误判为"IDB 新"→ 无谓地触发全量重绘。 */
+        if (lsRaw !== null && lsRaw !== undefined && (idbRaw === null || idbRaw === undefined || !(idbSavedAt && lsMeta && idbSavedAt > lsMeta))) {
+          useRaw = lsRaw;
+        } else if (idbRaw !== null && idbRaw !== undefined) {
+          useRaw = idbRaw;
+          fromIdb = true;
+        }
+        return { id: id, useRaw: useRaw, fromIdb: fromIdb, lsRaw: lsRaw, idbRaw: idbRaw };
+      });
+    });
+    return Promise.all(jobs).then(function (results) {
+      var base = defaultState();
+      var lsRaw = {}, idbRaw = {};
+      var any = false, anyFromIdb = false, anyLocked = false, hasExtra = false;
+      var decJobs = [];
+      results.forEach(function (r) {
+        if (r.lsRaw !== null && r.lsRaw !== undefined) lsRaw[r.id] = r.lsRaw;
+        if (r.idbRaw !== null && r.idbRaw !== undefined) idbRaw[r.id] = r.idbRaw;
+        if (EXTRA_COLLECTIONS.indexOf(r.id) >= 0 && (r.lsRaw !== null || r.idbRaw !== null)) hasExtra = true;
+        if (r.useRaw === null || r.useRaw === undefined) return;
+        any = true;
+        if (r.fromIdb) anyFromIdb = true;
+        decJobs.push(self._decryptParse(r.useRaw).then(function (parsed) {
+          return { id: r.id, parsed: parsed, raw: r.useRaw };
+        }));
+      });
+      if (!any) return null;
+      return Promise.all(decJobs).then(function (dec) {
+        dec.forEach(function (d) {
+          if (!d.parsed) {
+            if (isEncRaw(d.raw)) anyLocked = true; /* 密文未解锁：锁定态标记（数据原样保留） */
+            return;
+          }
+          mergeColInto(base, d.id, d.parsed);
+        });
+        if (anyLocked) self._idbEncLocked = true;
+        /* locked 供 loadIdb 判定：存在未解锁密文集合 → 不得报告"已采用 IDB 数据"
+         * （采用语义是"数据已入内存可用"；未解锁需走锁屏流，needsUnlock 兜底） */
+        return { state: base, fromIdb: anyFromIdb, lsRaw: lsRaw, idbRaw: idbRaw, hasExtra: hasExtra, locked: anyLocked };
+      });
+    });
+  };
+  /* 缺口回填：LS 缺的集合 ← IDB 原文；IDB 缺的集合 ← LS 原文（明文/密文原样，不转换不解密） */
+  Store.prototype._backfillCols = function (db, merged) {
+    var self = this;
+    if (this._storage) {
+      for (var id in merged.idbRaw) {
+        if (!merged.lsRaw[id]) {
+          try { this._storage.setItem(colLsKey(id), merged.idbRaw[id]); } catch (e) { /* LS 回填失败：IDB 仍在 */ }
+        }
+      }
+    }
+    var idbJobs = [];
+    for (var id2 in merged.lsRaw) {
+      if (!merged.idbRaw[id2]) {
+        idbJobs.push(idbPut(db, id2, { savedAt: self._meta || nowISO(), data: merged.lsRaw[id2] }));
+      }
+    }
+    Promise.all(idbJobs).catch(function () { /* 回填失败：数据仍在另一侧，下次启动重试 */ });
   };
 
   /* 把存储字符串解析为 state 对象；密文格式（e===1）需已解锁并解密，失败一律返回 null 不动数据 */
@@ -689,30 +1034,49 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     return Promise.resolve(parsed);
   };
 
-  /* 手动迁移：立即把当前全部数据写入 IndexedDB（只复制不删旧数据） */
-  /** @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _idbWrite: any, _encKey: any, _encSave: Function, needsUnlock: Function }} */
+  /* 手动迁移：立即把当前全部数据写入 IndexedDB（只复制不删旧数据，等价旧行为抛去"全量"语义） */
+  /** @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _idbWriteCols: any, _encKey: any, _encSave: Function, needsUnlock: Function, _colPayloadJson: Function, _persistLocalColsSync: Function }} */
   Store.prototype.migrateToIdb = function () {
     var self = this;
     if (!idbAvailable()) return Promise.resolve(false);
     /* 锁定态守卫：内存是明文空 defaultState，序列化直写会以明文空数据覆盖 IDB 密文主快照 */
     if (this.needsUnlock()) return Promise.resolve(false);
+    /* 全量强制（不去重）：迁移必须保证 IDB 主快照齐备 */
+    var map = null;
+    for (var i = 0; i < COLLECTIONS.length; i++) {
+      var json = this._colPayloadJson(COLLECTIONS[i]);
+      if (json === null) {
+        try { json = JSON.stringify(colPayload(this.state, COLLECTIONS[i])); } catch (e) { json = null; }
+        if (json === null || json === undefined) continue;
+      }
+      if (!map) map = {};
+      map[COLLECTIONS[i]] = json;
+    }
+    if (!map) return Promise.resolve(false);
     this._meta = nowISO();
-    var json = JSON.stringify(this.state);
     if (this._encKey) {
       /* 加密态：IDB 主快照必须与 LS 副本同为密文（走 _encSave 双写），不得写入内存明文 */
-      return this._encSave(json).then(function () { return true; }).catch(function () { return false; });
+      return this._encSave(map).then(function () { return true; }).catch(function () { return false; });
     }
-    return openIdb().then(function (db) {
-      return idbPut(db, IDB_KEY, { savedAt: self._meta, data: json }).then(function () { return true; });
+    return this._persistLocalColsSync(map).then(function () {
+      return openIdb().then(function (db) {
+        var jobs = [];
+        for (var id in map) jobs.push(idbPut(db, id, { savedAt: self._meta, data: map[id] }));
+        return Promise.all(jobs).then(function () { return true; });
+      }).catch(function () { return false; });
     }).catch(function () { return false; });
   };
 
-  /* 当前数据体积（字节）。接近 5MB 上限时前端显示警示条。复用上次序列化结果，页面切换时不重复计算
-   * 加密模式下按最近一次密文长度计。 */
-  /** @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _idbWrite: any, _lastJson: string, _rev: number, _encKey: any, _encSize: number }} */
+  /* 当前数据体积（字节）。接近 5MB 上限时前端显示警示条。
+   * 以最近一次各集合落盘串长度求和为准（密文模式 _colJson 存密文→天然反映加密体积）；
+   * 尚无落盘记录时回退实时序列化兜底。 */
   Store.prototype.storageUsage = function () {
-    if (this._encKey) return this._encSize || (this._lastJson ? this._lastJson.length : 0);
-    try { return (this._lastJson || JSON.stringify(this.state)).length; } catch (e) { return 0; }
+    var total = 0;
+    for (var id in this._colJson) {
+      if (this._colJson[id]) total += this._colJson[id].length;
+    }
+    if (total > 0) return total;
+    try { return JSON.stringify(this.state).length; } catch (e) { return 0; }
   };
   Store.prototype.isNearQuota = function () {
     return this.storageUsage() > QUOTA_SOFT_LIMIT;
@@ -786,12 +1150,12 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
   };
   Store.prototype.dismissQuotaNotice = function () {
     this.state.settings.quotaNoticeDismissed = true;
-    this.save();
+    this._commit('settings');
     this._emitChange('settings');
   };
   Store.prototype.setQuotaNoticeDismissed = function (v) {
     this.state.settings.quotaNoticeDismissed = !!v;
-    this.save();
+    this._commit('settings');
   };
 
   function find(arr, id) {
@@ -827,10 +1191,8 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
       if (self._storage) {
         try { self._storage.setItem(STORAGE_SALT_KEY, Crypto.bytesToB64(salt)); } catch (e) { throw new Error('盐存储失败，已中止'); }
       }
-      var json = JSON.stringify(self.state);
-      self._lastJson = json;
       self._rev++;
-      return self._encSave(json).then(function () {
+      return self._encSave(self._collectAllRaw()).then(function () {
         /* 回读验证：密文必须能解回并保留关键数据 */
         return self.readSnapshot('local').then(function (dec) {
           if (!dec || !dec.settings || !isPlainObject(dec.settings)) throw new Error('加密回读验证失败');
@@ -845,10 +1207,10 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
         try { self._storage.removeItem(STORAGE_SALT_KEY); } catch (e) { /* 忽略 */ }
       }
       /* 兜底：把内存明文快照写回双存（若密文已部分落盘则覆盖为明文） */
-      var fallback = JSON.stringify(self.state);
+      var fallback = self._collectAllRaw();
       self._persistLocal(fallback);
       self.flushPersist(); /* 兜底明文必须立即可见，避免异常后停留半密文状态 */
-      self._idbWrite(fallback);
+      self._idbWriteCols(fallback);
       throw err;
     });
   };
@@ -865,11 +1227,10 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
         return self.readSnapshot('any').then(function (dec) {
           if (!dec) { self._encKey = null; return false; }
           self.state = normalize(dec);
-          self._lastJson = JSON.stringify(self.state);
           self._rev++;
           self._idbEncLocked = false;
-          /* 回填双存：解锁即保证 localStorage 与 IDB 都是最新密文快照 */
-          return self._encSave(self._lastJson).then(function () {
+          /* 回填双存：解锁即保证 localStorage 与 IDB 都是最新密文快照（全量集合级密文，含 legacy 迁移） */
+          return self._encSave(self._collectAllRaw()).then(function () {
             self._emitChange('all'); /* 解锁完成：全页重绘 */
             return true;
           });
@@ -895,61 +1256,186 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
             try { self._storage.removeItem(STORAGE_SALT_KEY); } catch (e) { /* 忽略 */ }
           }
           /* 显式转明文：直接双写绕过 save 的锁定态守卫（此时 LS 仍是密文） */
-          var plain = JSON.stringify(self.state);
-          self._lastJson = plain;
+          var plain = self._collectAllRaw();
           self._persistLocal(plain);
           self.flushPersist(); /* 密文→明文切换必须即时完成 */
-          self._idbWrite(plain);
+          self._idbWriteCols(plain);
           self._emitChange('all'); /* 加解密切换：全页重绘反映加密状态 */
           return true;
         });
       });
     });
   };
-  /* 用给定密钥解密持久化快照（local 优先，缺则 IDB），失败一律 null */
+  /* 用给定密钥解密持久化快照（集合级：LS 优先，IDB 补缺；无集合级 → legacy 整份回落），失败一律 null。
+   * 逐集合独立 bundle（支持给定 key ≠ 会话密钥，如 disableEncryption 密码验证）。 */
   Store.prototype._decryptSnapshotKey = function (key) {
-    var self = this;
     if (!Crypto) return Promise.resolve(null);
-    var localRaw = null;
-    if (self._storage) {
-      try { localRaw = self._storage.getItem(STORAGE_KEY); } catch (e) { localRaw = null; }
-    }
-    function fromRaw(raw) {
-      var parsed = null;
-      try { parsed = JSON.parse(raw); } catch (e) { return Promise.resolve(null); }
-      if (!parsed || parsed.e !== 1 || parsed.v !== ENC_FORMAT) return Promise.resolve(null);
-      return Crypto.decryptBundle(parsed, key).then(function (json) {
-        try { return JSON.parse(json); } catch (e) { return null; }
-      }).catch(function () { return null; });
-    }
-    if (localRaw) return fromRaw(localRaw);
-    if (!idbAvailable()) return Promise.resolve(null);
-    return openIdb().then(function (db) {
-      return idbGet(db, IDB_KEY).then(function (entry) {
-        if (!entry) return null;
-        var data = (entry && typeof entry === 'object' && !Array.isArray(entry)) ? entry.data : entry;
-        return fromRaw(data);
+    return this._collectSnapshotRaw().then(function (raws) {
+      var base = defaultState();
+      var any = false;
+      var mergedAny = false;
+      var hasEnc = false;
+      var jobs = [];
+      for (var id in raws) {
+        any = true;
+        if (isEncRaw(raws[id])) hasEnc = true;
+        jobs.push((function (raw) {
+          var parsed = null;
+          try { parsed = JSON.parse(raw); } catch (e) { return Promise.resolve(null); }
+          if (parsed && parsed.e === 1) {
+            if (parsed.v !== ENC_FORMAT) return Promise.resolve(null);
+            return Crypto.decryptBundle(parsed, key).then(function (json) {
+              try { return JSON.parse(json); } catch (e) { return null; }
+            }).catch(function () { return null; });
+          }
+          return Promise.resolve(parsed);
+        })(raws[id]).then(function (colId, dec) {
+          if (!dec || typeof dec !== 'object') return;
+          if (colId === '__legacy') {
+            base = normalize(dec); /* 整份 legacy：直接替换 base */
+            mergedAny = true;
+            return;
+          }
+          mergeColInto(base, colId, dec);
+          mergedAny = true;
+        }.bind(null, id)));
+      }
+      if (!any) return null;
+      return Promise.all(jobs).then(function () {
+        /* 全密文解密失败（密码错误/损坏）→ null（区别于"无数据"，防止误判解锁/停用成功） */
+        if (!mergedAny && hasEnc) return null;
+        return base;
       });
-    }).catch(function () { return null; });
+    });
+  };
+  /* 收集持久化原始串（集合级：LS 集合 key 优先，缺失用 IDB 集合 entry；两侧皆无 → legacy 整份回落。
+   * 返回 {集合id: 原始串}；无任何来源返回 {}。 */
+  Store.prototype._collectSnapshotRaw = function () {
+    var self = this;
+    var lsMap = this._readLocalColsRaw();
+    if (idbAvailable()) {
+      return openIdb().then(function (db) {
+        var jobs = COLLECTIONS.map(function (id) {
+          return idbGet(db, id).then(function (entry) {
+            var raw = (entry && typeof entry === 'object' && !Array.isArray(entry)) ? entry.data : entry;
+            return { id: id, raw: raw };
+          });
+        });
+        return Promise.all(jobs).then(function (results) {
+          var merged = {};
+          var lsHas = Object.keys(lsMap).length > 0;
+          if (lsHas) {
+            for (var id2 in lsMap) merged[id2] = lsMap[id2];
+            results.forEach(function (r) {
+              if (merged[r.id] === undefined && r.raw !== null && r.raw !== undefined) merged[r.id] = r.raw;
+            });
+          } else {
+            results.forEach(function (r) {
+              if (r.raw !== null && r.raw !== undefined) merged[r.id] = r.raw;
+            });
+          }
+          if (Object.keys(merged).length > 0) return merged;
+          /* legacy 整份回落（LS 优先） */
+          var legacy = {};
+          if (self._storage) {
+            try {
+              var lsRaw = self._storage.getItem(STORAGE_KEY);
+              if (lsRaw) legacy['__legacy'] = lsRaw;
+            } catch (e) { /* 忽略 */ }
+          }
+          if (Object.keys(legacy).length > 0) return legacy;
+          return idbGet(db, IDB_KEY).then(function (entry) {
+            if (!entry) return {};
+            var data = (entry && typeof entry === 'object' && !Array.isArray(entry)) ? entry.data : entry;
+            if (data === null || data === undefined) return {};
+            var out = {};
+            out['__legacy'] = data;
+            return out;
+          });
+        });
+      }).catch(function () { return {}; });
+    }
+    if (Object.keys(lsMap).length > 0) return Promise.resolve(lsMap);
+    var legacyMap = {};
+    if (this._storage) {
+      try {
+        var lsRaw2 = this._storage.getItem(STORAGE_KEY);
+        if (lsRaw2) legacyMap['__legacy'] = lsRaw2;
+      } catch (e) { /* 忽略 */ }
+    }
+    return Promise.resolve(legacyMap);
   };
   /* 读取当前持久化快照（加密则需已解锁）：source = 'local' | 'idb' | 'any'。
+   * 集合级逐集合解密合并（defaultState 基底）；无集合级 → legacy 整份回落。
    * 返回解析后的 state 对象或 null（读取/解密失败一律 null，绝不抛出覆盖调用方）。 */
   Store.prototype.readSnapshot = function (source) {
     var self = this;
     function readLocal() {
-      if (!self._storage) return Promise.resolve(null);
-      var raw = null;
-      try { raw = self._storage.getItem(STORAGE_KEY); } catch (e) { return Promise.resolve(null); }
-      if (!raw) return Promise.resolve(null);
-      return self._decryptParse(raw);
+      var lsMap = self._readLocalColsRaw();
+      if (Object.keys(lsMap).length === 0) {
+        /* legacy 整份回落 */
+        if (!self._storage) return Promise.resolve(null);
+        var legacy = null;
+        try { legacy = self._storage.getItem(STORAGE_KEY); } catch (e) { legacy = null; }
+        if (!legacy) return Promise.resolve(null);
+        return self._decryptParse(legacy);
+      }
+      var base = defaultState();
+      var mergedAny = false;
+      var hasEnc = false;
+      var jobs = [];
+      for (var id in lsMap) {
+        if (isEncRaw(lsMap[id])) hasEnc = true;
+        jobs.push(self._decryptParse(lsMap[id]).then(function (col, dec) {
+          if (!dec || typeof dec !== 'object') return;
+          mergeColInto(base, col, dec);
+          mergedAny = true;
+        }.bind(null, id)));
+      }
+      return Promise.all(jobs).then(function () {
+        /* 全密文解密失败 → null（区别于"无数据"，防止误判解锁/停用成功） */
+        if (!mergedAny && hasEnc) return null;
+        return base;
+      });
     }
     function readIdb() {
       if (!idbAvailable()) return Promise.resolve(null);
       return openIdb().then(function (db) {
-        return idbGet(db, IDB_KEY).then(function (entry) {
-          if (!entry) return null;
-          var data = (entry && typeof entry === 'object' && !Array.isArray(entry)) ? entry.data : entry;
-          return self._decryptParse(data);
+        var jobs = COLLECTIONS.map(function (id) {
+          return idbGet(db, id).then(function (entry) {
+            if (!entry) return null;
+            return { id: id, raw: (entry && typeof entry === 'object' && !Array.isArray(entry)) ? entry.data : entry };
+          });
+        });
+        return Promise.all(jobs).then(function (results) {
+          var have = false;
+          results.forEach(function (r) { if (r) have = true; });
+          if (!have) {
+            /* legacy 整份回落 */
+            return idbGet(db, IDB_KEY).then(function (entry) {
+              if (!entry) return null;
+              var data = (entry && typeof entry === 'object' && !Array.isArray(entry)) ? entry.data : entry;
+              return self._decryptParse(data);
+            });
+          }
+          var base = defaultState();
+          var mergedAny = false;
+          var hasEnc = false;
+          var decJobs = [];
+          results.forEach(function (r) {
+            if (!r) return;
+            if (isEncRaw(r.raw)) hasEnc = true;
+            decJobs.push(self._decryptParse(r.raw).then(function (dec) {
+              if (!dec || typeof dec !== 'object') return;
+              mergeColInto(base, r.id, dec);
+              mergedAny = true;
+            }));
+          });
+          return Promise.all(decJobs).then(function () {
+            /* 全密文解密失败 → null（区别于"无数据"，防止误判解锁/停用成功） */
+            if (!mergedAny && hasEnc) return null;
+            return base;
+          });
         });
       }).catch(function () { return null; });
     }
@@ -1002,9 +1488,7 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
       /* 加密解锁态：导入数据以当前密钥落盘，不得明文覆盖密文。
        * 必须返回落盘链：resolve 前保证持久化完成，防止调用方立即刷新丢数据。 */
       var self = this;
-      var encJson = JSON.stringify(this.state);
-      this._lastJson = encJson;
-      return this._encSave(encJson).then(function () {
+      return this._encSave(this._collectAllRaw()).then(function () {
         self._emitChange('all'); /* 导入覆盖全量数据：各页重绘 */
         return { ok: true };
       });
@@ -1031,9 +1515,7 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
           /* 加密解锁态：导入数据以当前密钥落盘，保持密文不变量。
            * 必须返回落盘链：导入是一次性操作，resolve 前保证持久化完成，
            * 否则调用方立即刷新页面会丢失刚导入的数据（无法像普通 save 那样下次重试）。 */
-          var encJson = JSON.stringify(self.state);
-          self._lastJson = encJson;
-          return self._encSave(encJson).then(function () {
+          return self._encSave(self._collectAllRaw()).then(function () {
             self._emitChange('all');
             return { ok: true };
           });

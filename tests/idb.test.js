@@ -5,6 +5,9 @@ const { IDBFactory, IDBKeyRange } = require('fake-indexeddb');
 const { boot, waitFor } = require('./harness.js');
 const S = require('../js/store.js');
 
+/* 集合级持久化：LS 回填/写入按集合 key 断言（旧整份 STORAGE_KEY 仅 legacy 迁移源） */
+const COL = id => 'sonder_col_' + id + '_v1';
+
 const withIdb = (f, seed) => Object.assign({ idb: f, idbKeyRange: IDBKeyRange }, seed ? { seed } : {});
 
 test('IndexedDB：无 IDB 环境安全降级（loadIdb 返回 false，保存不报错）', async () => {
@@ -27,7 +30,7 @@ test('IndexedDB：保存双写落盘，换环境可从 IDB 完整恢复', async 
   assert.equal(applied, true, '应采用 IDB 数据');
   assert.equal(h2.store.state.memos[0].text, '第一条备忘');
   assert.equal(h2.store.state.tasks[0].title, '任务甲');
-  assert.ok(h2.store._storage.getItem(S.STORAGE_KEY), 'IDB 恢复后应回写 localStorage');
+  assert.ok(h2.store._storage.getItem(COL('memos')), 'IDB 恢复后应回写 localStorage');
 });
 
 test('IndexedDB：localStorage 有数据而 IDB 为空时，自动回填 IDB', async () => {
@@ -88,7 +91,7 @@ test('存储占用：storageUsage 反映真实体积，超 4.5MB 显示警示条
   h.$('#qClose').click();
   assert.equal(bar.hidden, true, '关闭后应隐藏');
   assert.equal(h.store.state.settings.quotaNoticeDismissed, true, '应持久化关闭选择');
-  const raw = JSON.parse(h.window.localStorage.getItem(S.STORAGE_KEY));
+  const raw = JSON.parse(h.window.localStorage.getItem(COL('settings')));
   assert.equal(raw.settings.quotaNoticeDismissed, true, '关闭状态应写入存储');
 });
 

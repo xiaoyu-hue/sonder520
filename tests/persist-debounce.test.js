@@ -5,6 +5,9 @@ const { test, after } = require('node:test');
 const assert = require('node:assert');
 const S = require('../js/store.js');
 
+/* 集合级持久化：逐集合 key 落盘（旧整份 STORAGE_KEY 仅作 legacy 迁移源） */
+const COL = id => 'sonder_col_' + id + '_v1';
+
 function memStorage(initial = {}) {
   const m = { ...initial };
   return {
@@ -36,11 +39,11 @@ test('持久化防抖：连续多次 save 合并为一次 idle 写入，且只�
   s.addMemo('第二条');
   s.addMemo('第三条');
   assert.equal(queued.filter(Boolean).length, 1, '多次保存只调度一次 idle 写入');
-  assert.equal(storage.getItem(S.STORAGE_KEY), null, 'idle 未执行前不得落盘');
+  assert.equal(storage.getItem(COL('memos')), null, 'idle 未执行前不得落盘');
   runQueued();
-  const raw = JSON.parse(storage.getItem(S.STORAGE_KEY));
-  assert.equal(raw.memos.length, 3, '写的是最新完整快照');
-  assert.equal(raw.memos[0].text, '第三条', '最新数据优先');
+  const raw = JSON.parse(storage.getItem(COL('memos')));
+  assert.equal(raw.length, 3, '写的是最新完整快照');
+  assert.equal(raw[0].text, '第三条', '最新数据优先');
   assert.ok(storage.getItem(S.STORAGE_META_KEY), 'meta 一并写入');
 });
 
@@ -48,13 +51,13 @@ test('持久化防抖：flushPersist 立即落盘并取消待调度写入', () =
   const storage = memStorage();
   const s = S.createStore(storage);
   s.addMemo('待冲刷');
-  assert.equal(storage.getItem(S.STORAGE_KEY), null, 'idle 前未落盘');
+  assert.equal(storage.getItem(COL('memos')), null, 'idle 前未落盘');
   s.flushPersist();
   assert.equal(s._localFlushHandle, null, 'flush 应作废待调度任务');
   assert.equal(queued.filter(Boolean).length, 0, 'flush 后不应再有排队写入');
-  const raw = JSON.parse(storage.getItem(S.STORAGE_KEY));
-  assert.equal(raw.memos.length, 1, 'flush 后立即持久化');
-  assert.equal(raw.memos[0].text, '待冲刷');
+  const raw = JSON.parse(storage.getItem(COL('memos')));
+  assert.equal(raw.length, 1, 'flush 后立即持久化');
+  assert.equal(raw[0].text, '待冲刷');
 });
 
 test('持久化防抖：无 requestIdleCallback 环境同步落盘（Node/测试兼容）', () => {
@@ -64,7 +67,7 @@ test('持久化防抖：无 requestIdleCallback 环境同步落盘（Node/测试
     const storage = memStorage();
     const s = S.createStore(storage);
     s.addMemo('同步落盘');
-    assert.ok(storage.getItem(S.STORAGE_KEY), '无 idle API 时应同步落盘');
+    assert.ok(storage.getItem(COL('memos')), '无 idle API 时应同步落盘');
     assert.equal(s._localFlushHandle, null, '同步路径不残留调度句柄');
   } finally {
     if (savedRIC) globalThis.requestIdleCallback = savedRIC;

@@ -27,15 +27,18 @@ function poll(fn, stepMs, timeoutMs) {
 }
 
 function snapLS(window) {
-  return {
-    data: window.localStorage.getItem('sonder_data_v1'),
-    salt: window.localStorage.getItem('sonder_encsalt_v1')
-  };
+  const ls = window.localStorage;
+  const out = { 'sonder_encsalt_v1': ls.getItem('sonder_encsalt_v1') };
+  for (let i = 0; i < ls.length; i++) {
+    const k = ls.key(i);
+    if (k && k.indexOf('sonder_col_') === 0) out[k] = ls.getItem(k);
+  }
+  return out;
 }
 
 function bootSnap(snap, session) {
   return boot({
-    rawLS: { 'sonder_data_v1': snap.data, 'sonder_encsalt_v1': snap.salt },
+    rawLS: snap,
     session: session
   });
 }
@@ -76,9 +79,9 @@ test('设置页启用向导：密码不一致保持弹窗提示，一致后启�
   await poll(() => !doc.querySelector('.modal'), 100, 15000);
 
   assert.ok(/已启用 · 已解锁/.test(doc.body.textContent), '卡片应显示已启用·已解锁');
-  const raw = JSON.parse(doc.defaultView.localStorage.getItem('sonder_data_v1'));
-  assert.equal(raw.e, 1, '落盘应为密文');
-  assert.ok(!doc.defaultView.localStorage.getItem('sonder_data_v1').includes('机密备忘'), '密文不含明文');
+  const memosRaw = JSON.parse(doc.defaultView.localStorage.getItem('sonder_col_memos_v1'));
+  assert.equal(memosRaw.e, 1, '落盘应为密文');
+  assert.ok(!doc.defaultView.localStorage.getItem('sonder_col_memos_v1').includes('机密备忘'), '密文不含明文');
   assert.ok(window.__sonderHooks.store.state.tasks.length === 1, '解锁态数据仍可用');
 });
 
@@ -100,7 +103,7 @@ test('锁屏：设置页锁定 → 错密码提示 → 对密码解锁恢复', a
   $('#lockBtn').click();
   await poll(() => window.getComputedStyle($('#lockScreen')).display === 'none', 100, 15000);
   assert.equal(window.__sonderHooks.store.state.tasks.length, 1, '解锁后数据恢复可见');
-  const raw = JSON.parse(doc.defaultView.localStorage.getItem('sonder_data_v1'));
+  const raw = JSON.parse(doc.defaultView.localStorage.getItem('sonder_col_tasks_v1'));
   assert.equal(raw.e, 1, '解锁后落盘仍为密文');
 });
 
@@ -108,7 +111,7 @@ test('重启（新实例）：自动弹锁屏，解锁前数据不可见', async
   const a = boot({ seed: SEED });
   await enableViaUI(a.window);
   const snap = snapLS(a.window);
-  assert.ok(snap.data && snap.salt, '应捕获密文快照与盐');
+  assert.ok(snap['sonder_col_memos_v1'] && snap['sonder_encsalt_v1'], '应捕获密文快照与盐');
 
   const b = bootSnap(snap);
   await poll(() => b.$('#lockScreen'), 100, 10000);
@@ -146,12 +149,14 @@ test('停用加密：错密码拒绝并保持密文，对密码转明文并清�
     const hint = doc.querySelector('.modal .hint');
     return hint && hint.style.display === 'block' && /密码不正确/.test(hint.textContent);
   }, 100, 10000);
-  assert.equal(JSON.parse(doc.defaultView.localStorage.getItem('sonder_data_v1')).e, 1, '错密码后仍为密文');
+  assert.equal(JSON.parse(doc.defaultView.localStorage.getItem('sonder_col_memos_v1')).e, 1, '错密码后仍为密文');
 
   doc.querySelector('[data-k="pwd"]').value = PWD;
   doc.querySelector('[data-act="ok"]').click();
   await poll(() => !doc.querySelector('.modal'), 100, 15000);
-  assert.equal(JSON.parse(doc.defaultView.localStorage.getItem('sonder_data_v1')).e, undefined, '停用后转为明文');
+  const after = JSON.parse(doc.defaultView.localStorage.getItem('sonder_col_memos_v1'));
+  assert.equal(after.e, undefined, '停用后转为明文');
+  assert.ok(Array.isArray(after), '停用后集合 key 为明文数组');
   assert.equal(doc.defaultView.localStorage.getItem('sonder_encsalt_v1'), null, '盐应清除');
   assert.ok(/未启用/.test(doc.body.textContent), '卡片状态回到未启用');
   assert.equal(window.__sonderHooks.store.state.tasks.length, 1, '数据完整');

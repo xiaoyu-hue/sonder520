@@ -120,6 +120,7 @@ test('设置页：提醒开关存在，切换后持久化到存储', async () =>
   assert.equal(cb.checked, false, '默认应为关');
   cb.click();
   assert.equal(hooks.store.state.settings.taskReminder, true, '开启后应写入存储');
-  const rel = boot({ seed: JSON.parse(window.localStorage.getItem('sonder_data_v1')) });
+  const settingsCol = JSON.parse(window.localStorage.getItem('sonder_col_settings_v1'));
+  const rel = boot({ seed: { version: settingsCol.version || 1, settings: settingsCol.settings, tasks: hooks.store.state.tasks, memos: [] } });
   assert.equal(rel.hooks.store.state.settings.taskReminder, true, '刷新后选择应保留');
 });

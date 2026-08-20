@@ -23,7 +23,7 @@
     if (p.progress > 100) p.progress = 100;
     return p;
   }
-  Store.prototype.addPost = function (d) { var p = postFactory(d); this.state.posts.unshift(p); this.save(); this._emitChange('posts'); return p; };
+  Store.prototype.addPost = function (d) { var p = postFactory(d); this.state.posts.unshift(p); this._commit('posts'); this._emitChange('posts'); return p; };
   Store.prototype.updatePost = function (id, patch) {
     var p = h.find(this.state.posts, id); if (!p) return null;
     ['title', 'platform', 'account', 'note', 'status', 'publishDate'].forEach(function (k) {
@@ -37,7 +37,7 @@
       p.progress = pr > 100 ? 100 : pr;
     }
     if (Array.isArray(patch.tags)) p.tags = patch.tags.slice();
-    this.save(); this._emitChange('posts'); return p;
+    this._commit('posts'); this._emitChange('posts'); return p;
   };
   Store.prototype.removePost = function (id) {
     var at = h.idxOf(this.state.posts, id);
@@ -45,7 +45,7 @@
       var posts = this.state.posts.splice(at, 1); /* P4c 记录供撤销 */
       this._undoPush({ list: 'posts', at: at, data: posts[0] });
     }
-    this.save();
+    this._commit('posts');
     this._emitChange('posts');
   };
 
@@ -55,13 +55,13 @@
       id: h.uid(), name: String(d.name || '').trim() || '未命名项目',
       note: String(d.note || ''), tasks: [], createdAt: h.nowISO()
     };
-    this.state.devProjects.unshift(p); this.save(); this._emitChange('devProjects'); return p;
+    this.state.devProjects.unshift(p); this._commit('devProjects'); this._emitChange('devProjects'); return p;
   };
   Store.prototype.updateDevProject = function (id, patch) {
     var p = h.find(this.state.devProjects, id); if (!p) return null;
     if (typeof patch.name === 'string') p.name = patch.name.trim() || p.name;
     if (typeof patch.note === 'string') p.note = patch.note;
-    this.save(); this._emitChange('devProjects'); return p;
+    this._commit('devProjects'); this._emitChange('devProjects'); return p;
   };
   Store.prototype.removeDevProject = function (id) {
     var at = h.idxOf(this.state.devProjects, id);
@@ -69,13 +69,13 @@
       var ps = this.state.devProjects.splice(at, 1); /* P4c 记录供撤销 */
       this._undoPush({ list: 'devProjects', at: at, data: ps[0] });
     }
-    this.save();
+    this._commit('devProjects');
     this._emitChange('devProjects');
   };
   function devTask(d) { return { id: h.uid(), title: String(d.title || ''), note: String(d.note || ''), done: !!d.done }; }
   Store.prototype.addDevTask = function (projId, d) {
     var p = h.find(this.state.devProjects, projId); if (!p) return null;
-    var t = devTask(d); p.tasks.push(t); this.save(); this._emitChange('devProjects'); return t;
+    var t = devTask(d); p.tasks.push(t); this._commit('devProjects'); this._emitChange('devProjects'); return t;
   };
   Store.prototype.updateDevTask = function (projId, taskId, patch) {
     var p = h.find(this.state.devProjects, projId); if (!p) return null;
@@ -83,12 +83,12 @@
     if (typeof patch.title === 'string') t.title = patch.title;
     if (typeof patch.note === 'string') t.note = patch.note;
     if (typeof patch.done === 'boolean') t.done = patch.done;
-    this.save(); this._emitChange('devProjects'); return t;
+    this._commit('devProjects'); this._emitChange('devProjects'); return t;
   };
   Store.prototype.removeDevTask = function (projId, taskId) {
     var p = h.find(this.state.devProjects, projId); if (!p) return;
     p.tasks = p.tasks.filter(function (t) { return t.id !== taskId; });
-    this.save();
+    this._commit('devProjects');
     this._emitChange('devProjects');
   };
 
@@ -96,14 +96,14 @@
   Store.prototype.addDevNote = function (d) {
     var now = h.nowISO();
     var n = { id: h.uid(), title: String(d.title || '').trim() || '未命名笔记', content: String(d.content || ''), createdAt: now, updatedAt: now };
-    this.state.devNotes.unshift(n); this.save(); this._emitChange('devNotes'); return n;
+    this.state.devNotes.unshift(n); this._commit('devNotes'); this._emitChange('devNotes'); return n;
   };
   Store.prototype.updateDevNote = function (id, patch) {
     var n = h.find(this.state.devNotes, id); if (!n) return null;
     if (typeof patch.title === 'string') n.title = patch.title.trim() || n.title;
     if (typeof patch.content === 'string') n.content = patch.content;
     n.updatedAt = h.nowISO();
-    this.save(); this._emitChange('devNotes'); return n;
+    this._commit('devNotes'); this._emitChange('devNotes'); return n;
   };
   Store.prototype.removeDevNote = function (id) {
     var at = h.idxOf(this.state.devNotes, id);
@@ -111,20 +111,20 @@
       var ns = this.state.devNotes.splice(at, 1); /* P4c 记录供撤销 */
       this._undoPush({ list: 'devNotes', at: at, data: ns[0] });
     }
-    this.save();
+    this._commit('devNotes');
     this._emitChange('devNotes');
   };
   Store.prototype.addDevSnippet = function (d) {
     var now = h.nowISO();
     var s = { id: h.uid(), title: String(d.title || '').trim() || '未命名片段', code: String(d.code || ''), createdAt: now, updatedAt: now };
-    this.state.devSnippets.unshift(s); this.save(); this._emitChange('devSnippets'); return s;
+    this.state.devSnippets.unshift(s); this._commit('devSnippets'); this._emitChange('devSnippets'); return s;
   };
   Store.prototype.updateDevSnippet = function (id, patch) {
     var s = h.find(this.state.devSnippets, id); if (!s) return null;
     if (typeof patch.title === 'string') s.title = patch.title.trim() || s.title;
     if (typeof patch.code === 'string') s.code = patch.code;
     s.updatedAt = h.nowISO();
-    this.save(); this._emitChange('devSnippets'); return s;
+    this._commit('devSnippets'); this._emitChange('devSnippets'); return s;
   };
   Store.prototype.removeDevSnippet = function (id) {
     var at = h.idxOf(this.state.devSnippets, id);
@@ -132,7 +132,7 @@
       var ss = this.state.devSnippets.splice(at, 1); /* P4c 记录供撤销 */
       this._undoPush({ list: 'devSnippets', at: at, data: ss[0] });
     }
-    this.save();
+    this._commit('devSnippets');
     this._emitChange('devSnippets');
   };
 });

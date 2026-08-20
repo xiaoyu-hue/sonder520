@@ -26,11 +26,11 @@ test('阅读计时：会话落账累计分钟并写入当日日志（不足1分�
 });
 
 test('阅读计时：旧书数据无字段时 normalize 补默认', () => {
-  const st = { getItem: () => JSON.stringify({
+  const st = { getItem: k => k === 'sonder_data_v1' ? JSON.stringify({
     version: 1, settings: {},
     books: [{ id: 'b1', title: '老书', status: '想读', progress: 0, notes: [] }],
     memos: [], tasks: [], posts: [], devProjects: [], clients: [], excerpts: [], news: [], designs: []
-  }), setItem: () => {}, removeItem: () => {} };
+  }) : null, setItem: () => {}, removeItem: () => {} };
   const s = S.createStore(st);
   assert.equal(s.state.books[0].readingMinutes, 0);
   assert.deepEqual(s.state.books[0].readingLog, []);
