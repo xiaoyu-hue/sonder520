@@ -3,9 +3,9 @@
 本项目所有重要变更均记录于此。格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循语义化版本（SemVer）。完整版本演进另见 [PRD.md](PRD.md) 的版本历史表。
 
-## [v6.0] - 规划中（未发布）
+## [v6.0] - 2026-08-21
 
-### 已实施（工程基线，尚未发版）
+### 已实施
 
 - **games.js 域拆分（1056 → ~220 行）**：按职责拆为 `games-shared.js`（共享状态/AI 调度，须最先加载）+ `games-mini.js`（四款休闲小游戏）+ `games-battle.js`（对弈/AI/战绩）+ 编排层 games.js；index.html 脚本顺序契约同步扩展（games-logic → games-view → games-shared → games-mini → games-battle → games.js），行为零变更（110 项游戏测试全绿，全量 516 项）。契约测试 state.test.js 白名单与 `SonderGames*` 全局声明（globals.d.ts）随拆分层级同步。
 - **ESM 试验田（ADR-001 演进条款落地评估）**：新增 `js/quotes-core.mjs`（纯 ESM 零依赖）+ 双实现一致性测试——生产保持 UMD/零构建不动摇（qa.test.js `require` quotes.js 依赖 UMD；harness 注入方式已升级，见下），试验田以一致性守卫证明「同源双实现」策略可行。
@@ -88,33 +88,6 @@
 - 离线缓存升版 v51 → v52（desktop-pet-page.js 新增触发 sync-sw 自动升版，ASSET_SIG 865459fe6ea0 → ed5d5e0c40a4，ASSETS 43 项）。
 - **桌面玩偶全契约测试收口（v6.0 desktop-pet Task 6，规格 11.2 全清单）**：`tests/desktop-pet.test.js` 补全 `spendCoins` 余额不足/非法参数拒绝（负数/零/NaN/Infinity）+ 角色差异化（三实例 breathe/blink/bodyScale/defaultEmotion 参数不同），规格 11.2 十项清单全绿。
 - 测试基线 620 → 622（desktop-pet 收口 2 项，全量 622 绿；typecheck/lint 零问题）。
-
-### 计划（来自 38 项审计清单，按优先级）
-
-#### 文档与工程治理
-- 新增 CHANGELOG.md（本文件）——版本迭代集中记录。
-- 补 PRD 测试基线描述（487 → 512，与 README/npm test 实际一致）。
-
-#### SEO 与分享
-- 计划：Open Graph / Twitter Card 标签（index.html 已就位，本轮加入）。
-- 计划：document.title 随模块动态更新（浏览器标签页，本轮加入）。
-- 计划：全尺寸 PWA 图标套件评估（当前 SVG any-size 满足多数场景）。
-
-#### 数据与安全（评估中）
-- 导入完整性校验：**评估后不采纳格式变更**——加密备份已有 AES-GCM 认证标签内建篡改校验（测试锁定）；
-  明文备份加 SHA-256 需破坏导出格式与全部往返测试，威胁模型收益不匹配。
-- 密码遗失恢复：加密为可选零知识设计，导出加密备份即恢复机制（需密码）；
-  「恢复密钥文件」与零知识原则冲突，不采纳。
-- 跨设备同步（WebDAV 等）：维持手动导出/导入现状，不引入账号体系。
-
-#### 架构（需单独决策）
-- ES Modules / Vite / TypeScript 渐进迁移（推荐）：与 ADR-001 零构建决策的取舍需单独立项，
-  不进入 v6.0 默认范围。当前零构建 + defer 顺序契约 + UMD 双环境（浏览器/Node 测试）仍满足需求；
-  已落地 ESM 试验田（quotes-core.mjs + 双实现一致性测试）持续评估，见上文「已实施」。
-
-#### UX（backlog）
-- 首次使用引导弹窗（3 步）、撤销栈（删除类操作）、键盘快捷键帮助面板。
-- 空状态 / 加载反馈按模块穿插优化（各模块已有部分实现）。
 
 ## [v5.2] - 2026-08-16
 

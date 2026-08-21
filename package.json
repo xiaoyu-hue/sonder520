@@ -1,6 +1,6 @@
 {
   "name": "sonder",
-  "version": "1.0.0",
+  "version": "6.0.0",
   "private": true,
   "description": "个人工作生活 App - 纯本地浏览器运行",
   "scripts": {
