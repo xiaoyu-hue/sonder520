@@ -1886,6 +1886,50 @@
     return true;
   };
 
+  /** 按类型触发特定对话（任务完成/成就等事件驱动，跳过冷却检查） */
+  InteractionManager.prototype.triggerByType = function (dialogueType) {
+    if (this.playing) return false;
+    var ids = this.family.getActivePetIds();
+    if (ids.length < 2) return false;
+    /* 收集所有可用组合中包含指定类型对话的 */
+    var combos = [];
+    var self = this;
+    /* 双人组合 */
+    ids.forEach(function (a) {
+      ids.forEach(function (b) {
+        if (a >= b) return;
+        var key1 = a + '+' + b;
+        var key2 = b + '+' + a;
+        var key = DIALOGUES[key1] ? key1 : (DIALOGUES[key2] ? key2 : null);
+        if (!key) return;
+        var groups = DIALOGUES[key];
+        var candidates = groups.filter(function (g) { return g.type === dialogueType; });
+        if (candidates.length) {
+          combos.push({ a: a, b: b, key: key, candidates: candidates });
+        }
+      });
+    });
+    /* 三人组合（trio 模式时也检查 trio 对话库） */
+    if (ids.length >= 3 && DIALOGUES.trio) {
+      var trioCandidates = DIALOGUES.trio.filter(function (g) { return g.type === dialogueType; });
+      if (trioCandidates.length) {
+        combos.push({ a: ids[0], b: ids[1], key: 'trio', candidates: trioCandidates });
+      }
+    }
+    if (!combos.length) return false;
+    /* 随机选一个组合 */
+    var pick = combos[Math.floor(Math.random() * combos.length)];
+    var dialogue = pick.candidates[Math.floor(Math.random() * pick.candidates.length)];
+    var participants = pick.key === 'trio' ? ids.slice(0, 3) : [pick.a, pick.b];
+    this.family.emit('interaction', { type: dialogue.type, participants: participants });
+    participants.forEach(function (pid) {
+      var p = self.family.display && self.family.display.get(pid);
+      if (p) p._triggerInteractEffect();
+    });
+    this._playSequence(dialogue, participants);
+    return true;
+  };
+
   /** 结束当前对话播放 */
   InteractionManager.prototype.end = function () {
     if (!this.playing) return;
@@ -2197,6 +2241,7 @@
     var tasks = this.store.state.tasks;
     var rewarded = dp.rewardedTaskIds;
     var changed = false;
+    var newlyCompleted = 0;
     tasks.forEach(function (t) {
       if (t.done && t.doneAt && rewarded.indexOf(t.id) === -1) {
         var priority = t.priority || 'p3';
@@ -2206,6 +2251,7 @@
         rewarded.push(t.id);
         if (rewarded.length > 500) rewarded.splice(0, rewarded.length - 500);
         changed = true;
+        newlyCompleted++;
       }
     });
     if (changed) {
@@ -2214,6 +2260,10 @@
       /* 特效：金币飘字 */
       var coinPet = this._randomPet();
       if (coinPet) coinPet._triggerCoinEffect(5);
+      /* 任务完成鼓励对话：从 sync 类型对话库中选取 */
+      if (newlyCompleted > 0 && this.interaction && !this.interaction.playing) {
+        this.interaction.triggerByType('sync');
+      }
     }
   };
 

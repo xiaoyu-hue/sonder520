@@ -981,3 +981,101 @@ test('desktop-pet: PetFamily 构造深合并——store.state.settings 引用正
     family.destroy();
   }
 });
+
+/* ============================================================
+ * Task 10: 任务完成触发鼓励对话
+ * 契约依据：
+ *   - 规格 5.2：任务完成时从 sync 对话库中选取鼓励对话
+ *   - 对话库附录 E：4 组合 × sync 类型对话
+ *   - InteractionManager.triggerByType：事件驱动触发，跳过冷却
+ * ============================================================ */
+
+test('desktop-pet: InteractionManager.triggerByType——sync 类型对话触发', () => {
+  const { window, store, bus } = boot();
+  const C = window.DesktopPetCore;
+  const family = new C.PetFamily({ store: store, bus: bus });
+  try {
+    family.setMode('duo');
+    const im = family.interaction;
+    assert.ok(im, 'interaction manager 存在');
+    /* duo 模式只有 1 只常驻，triggerByType 应返回 false */
+    const result = im.triggerByType('sync');
+    assert.strictEqual(result, false, 'duo 1 只不可触发');
+  } finally {
+    family.destroy();
+  }
+});
+
+test('desktop-pet: InteractionManager.triggerByType——trio 模式可触发', () => {
+  const { window, store, bus } = boot();
+  const C = window.DesktopPetCore;
+  const family = new C.PetFamily({ store: store, bus: bus });
+  try {
+    family.setMode('trio');
+    const im = family.interaction;
+    assert.ok(im, 'interaction manager 存在');
+    /* trio 模式 3 只在场，可触发 */
+    const result = im.triggerByType('sync');
+    assert.strictEqual(result, true, 'trio 3 只可触发 sync 对话');
+    assert.strictEqual(im.playing, true, '对话播放中');
+    /* 清理 */
+    im.end();
+    assert.strictEqual(im.playing, false, '对话已结束');
+  } finally {
+    family.destroy();
+  }
+});
+
+test('desktop-pet: InteractionManager.triggerByType——播放中不可重复触发', () => {
+  const { window, store, bus } = boot();
+  const C = window.DesktopPetCore;
+  const family = new C.PetFamily({ store: store, bus: bus });
+  try {
+    family.setMode('trio');
+    const im = family.interaction;
+    const first = im.triggerByType('sync');
+    assert.strictEqual(first, true, '首次触发成功');
+    const second = im.triggerByType('sync');
+    assert.strictEqual(second, false, '播放中不可重复触发');
+    im.end();
+  } finally {
+    family.destroy();
+  }
+});
+
+test('desktop-pet: _onTaskChange——任务完成后触发 sync 对话', () => {
+  const { window, store, bus } = boot();
+  const C = window.DesktopPetCore;
+  const family = new C.PetFamily(store, bus);
+  try {
+    family.setMode('trio');
+    const dp = store.state.settings.desktopPet;
+    dp.rewardedTaskIds = [];
+    /* 模拟任务完成 */
+    store.state.tasks = [{ id: 'task_complete_1', text: 'test', done: true, doneAt: Date.now() }];
+    /* 触发 _onTaskChange */
+    family._onTaskChange();
+    /* 任务完成应触发对话 */
+    assert.strictEqual(family.interaction.playing, true, '任务完成后触发 sync 对话');
+    family.interaction.end();
+  } finally {
+    family.destroy();
+  }
+});
+
+test('desktop-pet: _onTaskChange——已完成任务不重复触发', () => {
+  const { window, store, bus } = boot();
+  const C = window.DesktopPetCore;
+  const family = new C.PetFamily(store, bus);
+  try {
+    family.setMode('trio');
+    const dp = store.state.settings.desktopPet;
+    dp.rewardedTaskIds = ['task_complete_1'];
+    /* 模拟同一任务再次触发 */
+    store.state.tasks = [{ id: 'task_complete_1', text: 'test', done: true, doneAt: Date.now() }];
+    family._onTaskChange();
+    assert.strictEqual(family.interaction.playing, false, '已奖励任务不重复触发对话');
+  } finally {
+    family.destroy();
+  }
+});

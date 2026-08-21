@@ -92,6 +92,8 @@
 - 离线缓存升版 v52 → v53（多文件变更触发 sync-sw 自动升版，ASSETS 43 项不变）。
 - **桌面玩偶特效层（v6.0 desktop-pet Task 8，交互视觉反馈）**：CSS 新增 4 组特效关键帧（`dp-fx-sparkle` 喂食星星散射、`dp-fx-coin` 金币飘字+N、`dp-fx-glow` 成就解锁光环脉冲、`dp-fx-heart` 互动爱心飘散），均带 `prefers-reduced-motion` 降级；Pet.prototype 新增 `_triggerFeedEffect`/`_triggerCoinEffect`/`_triggerAchievementEffect`/`_triggerInteractEffect` 四个触发器（拖拽中跳过 + `_motionOk()` 门控）+ PetFamily._randomPet 随机实例取用；特效触发接入 feedPet（喂食星星）/checkAchievements（成就光环）/_onTaskChange（金币飘字）/InteractionManager.trigger（互动爱心）四处事件流；新增 8 项测试（存在性/安全降级/星星创建/飘字内容/光环类切换/爱心创建/随机实例/拖拽跳过），全量 630 绿；typecheck/lint 零问题。
 - 离线缓存升版 v53 → v54（desktop-pet.js/css 变更触发 sync-sw 自动升版，ASSETS 43 项不变）。
+- **桌面玩偶数据隔离审计 + 测试（v6.0 desktop-pet Task 9）**：审计发现 desktopPet 嵌套在 settings 集合内（非独立集合）、`setDesktopPet` 浅合并潜在风险（当前未被调用）、`mergeDesktopPetDefaults` 深合并正确性验证、`resetAllData` 只重置游戏数据保留配置、`clearAll` 重置全部数据含 desktopPet。新增 6 项测试（空对象补全/部分字段保留/嵌套字段补全/resetAllData 配置保留/数据模块隔离/Store 引用同步），全量 636 绿；typecheck/lint 零问题。
+- **桌面玩偶任务完成鼓励对话（v6.0 desktop-pet Task 10）**：InteractionManager 新增 `triggerByType(dialogueType)` 方法（事件驱动触发，跳过冷却检查，支持双人+三人组合对话库）；`_onTaskChange` 任务完成后自动触发 sync 类型鼓励对话（从附录 E 对话库中选取）；新增 5 项测试（类型触发/trio 模式/播放中防重入/任务完成触发/已奖励不重复），全量 641 绿；typecheck/lint 零问题。
 
 ## [v5.2] - 2026-08-16
 
