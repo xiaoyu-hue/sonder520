@@ -61,4 +61,34 @@
     this._emitChange('settings');
     return v;
   };
+
+  /* ====== 桌面玩偶：泛型持久化网关（per-key 白名单校验 + 浅合并） ====== */
+  var DP_WHITELIST = {
+    enabled: true, mode: true, resident: true, size: true, layout: true,
+    positions: true, coins: true, affection: true, inventory: true,
+    totalFed: true, rewardedTaskIds: true, achievements: true
+  };
+
+  Store.prototype.setDesktopPet = function (patch) {
+    if (!patch || typeof patch !== 'object') return;
+    var dp = this.state.settings.desktopPet;
+    if (!dp) return;
+    var keys = Object.keys(patch);
+    for (var i = 0; i < keys.length; i++) {
+      var k = keys[i];
+      if (!DP_WHITELIST[k]) continue;
+      var v = patch[k];
+      if (v !== null && typeof v === 'object' && !Array.isArray(v)
+          && dp[k] && typeof dp[k] === 'object' && !Array.isArray(dp[k])) {
+        var subKeys = Object.keys(v);
+        for (var j = 0; j < subKeys.length; j++) {
+          dp[k][subKeys[j]] = v[subKeys[j]];
+        }
+      } else {
+        dp[k] = v;
+      }
+    }
+    this._commit('settings');
+    this._emitChange('settings');
+  };
 });

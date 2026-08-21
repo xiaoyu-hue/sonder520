@@ -91,6 +91,7 @@ interface SonderStoreImpl {
   setModuleEnabled(key: string, on: boolean): void;
   setQuotaNoticeDismissed(on: boolean): void;
   dismissQuotaNotice(): void;
+  setDesktopPet(patch: Record<string, unknown>): void;
   enableEncryption(password: string): Promise<boolean>;
   disableEncryption(): Promise<boolean>;
   encryptionMode(): string;
@@ -480,6 +481,7 @@ interface Window {
   __sonderHooks: SonderHooks;
   __SONDER_TEST__?: boolean;
   __sonderErrors: { list: SonderErrorEntry[]; readonly total: number; clear(): void; report(errOrMsg: string | Error, type?: string): void };
+  __desktopPetFamily: any;
   __gamesDbg: any;
   __readingDbg: any;
   __todayDbg: any;

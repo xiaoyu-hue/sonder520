@@ -171,7 +171,29 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
       game: true
     },
     quotaNoticeDismissed: false,
-    taskReminder: false
+    taskReminder: false,
+    desktopPet: {
+      enabled: true,
+      mode: 'duo',
+      resident: 'xiaomo',
+      size: 84,
+      layout: 'bottom-right',
+      positions: {
+        xiaomo: { x: null, y: null },
+        xiaoyu: { x: null, y: null },
+        lanling: { x: null, y: null }
+      },
+      coins: 0,
+      affection: { xiaomo: 0, xiaoyu: 0, lanling: 0 },
+      inventory: {},
+      totalFed: { xiaomo: 0, xiaoyu: 0, lanling: 0 },
+      rewardedTaskIds: [],
+      achievements: {
+        unlocked: [],
+        stats: { totalTasksDone: 0, lastActiveDay: null, streakDays: 0, totalFeeds: 0 }
+      },
+      schemaVersion: 1
+    }
   };
 
   /* 工厂注册的标准模块集合（ModuleFactory.createModule → _registerCollection）。
@@ -285,6 +307,53 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     return out;
   }
 
+  /* ---------- 桌面玩偶深合并迁移（自包含，store.js 加载先于 desktop-pet.js） ---------- */
+  var DP_ROLE_IDS = ['xiaomo', 'xiaoyu', 'lanling'];
+  var DP_MODES = ['single', 'duo', 'trio'];
+
+  function mergeDesktopPetDefaults(raw) {
+    var dflt = DEFAULT_SETTINGS.desktopPet;
+    var out = deepClone(dflt);
+    if (!raw || typeof raw !== 'object') return out;
+    if (typeof raw.enabled === 'boolean') out.enabled = raw.enabled;
+    if (DP_MODES.indexOf(raw.mode) !== -1) out.mode = raw.mode;
+    if (DP_ROLE_IDS.indexOf(raw.resident) !== -1) out.resident = raw.resident;
+    if (typeof raw.size === 'number') out.size = Math.max(48, Math.min(160, Math.round(raw.size)));
+    if (raw.layout === 'bottom-right' || raw.layout === 'bottom-left' || raw.layout === 'auto') out.layout = raw.layout;
+    if (raw.positions && typeof raw.positions === 'object') {
+      DP_ROLE_IDS.forEach(function (id) {
+        var p = raw.positions[id];
+        out.positions[id] = (p && typeof p === 'object')
+          ? { x: typeof p.x === 'number' ? p.x : null, y: typeof p.y === 'number' ? p.y : null }
+          : { x: null, y: null };
+      });
+    }
+    if (typeof raw.coins === 'number') out.coins = Math.max(0, Math.round(raw.coins));
+    if (raw.affection && typeof raw.affection === 'object') {
+      DP_ROLE_IDS.forEach(function (id) {
+        if (typeof raw.affection[id] === 'number') out.affection[id] = Math.max(0, Math.round(raw.affection[id]));
+      });
+    }
+    if (raw.inventory && typeof raw.inventory === 'object') out.inventory = deepClone(raw.inventory);
+    if (raw.totalFed && typeof raw.totalFed === 'object') {
+      DP_ROLE_IDS.forEach(function (id) {
+        if (typeof raw.totalFed[id] === 'number') out.totalFed[id] = Math.max(0, Math.round(raw.totalFed[id]));
+      });
+    }
+    if (Array.isArray(raw.rewardedTaskIds)) out.rewardedTaskIds = raw.rewardedTaskIds.slice(0, 500);
+    if (raw.achievements && typeof raw.achievements === 'object') {
+      if (Array.isArray(raw.achievements.unlocked)) out.achievements.unlocked = raw.achievements.unlocked.slice();
+      var st = raw.achievements.stats || {};
+      out.achievements.stats = {
+        totalTasksDone: typeof st.totalTasksDone === 'number' ? Math.max(0, st.totalTasksDone) : 0,
+        lastActiveDay: typeof st.lastActiveDay === 'string' ? st.lastActiveDay : null,
+        streakDays: typeof st.streakDays === 'number' ? Math.max(0, st.streakDays) : 0,
+        totalFeeds: typeof st.totalFeeds === 'number' ? Math.max(0, st.totalFeeds) : 0
+      };
+    }
+    return out;
+  }
+
   function mergeSettings(dflt, raw) {
     var s = deepClone(dflt);
     if (isPlainObject(raw)) {
@@ -300,6 +369,7 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
           if (typeof raw.modules[k] === 'boolean') s.modules[k] = raw.modules[k];
         }
       }
+      s.desktopPet = mergeDesktopPetDefaults(raw.desktopPet);
     }
     return s;
   }

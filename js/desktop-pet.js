@@ -414,7 +414,8 @@
     achievements: {
       unlocked: [],
       stats: { totalTasksDone: 0, lastActiveDay: null, streakDays: 0, totalFeeds: 0 }
-    }
+    },
+    schemaVersion: 1
   };
 
   var ROLE_IDS = ['xiaomo', 'xiaoyu', 'lanling'];
@@ -1695,13 +1696,16 @@
   /** @constructor
    * @this {{ store: any, bus: any, settings: any, _listeners: Object, _container: any, loop: any,
    *   display: any, interaction: any, _pageMode: boolean,
+   *   _unsubTasks: any, _onTaskChangeBound: Function, _onTaskChange: Function,
    *   _sync: Function, ensureContainer: Function, _commit: Function,
    *   getMode: Function, setMode: Function, getResident: Function, setResident: Function,
    *   getSize: Function, setSize: Function, getEnabled: Function, setEnabled: Function,
    *   getPositions: Function, enterPageMode: Function, exitPageMode: Function,
    *   summonVisitor: Function, getActivePetIds: Function,
    *   getState: Function, getCoins: Function, getAffection: Function, getInventory: Function,
-   *   getAchievements: Function, on: Function, off: Function, emit: Function, destroy: Function }} */
+   *   getAchievements: Function, addCoins: Function, spendCoins: Function, buySnack: Function,
+   *   feedPet: Function, checkAchievements: Function, resetAllData: Function,
+   *   on: Function, off: Function, emit: Function, destroy: Function }} */
   function PetFamily(store, bus, config) {
     this.store = store || null;
     this.bus = bus || null;
@@ -1718,6 +1722,15 @@
 
     this.display._bindResize();
     this._sync();
+
+    /* 任务完成金币检测：扫描存量 + 订阅变更 */
+    this._unsubTasks = null;
+    if (this.bus && typeof this.bus.on === 'function') {
+      var self = this;
+      this._onTaskChangeBound = function () { self._onTaskChange(); };
+      this._unsubTasks = this.bus.on('/data/tasks', this._onTaskChangeBound);
+      this._onTaskChange();
+    }
   }
 
   /* ---- 生命周期 ---- */
@@ -1828,7 +1841,7 @@
     return Object.keys(this.display.instances);
   };
 
-  /* ---- 数据操作占位（Task 3 替换为真实计算，对外返回原子快照） ---- */
+  /* ---- 数据操作（Task 3：真实计算，对外返回原子快照） ---- */
   PetFamily.prototype.getState = function () {
     return cloneJson(this.settings.desktopPet);
   };
@@ -1837,7 +1850,8 @@
     return this.settings.desktopPet.coins;
   };
 
-  PetFamily.prototype.getAffection = function () {
+  PetFamily.prototype.getAffection = function (petId) {
+    if (petId) return this.settings.desktopPet.affection[petId] || 0;
     return cloneJson(this.settings.desktopPet.affection);
   };
 
@@ -1847,6 +1861,154 @@
 
   PetFamily.prototype.getAchievements = function () {
     return cloneJson(this.settings.desktopPet.achievements);
+  };
+
+  /* ---- 金币系统 ---- */
+  PetFamily.prototype.addCoins = function (amount, reason) {
+    if (typeof amount !== 'number' || amount < 0 || !isFinite(amount)) return;
+    var dp = this.settings.desktopPet;
+    dp.coins = Math.max(0, dp.coins + Math.round(amount));
+    this._commit();
+    this.emit('change', this.getState());
+  };
+
+  PetFamily.prototype.spendCoins = function (amount) {
+    if (typeof amount !== 'number' || amount <= 0 || !isFinite(amount)) return false;
+    var dp = this.settings.desktopPet;
+    if (dp.coins < Math.round(amount)) return false;
+    dp.coins = Math.max(0, dp.coins - Math.round(amount));
+    this._commit();
+    this.emit('change', this.getState());
+    return true;
+  };
+
+  /* ---- 商店系统 ---- */
+  PetFamily.prototype.buySnack = function (snackId) {
+    var snack = SNACKS[snackId];
+    if (!snack) return false;
+    var dp = this.settings.desktopPet;
+    if (dp.coins < snack.price) return false;
+    dp.coins = Math.max(0, dp.coins - snack.price);
+    dp.inventory[snackId] = (dp.inventory[snackId] || 0) + 1;
+    this._commit();
+    this.emit('change', this.getState());
+    return true;
+  };
+
+  /* ---- 喂养系统 ---- */
+  PetFamily.prototype.feedPet = function (petId, snackId) {
+    if (ROLE_IDS.indexOf(petId) === -1) return false;
+    var snack = SNACKS[snackId];
+    if (!snack) return false;
+    var dp = this.settings.desktopPet;
+    if ((dp.inventory[snackId] || 0) <= 0) return false;
+    dp.inventory[snackId] = Math.max(0, dp.inventory[snackId] - 1);
+    if (dp.inventory[snackId] === 0) delete dp.inventory[snackId];
+    dp.affection[petId] = (dp.affection[petId] || 0) + snack.affection;
+    dp.totalFed[petId] = (dp.totalFed[petId] || 0) + 1;
+    dp.achievements.stats.totalFeeds = (dp.achievements.stats.totalFeeds || 0) + 1;
+    this._commit();
+    this.checkAchievements();
+    this.emit('change', this.getState());
+    return true;
+  };
+
+  /* ---- 成就系统 ---- */
+  PetFamily.prototype.checkAchievements = function () {
+    var dp = this.settings.desktopPet;
+    var ach = dp.achievements;
+    var self = this;
+    var achState = {
+      tasks: this.store && this.store.state && this.store.state.tasks ? this.store.state.tasks : [],
+      totalTasksDone: ach.stats.totalTasksDone || 0,
+      allDoneToday: this._isAllDoneToday(),
+      streak: ach.stats.streakDays || 0,
+      maxAffection: this._getMaxAffection(),
+      totalFeeds: ach.stats.totalFeeds || 0
+    };
+    Object.keys(ACHIEVEMENTS).forEach(function (id) {
+      if (ach.unlocked.indexOf(id) !== -1) return;
+      var def = ACHIEVEMENTS[id];
+      try {
+        if (def.condition(achState)) {
+          ach.unlocked.push(id);
+          self.addCoins(def.reward, 'achievement:' + id);
+        }
+      } catch (e) { /* 条件函数异常不阻断 */ }
+    });
+    this._commit();
+  };
+
+  PetFamily.prototype._isAllDoneToday = function () {
+    if (!this.store || !this.store.state || !this.store.state.tasks) return false;
+    var tasks = this.store.state.tasks;
+    if (tasks.length === 0) return false;
+    return tasks.every(function (t) { return t.done; });
+  };
+
+  PetFamily.prototype._getMaxAffection = function () {
+    var aff = this.settings.desktopPet.affection;
+    var max = 0;
+    ROLE_IDS.forEach(function (id) {
+      if ((aff[id] || 0) > max) max = aff[id];
+    });
+    return max;
+  };
+
+  /* ---- 任务完成金币检测（订阅总线，遍历判定） ---- */
+  PetFamily.prototype._onTaskChange = function () {
+    if (!this.store || !this.store.state || !this.store.state.tasks) return;
+    var dp = this.settings.desktopPet;
+    var tasks = this.store.state.tasks;
+    var rewarded = dp.rewardedTaskIds;
+    var changed = false;
+    tasks.forEach(function (t) {
+      if (t.done && t.doneAt && rewarded.indexOf(t.id) === -1) {
+        var priority = t.priority || 'p3';
+        var coins = priority === 'p1' ? 15 : priority === 'p2' ? 10 : 5;
+        dp.coins = Math.max(0, dp.coins + coins);
+        dp.achievements.stats.totalTasksDone = (dp.achievements.stats.totalTasksDone || 0) + 1;
+        rewarded.push(t.id);
+        if (rewarded.length > 500) rewarded.splice(0, rewarded.length - 500);
+        changed = true;
+      }
+    });
+    if (changed) {
+      this._updateStreak();
+      this._commit();
+      this.emit('change', this.getState());
+    }
+  };
+
+  PetFamily.prototype._updateStreak = function () {
+    var stats = this.settings.desktopPet.achievements.stats;
+    var today = new Date().toISOString().slice(0, 10);
+    if (stats.lastActiveDay === today) return;
+    if (stats.lastActiveDay) {
+      var prev = new Date(stats.lastActiveDay);
+      var curr = new Date(today);
+      var diff = Math.round((curr.getTime() - prev.getTime()) / 86400000);
+      stats.streakDays = diff === 1 ? (stats.streakDays || 0) + 1 : 1;
+    } else {
+      stats.streakDays = 1;
+    }
+    stats.lastActiveDay = today;
+  };
+
+  /* ---- 重置全部数据 ---- */
+  PetFamily.prototype.resetAllData = function () {
+    var dp = this.settings.desktopPet;
+    dp.coins = 0;
+    dp.affection = { xiaomo: 0, xiaoyu: 0, lanling: 0 };
+    dp.inventory = {};
+    dp.totalFed = { xiaomo: 0, xiaoyu: 0, lanling: 0 };
+    dp.rewardedTaskIds = [];
+    dp.achievements = {
+      unlocked: [],
+      stats: { totalTasksDone: 0, lastActiveDay: null, streakDays: 0, totalFeeds: 0 }
+    };
+    this._commit();
+    this.emit('change', this.getState());
   };
 
   /* ---- 事件（on/off/emit，内部与跨模块弱耦合） ---- */
@@ -1888,6 +2050,7 @@
     }
     this._container = null;
     this._listeners = {};
+    if (this._unsubTasks) { try { this._unsubTasks(); } catch (e) { /* 忽略 */ } this._unsubTasks = null; }
   };
 
   /* ============================================================
@@ -1905,6 +2068,19 @@
     return new Pet(options);
   }
 
+  /* ---- 自动初始化（页面加载时自动创建全局 family 实例） ---- */
+  function autoInit() {
+    if (typeof window === 'undefined') return;
+    try {
+      var store = window.__sonderHooks && window.__sonderHooks.store;
+      if (!store) return;
+      var bus = window.SonderBus && window.SonderBus.bus;
+      var family = createFamily(store, bus, store.state.settings);
+      window.__desktopPetFamily = family;
+      family.on('change', function () { /* 配置变更自动落盘由 _commit 处理 */ });
+    } catch (e) { /* autoInit 异常不阻断页面 */ }
+  }
+
   /* ============================================================
      UMD 导出
      ============================================================ */
@@ -1919,6 +2095,7 @@
     createPet: createPet,
     PetFamily: PetFamily,
     createFamily: createFamily,
+    autoInit: autoInit,
     mergeDesktopPetDefaults: mergeDesktopPetDefaults,
     DEFAULT_DESKTOP: DEFAULT_DESKTOP
   };

@@ -343,3 +343,102 @@ test('desktop-pet: PetFamily 布局/挂载到 DOM + destroy 清理', () => {
   assert.strictEqual(document.querySelector('.dp-shelf'), null, 'destroy 移除容器');
   assert.strictEqual(document.querySelectorAll('.dp-pet').length, 0, 'destroy 清空玩偶');
 });
+
+/* ============================================================
+ * Task 3: 金币系统 + 成就系统 + 数据迁移
+ * 契约依据：
+ *   - 规格 5.2 金币获取：p1=15 / p2=10 / p3·p4=5，防刷幂等
+ *   - 规格 5.3 成就：10 条件 + 奖励 + streak 连续天数
+ *   - 规格 6.1 零食商店：买/喂闭环，亲密度 = round(price×0.4)
+ *   - 规格 8.2/9.5 深合并迁移：缺失嵌套字段补默认
+ * ============================================================ */
+
+test('desktop-pet: 任务完成金币（p1=15 p2=10 p3/p4=5）+ 防刷幂等', () => {
+  const { window, store } = boot();
+  const C = window.DesktopPetCore;
+  const family = C.createFamily(store, window.SonderBus, store.state.settings);
+  try {
+    const before = family.getCoins();
+
+    const t1 = store.addTask({ title: '甲', priority: 'p1', done: false });
+    store.updateTask(t1.id, { done: true });         // → 应发 15
+    assert.strictEqual(family.getCoins() - before, 15, 'p1 任务完成发 15 金币');
+
+    store.updateTask(t1.id, { done: false });         // 取消，不扣
+    store.updateTask(t1.id, { done: true });          // 再完成，不重复发（rewardedTaskIds 幂等）
+    assert.strictEqual(family.getCoins() - before, 15, '重复完成不重复发币');
+  } finally {
+    family.destroy();
+  }
+});
+
+test('desktop-pet: 购买零食扣金币 + 库存加 1（余额不足拒绝）', () => {
+  const { window, store } = boot();
+  const C = window.DesktopPetCore;
+  const family = C.createFamily(store, window.SonderBus, store.state.settings);
+  try {
+    family.addCoins(50);
+
+    assert.strictEqual(family.buySnack('snack_09'), false, '60 金币 > 50 余额 → 拒绝');
+    assert.strictEqual(family.buySnack('snack_01'), true, '5 金币 ≤ 50 → 成功');
+    assert.strictEqual(family.getCoins(), 45, '扣款 50→45');
+    assert.strictEqual(family.getInventory()['snack_01'] || 0, 1, '库存 +1');
+  } finally {
+    family.destroy();
+  }
+});
+
+test('desktop-pet: 喂食扣库存 + 加亲密度（亲密度 = round(价格×0.4)）', () => {
+  const { window, store } = boot();
+  const C = window.DesktopPetCore;
+  const family = C.createFamily(store, window.SonderBus, store.state.settings);
+  try {
+    family.addCoins(10);
+    family.buySnack('snack_01');   // 库存 1（5 金币，亲密度 round(5×0.4)=2）
+
+    const before = family.getAffection('xiaomo');
+    assert.strictEqual(family.feedPet('xiaomo', 'snack_01'), true, '喂食成功');
+    assert.strictEqual(family.getAffection('xiaomo') - before, 2, '亲密度 +2');
+    assert.strictEqual(family.getInventory()['snack_01'] || 0, 0, '库存清空');
+  } finally {
+    family.destroy();
+  }
+});
+
+test('desktop-pet: 成就检测（达成解锁 + 发金币不重复）', () => {
+  const { window, store } = boot();
+  const C = window.DesktopPetCore;
+  const family = C.createFamily(store, window.SonderBus, store.state.settings);
+  try {
+    const coinsBefore = family.getCoins();
+
+    const t = store.addTask({ title: '甲', priority: 'p1', done: false });
+    store.updateTask(t.id, { done: true });
+    family.checkAchievements();
+
+    const ach = family.getAchievements();
+    assert.ok(Array.isArray(ach.unlocked), 'unlocked 为数组');
+    assert.ok(ach.unlocked.includes('first_task'), '达成 first_task');
+    // 15（任务 p1）+ 20（first_task）+ 30（all_done_today，唯一任务已完成）
+    assert.strictEqual(family.getCoins(), coinsBefore + 15 + 20 + 30, '成就奖励 +50');
+
+    family.checkAchievements(); // 二次检测不重复
+    assert.strictEqual(family.getCoins(), coinsBefore + 15 + 20 + 30, '重复检测不重复发奖励');
+  } finally {
+    family.destroy();
+  }
+});
+
+test('desktop-pet: 数据深合并迁移（缺失嵌套字段补默认）', () => {
+  const { window } = boot();
+  const C = window.DesktopPetCore;
+
+  const raw = { enabled: false, size: 120 };   // 无 coins/affection/achievements
+  const merged = C.mergeDesktopPetDefaults(raw);
+  assert.strictEqual(merged.enabled, false, '保留用户值');
+  assert.strictEqual(merged.size, 120, '保留用户值');
+  assert.strictEqual(merged.coins, 0, '默认补全');
+  assert.strictEqual(merged.mode, 'duo', '默认模式');
+  assert.deepEqual(merged.affection, { xiaomo: 0, xiaoyu: 0, lanling: 0 }, '默认亲密度');
+  assert.strictEqual(merged.schemaVersion, 1, '迁移版本号');
+});
