@@ -86,6 +86,8 @@
 - **桌面玩偶独立板块页面 + 全局接线（v6.0 desktop-pet Task 5，TDD 先行）**：新增 `js/desktop-pet-page.js`（UMD 自包含，注册 `Pages['desktop-pet']`，五分区布局：标题栏+金币、三角色卡含喂食按钮、显示设置（模式切换/大小/总开关/重置）、商店预览九种零食库存、成就列表含解锁/锁定状态，subScribe change 自动重绘）；`js/app.js` NAV/ICONS/TOGGLEABLE 增 `'desktop-pet'`；`js/store-stats.js` moduleKeysList 增一项；`js/store.js` DEFAULT_SETTINGS.modules 增 `desktop-pet`；`index.html` 引入 `desktop-pet-page.js`；`tests/contract.test.js` PAGES 契约增 `'desktop-pet'`。
 - 测试基线 615 → 620（desktop-pet 页面注册+契约 5 项，全量 620 绿；typecheck/lint 零问题）。
 - 离线缓存升版 v51 → v52（desktop-pet-page.js 新增触发 sync-sw 自动升版，ASSET_SIG 865459fe6ea0 → ed5d5e0c40a4，ASSETS 43 项）。
+- **桌面玩偶全契约测试收口（v6.0 desktop-pet Task 6，规格 11.2 全清单）**：`tests/desktop-pet.test.js` 补全 `spendCoins` 余额不足/非法参数拒绝（负数/零/NaN/Infinity）+ 角色差异化（三实例 breathe/blink/bodyScale/defaultEmotion 参数不同），规格 11.2 十项清单全绿。
+- 测试基线 620 → 622（desktop-pet 收口 2 项，全量 622 绿；typecheck/lint 零问题）。
 
 ### 计划（来自 38 项审计清单，按优先级）
 

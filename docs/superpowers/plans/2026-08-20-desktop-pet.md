@@ -491,7 +491,7 @@ git commit -F commitmsg.txt   # "feat(desktop-pet): 独立板块页面 + 全局�
 - Consumes: 全部 PetFamily 公开 API。
 - Produces: 规格 11.2 全清单测试（十项断言全绿）。
 
-- [ ] **Step 1: 补全测试覆盖规格 11.2**
+- [x] **Step 1: 补全测试覆盖规格 11.2**
 
 在已有测试基础上追加补齐剩余断言（各 Task 已含部分，此处收口）：
 - `SNACKS` 配置完整性：9 种，id 与价格/亲密度表一致，`affection === Math.round(price * 0.4)`。
@@ -500,12 +500,12 @@ git commit -F commitmsg.txt   # "feat(desktop-pet): 独立板块页面 + 全局�
 - 角色差异化：三实例 `breathe/blink` 参数不同，bodyScale 不同。
 - 显示模式：single/duo/trio 实例数（duo 需 mock 计时，用同步 `simulateVisit()` 测试方法）。
 
-- [ ] **Step 2: 运行验证**
+- [x] **Step 2: 运行验证**
 
 Run: `node --test tests/desktop-pet.test.js`；`npm test`；`npm run typecheck`；`npm run lint`
 Expected: 全绿 + 零问题。
 
-- [ ] **Step 3: 提交**
+- [x] **Step 3: 提交**
 
 ```powershell
 git commit -F commitmsg.txt   # "test(desktop-pet): 规格 11.2 全契约测试收口"
