@@ -701,3 +701,57 @@ test('desktop-pet: store-stats moduleKeysList 含 desktop-pet', () => {
   var dp = Stats.moduleKeysList.find(function (m) { return m.key === 'desktop-pet'; });
   assert.strictEqual(dp.label, '小莫灵家族', 'desktop-pet label 正确');
 });
+
+/* ============================================================
+ * Task 6: 规格 11.2 收口 —— 补全剩余契约断言
+ * ============================================================ */
+
+test('desktop-pet: spendCoins 余额不足拒绝 + 非法参数拒绝', () => {
+  const { window, store } = boot();
+  const C = window.DesktopPetCore;
+  const family = C.createFamily(store, window.SonderBus, store.state.settings);
+  try {
+    /* 初始余额为 0，任何正数支出应拒绝 */
+    assert.strictEqual(family.spendCoins(1), false, '余额 0 支出 1 拒绝');
+    assert.strictEqual(family.getCoins(), 0, '余额不变');
+
+    family.addCoins(10);
+    assert.strictEqual(family.spendCoins(11), false, '余额 10 支出 11 拒绝');
+    assert.strictEqual(family.getCoins(), 10, '余额不变');
+
+    assert.strictEqual(family.spendCoins(-1), false, '负数拒绝');
+    assert.strictEqual(family.spendCoins(0), false, '零值拒绝');
+    assert.strictEqual(family.spendCoins(NaN), false, 'NaN 拒绝');
+    assert.strictEqual(family.spendCoins(Infinity), false, 'Infinity 拒绝');
+
+    assert.strictEqual(family.spendCoins(5), true, '余额 10 支出 5 成功');
+    assert.strictEqual(family.getCoins(), 5, '扣款后余额 5');
+  } finally {
+    family.destroy();
+  }
+});
+
+test('desktop-pet: 角色差异化——三实例 breathe/blink/bodyScale 参数不同', () => {
+  const { window } = boot();
+  const C = window.DesktopPetCore;
+  const chars = C.CHARACTERS;
+  assert.ok(chars.xiaomo && chars.xiaoyu && chars.lanling, '三角色配置存在');
+
+  const xiaomo = chars.xiaomo;
+  const xiaoyu = chars.xiaoyu;
+  const lanling = chars.lanling;
+
+  /* breathe 周期应有差异（规格 2.5 各角色不同） */
+  assert.notStrictEqual(xiaomo.breathe, xiaoyu.breathe, '小莫与小余 breathe 不同');
+  assert.notStrictEqual(xiaoyu.breathe, lanling.breathe, '小余与懒零 breathe 不同');
+
+  /* blink 间隔应有差异 */
+  assert.notStrictEqual(xiaomo.blink, xiaoyu.blink, '小莫与小余 blink 不同');
+
+  /* bodyScale 应有差异（体型） */
+  assert.notStrictEqual(xiaomo.bodyScale, xiaoyu.bodyScale, '小莫与小余 bodyScale 不同');
+  assert.notStrictEqual(xiaoyu.bodyScale, lanling.bodyScale, '小余与懒零 bodyScale 不同');
+
+  /* 默认表情应有差异 */
+  assert.notStrictEqual(xiaomo.defaultEmotion, xiaoyu.defaultEmotion, '小莫与小余默认表情不同');
+});
