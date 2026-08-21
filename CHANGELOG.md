@@ -78,6 +78,11 @@
 - **桌面玩偶 PetFamily 管理器（v6.0 desktop-pet Task 2，Phase 1 收尾）**：显示模式三态（off/single/family）、串门调度（随机间隔 + 页面模式守卫 + 离场窗口 `_exitTimer`/`_exitRole` 跟踪）、布局防重叠、共享 rAF 心跳；`_teardownVisitor()` 完整清理（访问定时器/离场定时器/串门实例）；`setEnabled(false)` 全量 teardown。新增测试 5 项（含「关闭后仅剩常驻」边界回归）。
 - 测试基线 598 → 603（PetFamily 契约 5 项，全量绿；typecheck/lint 零问题）。
 - 离线缓存升版 v49 → v50（desktop-pet.js 指纹变化触发 sync-sw 自动升版，ASSET_SIG d8d03bb35c65 → c0f731ee9bea，ASSETS 42 项不变）。
+- **桌面玩偶金币/商店/喂养/成就系统（v6.0 desktop-pet Task 3，Phase 2+3 底座）**：`store.js` DEFAULT_SETTINGS 补 desktopPet 完整默认值 + 本地 `mergeDesktopPetDefaults` 深合并 + `mergeSettings` 透传；`store-settings.js` 新增 `setDesktopPet` 持久化网关（per-key 白名单 + 浅合并）；`desktop-pet.js` 替换占位函数为真实实现（getCoins/getAffection/getInventory/getAchievements/getState），新增 addCoins/spendCoins/buySnack/feedPet/checkAchievements/resetAllData + 内部辅助（`_isAllDoneToday`/`_getMaxAffection`/`_onTaskChange`/`_updateStreak`），构造器 bus 订阅 `/data/tasks`（存量扫描防重发 + 变更监听），destroy 清理 `_unsubTasks`，autoInit 函数（`window.__desktopPetFamily` 自动创建）。
+- 测试基线 603 → 607（desktop-pet 金币/购买/喂食/成就/深合并 5 项，全量绿；typecheck/lint 零问题）。
+- 离线缓存升版 v50 → v51（sw.js 缓存版本递增，ASSETS 42 项不变）。
+- **桌面玩偶互动对话系统（v6.0 desktop-pet Task 4，Phase 3 收尾）**：InteractionManager 完整实现——`canTrigger()`（≥2 在场 + 冷却 3-6min + 无播放/拖拽）、`trigger()`（随机选组合→按权重选对话→逐轮气泡播放 + 表情联动）、`end()`（复位表情 + 广播 interactionEnd）、destroy 清理；PetFamily 新增 `triggerInteraction()`/`endInteraction()` 公开方法。
+- 测试基线 607 → 615（desktop-pet 互动触发/冷却/播放/打断 7 项 + Task 3 已有 1 项修正，全量 615 绿；typecheck/lint 零问题）。
 
 ### 计划（来自 38 项审计清单，按优先级）
 

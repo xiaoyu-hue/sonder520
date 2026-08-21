@@ -350,7 +350,7 @@ git commit -F commitmsg.txt   # "feat(desktop-pet): 金币/商店/喂养/亲密�
 - Consumes: Task 3 的 `AchievementManager`/`CoinManager`。
 - Produces：`ShopPanel`（商店弹窗：3 列网格、余额置灰、Esc 关闭、aria-modal）、`FeedPanel`（喂食选择小弹窗）、`AchievementBanner`（顶部横幅 + excited 表情 + 金币动画）、`CoinFly`（飘字 800-1200ms，最多 3 并发排队）、`InteractionManager`（互动触发条件/对话播放/冷却 3-6min/点击打断）。
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 `tests/desktop-pet.test.js` 追加：
 ```js
@@ -371,28 +371,28 @@ test('desktop-pet: 对话播放期间点击参与角色即结束', () => {
 });
 ```
 
-- [ ] **Step 2: 运行验证失败**
+- [x] **Step 2: 运行验证失败**
 
 Run: `node --test tests/desktop-pet.test.js`
 Expected: FAIL。
 
-- [ ] **Step 3: 实现 UI 组件 + 互动管理器**
+- [x] **Step 3: 实现 UI 组件 + 互动管理器**
 
 - `InteractionManager`：在场 ≥2、间距 <200px 或同角、距上次互动 3-6min、无拖拽、无播放中 → 随机类型（chat 40/play 25/tease 20/comfort 10/sync 5）+ 选 DIALOGUES 组合；逐轮气泡（sayLine，每轮 1.5-2.5s，气泡 3s），参与角色表情联动；播放中点击 → 立即结束 + 响应点击；结束后冷却；`on('interaction')` 广播。
 - `ShopPanel/FeedPanel/AchievementBanner/CoinFly`：规格 6.2/7.1/5.3 的 DOM/样式；textContent；Esc 关闭；移动端底部抽屉；aria 标记。
 - 成就横幅：解锁时 `role="alert"`、在场玩偶 excited、金币动画。
 
-- [ ] **Step 4: 运行验证通过**
+- [x] **Step 4: 运行验证通过**
 
 Run: `node --test tests/desktop-pet.test.js`
 Expected: PASS。
 
-- [ ] **Step 5: 全量回归 + typecheck + lint**
+- [x] **Step 5: 全量回归 + typecheck + lint**
 
 Run: `npm test`；`npm run typecheck`；`npm run lint`；`npm run test:e2e`（可选冒烟）
 Expected: 全绿 + 零问题 + E2E 若跑则通过。
 
-- [ ] **Step 6: 提交**
+- [x] **Step 6: 提交**
 
 ```powershell
 git commit -F commitmsg.txt   # "feat(desktop-pet): 成就横幅 + 商店/喂食弹窗 + 多玩偶互动对话（Phase 3 收尾）"
