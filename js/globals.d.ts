@@ -189,6 +189,8 @@ interface SonderCtx {
   S: SonderStoreFactory;
   theme(): string;
   navigate(route: string): void;
+  _container?: HTMLElement;
+  _dpUnsub?: () => void;
 }
 
 interface SonderFormOptions {
@@ -482,6 +484,7 @@ interface Window {
   __SONDER_TEST__?: boolean;
   __sonderErrors: { list: SonderErrorEntry[]; readonly total: number; clear(): void; report(errOrMsg: string | Error, type?: string): void };
   __desktopPetFamily: any;
+  DesktopPetCore: any;
   __gamesDbg: any;
   __readingDbg: any;
   __todayDbg: any;

@@ -678,7 +678,7 @@ test('desktop-pet: 核心模块缺失时页面优雅降级不报错', () => {
 });
 
 test('desktop-pet: 模块开关控制导航项（setModuleEnabled）', () => {
-  const { window, store } = boot();
+  const { store } = boot();
   /* desktopPet 应在 modules 中（Task 3 已加入 DEFAULT_SETTINGS） */
   assert.ok('desktop-pet' in store.state.settings.modules, 'desktop-pet 模块开关存在');
   /* 关闭模块 */
