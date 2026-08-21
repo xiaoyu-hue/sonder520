@@ -7,7 +7,7 @@ const { boot } = require('./harness.js');
  * 每个注册页面必须提供 title 与 render(container, ctx)。
  * 新增页面时必须同步更新 PAGES 列表（否则测试报警）。 */
 
-const PAGES = ['home', 'today', 'memo', 'selfmedia', 'dev', 'consulting', 'reading', 'excerpts', 'news', 'design', 'game', 'settings'];
+const PAGES = ['home', 'today', 'memo', 'selfmedia', 'dev', 'consulting', 'reading', 'excerpts', 'news', 'design', 'game', 'desktop-pet', 'settings'];
 
 test('契约: 所有注册页面都有 title 与 render 函数', () => {
   const { window } = boot({});

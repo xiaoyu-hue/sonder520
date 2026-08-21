@@ -168,7 +168,7 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     modules: {
       today: true, memo: true, selfmedia: true, dev: true,
       consulting: true, reading: true, news: true, design: true,
-      game: true
+      game: true, 'desktop-pet': true
     },
     quotaNoticeDismissed: false,
     taskReminder: false,

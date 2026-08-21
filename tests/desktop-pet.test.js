@@ -619,3 +619,85 @@ test('desktop-pet: triggerInteraction 冷却/播放中/拖拽返回 false', () =
     family.destroy();
   }
 });
+
+/* ============================================================
+ * Task 5: 独立板块页面 + 全局接线
+ * 契约依据：
+ *   - 规格 9.5 第五区页面模块：Pages['desktop-pet'] 注册
+ *   - 规格 9.6：五分区（标题栏+金币/三角色卡/显示设置/商店/成就）
+ *   - app.js：NAV/ICONS/TOGGLEABLE 接线 + store-stats.js moduleKeysList
+ * ============================================================ */
+
+test('desktop-pet: 独立板块页面注册 + title 正确', () => {
+  const { window } = boot();
+  const Page = window.Pages && window.Pages['desktop-pet'];
+  assert.ok(Page, 'Pages["desktop-pet"] 未注册');
+  assert.strictEqual(Page.title, '小莫灵家族', '页面 title');
+  assert.strictEqual(typeof Page.render, 'function', 'render 为函数');
+});
+
+test('desktop-pet: 页面 render 五分区渲染', () => {
+  const { window, store } = boot();
+  const Page = window.Pages['desktop-pet'];
+  assert.ok(Page, '页面未注册');
+  const container = window.document.createElement('div');
+  Page.render(container, { navigate: function () {}, store: store });
+  /* 五分区关键 class 断言 */
+  assert.ok(container.querySelector('.dp-page-header') || container.querySelector('.dp-page-title'),
+    '标题栏存在');
+  assert.ok(container.querySelector('.dp-page-card-xiaomo') || container.querySelectorAll('[data-pet="xiaomo"]').length,
+    '小莫角色卡存在');
+  assert.ok(container.querySelector('.dp-page-card-xiaoyu') || container.querySelectorAll('[data-pet="xiaoyu"]').length,
+    '小余角色卡存在');
+  assert.ok(container.querySelector('.dp-page-card-lanling') || container.querySelectorAll('[data-pet="lanling"]').length,
+    '懒零角色卡存在');
+  assert.ok(container.querySelector('.dp-page-settings') || container.querySelector('.dp-page-display'),
+    '显示设置分区存在');
+  assert.ok(container.querySelector('.dp-page-shop') || container.querySelector('.dp-page-shop-preview'),
+    '商店预览分区存在');
+  assert.ok(container.querySelector('.dp-page-achievements') || container.querySelector('.dp-page-ach-list'),
+    '成就列表分区存在');
+});
+
+test('desktop-pet: 核心模块缺失时页面优雅降级不报错', () => {
+  const { window, store } = boot();
+  /* 模拟核心缺失 */
+  var orig = window.__desktopPetFamily;
+  delete window.__desktopPetFamily;
+  try {
+    const Page = window.Pages['desktop-pet'];
+    assert.ok(Page, '页面未注册');
+    const container = window.document.createElement('div');
+    var threw = false;
+    try { Page.render(container, { navigate: function () {}, store: store }); } catch (e) { threw = true; }
+    assert.strictEqual(threw, false, '降级渲染不应抛错');
+    assert.ok(container.childNodes.length > 0, '降级后仍有静态内容');
+  } finally {
+    window.__desktopPetFamily = orig;
+  }
+});
+
+test('desktop-pet: 模块开关控制导航项（setModuleEnabled）', () => {
+  const { window, store } = boot();
+  /* desktopPet 应在 modules 中（Task 3 已加入 DEFAULT_SETTINGS） */
+  assert.ok('desktop-pet' in store.state.settings.modules, 'desktop-pet 模块开关存在');
+  /* 关闭模块 */
+  store.setModuleEnabled('desktop-pet', false);
+  assert.strictEqual(store.state.settings.modules['desktop-pet'], false, '模块已关闭');
+  /* 重新打开 */
+  store.setModuleEnabled('desktop-pet', true);
+  assert.strictEqual(store.state.settings.modules['desktop-pet'], true, '模块已打开');
+});
+
+test('desktop-pet: store-stats moduleKeysList 含 desktop-pet', () => {
+  const { window } = boot();
+  var Stats = window.SonderStore && window.SonderStore.Stats;
+  if (!Stats || !Stats.moduleKeysList) {
+    /* Stats 可能未挂载到全局，跳过 */
+    return;
+  }
+  var keys = Stats.moduleKeysList.map(function (m) { return m.key; });
+  assert.ok(keys.indexOf('desktop-pet') !== -1, 'moduleKeysList 含 desktop-pet');
+  var dp = Stats.moduleKeysList.find(function (m) { return m.key === 'desktop-pet'; });
+  assert.strictEqual(dp.label, '小莫灵家族', 'desktop-pet label 正确');
+});
