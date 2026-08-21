@@ -42,7 +42,7 @@
 **Interfaces:**
 - Produces: `docs/desktop-pet-spec.md` —— v2.1 规格全文，为后续所有任务提供权威行为定义。
 
-- [ ] **Step 1: 复制规格**
+- [x] **Step 1: 复制规格**
 
 将 `D:\个人作品集\桌面玩偶养成系统v2.0正式确认版.md` 复制为 `docs/desktop-pet-spec.md`：
 ```powershell
@@ -50,11 +50,11 @@ Copy-Item "D:\个人作品集\桌面玩偶养成系统v2.0正式确认版.md" "d
 Get-Content "docs\desktop-pet-spec.md" -Encoding UTF8 | Measure-Object -Line   # 应约 1451 行
 ```
 
-- [ ] **Step 2: 校验完整性**
+- [x] **Step 2: 校验完整性**
 
 确认文件含关键章节锚点：`## 三、显示与配置系统`、`## 九、技术架构`、`附录 H`、`## 十二、风险与注意事项`。
 
-- [ ] **Step 3: 提交**
+- [x] **Step 3: 提交**
 
 ```powershell
 git add docs/desktop-pet-spec.md
@@ -207,7 +207,7 @@ Expected: PASS（显示模式、串门状态机、布局用到的最小断言）
 Run: `npm test`；`npm run typecheck`；`npm run lint`
 Expected: 全绿 + 零问题。✓ 603/603 全绿；tsc 零错（新构造函数补 @constructor/@this，嵌套函数改 var self）；eslint 0 errors/0 warnings
 
-- [ ] **Step 6: 提交**
+- [x] **Step 6: 提交**
 
 ```powershell
 git commit -F commitmsg.txt   # "feat(desktop-pet): PetFamily 管理器 + 显示模式/串门/布局/共享 rAF（Phase 1 收尾）"
@@ -232,7 +232,7 @@ git commit -F commitmsg.txt   # "feat(desktop-pet): PetFamily 管理器 + 显示
 - Produces（store-settings 持久化网关）：`store.setDesktopPetEnabled/Mode/Resident/Size`、`store.setDesktopPetCoins(amount)`、`store.setDesktopPetFeed(petId, snackId, affectionGain)`、`store.addDesktopPetAchievement(id)`——全部 `this._commit('settings')`。
 - Produces（store.js）：`mergeDesktopPetDefaults(raw)` 深合并函数 + `DEFAULT_SETTINGS.desktopPet` 完整默认对象。
 
-- [ ] **Step 1: 写失败测试（金币/购买/喂食/成就/迁移）**
+- [x] **Step 1: 写失败测试（金币/购买/喂食/成就/迁移）**
 
 `tests/desktop-pet.test.js` 追加：
 ```js
@@ -298,12 +298,12 @@ test('desktop-pet: 数据深合并迁移（缺失嵌套字段补默认）', () =
 });
 ```
 
-- [ ] **Step 2: 运行验证失败**
+- [x] **Step 2: 运行验证失败**
 
 Run: `node --test tests/desktop-pet.test.js`
 Expected: FAIL（方法未实现/未定义）。
 
-- [ ] **Step 3: 深合并 + 持久化网关 + 金币/成就**
+- [x] **Step 3: 深合并 + 持久化网关 + 金币/成就**
 
 `js/store.js`：
 - `DEFAULT_SETTINGS` 追加完整 `desktopPet` 默认对象（规格 3.5）。
@@ -321,18 +321,18 @@ Expected: FAIL（方法未实现/未定义）。
 - `getState()` 返回 deepClone 快照（防外泄可变引用）。
 - `autoInit`：`window.__desktopPetFamily = DesktopPetCore.createFamily(store, window.SonderBus, store.state.settings)`（**store 是实例，来自 `window.__sonderHooks.store`，不是工厂 `window.SonderStore`**），全程 try-catch 不阻断；监听 `/data/settings` 同步 config 变更。
 
-- [ ] **Step 4: 运行验证通过**
+- [x] **Step 4: 运行验证通过**
 
 Run: `node --test tests/desktop-pet.test.js`
 Expected: PASS（前述测试全部绿）。
 
-- [ ] **Step 5: 全量回归 + typecheck + lint**
+- [x] **Step 5: 全量回归 + typecheck + lint**
 
 Run: `npm test`；`npm run typecheck`；`npm run lint`
 Expected: 全绿 + 零问题。
 > 注意：`mergeSettings` 改动影响 `store.test/theme-auto/settings-ux` 等既有 settings 测试——深合并只碰 desktopPet 新字段，不应改变既有行为；若某旧测试断言 settings 精确结构，需核实其只测白名单字段。
 
-- [ ] **Step 6: 提交**
+- [x] **Step 6: 提交**
 
 ```powershell
 git commit -F commitmsg.txt   # "feat(desktop-pet): 金币/商店/喂养/亲密度/成就 + settings 深合并迁移（Phase 2 养成闭环 + Phase 3 成就底座）"
@@ -411,7 +411,7 @@ git commit -F commitmsg.txt   # "feat(desktop-pet): 成就横幅 + 商店/喂食
 - Consumes: Task 3 的 `window.__desktopPetFamily`（含 `getState/on/setMode/setResident/setSize/setEnabled/buySnack/feedPet/enterPageMode/exitPageMode`）。
 - Produces: `Pages['desktop-pet'] = { title:'小莫灵家族', render(container, ctx) }`；页面 5 分区（标题栏+金币、三角色卡、显示设置、商店预览、成就列表）；核心缺失降级（轮询 200ms ≤3s）；开关 `modules.desktopPet` 控制导航显隐。
 
-- [ ] **Step 1: 写失败测试（页面注册与降级）**
+- [x] **Step 1: 写失败测试（页面注册与降级）**
 
 `tests/desktop-pet.test.js` 追加：
 ```js
@@ -440,12 +440,12 @@ test('desktop-pet: 模块开关控制导航显隐 + 双开关独立', () => {
 });
 ```
 
-- [ ] **Step 2: 运行验证失败**
+- [x] **Step 2: 运行验证失败**
 
 Run: `node --test tests/desktop-pet.test.js`
 Expected: FAIL（页面未注册）。
 
-- [ ] **Step 3: 实现页面模块 + 接线**
+- [x] **Step 3: 实现页面模块 + 接线**
 
 `js/desktop-pet-page.js`：
 - UMD，依赖 `window.DesktopPetCore`（静态降级时不依赖）。注册 `Pages['desktop-pet']`。
@@ -464,17 +464,17 @@ Expected: FAIL（页面未注册）。
 `index.html`：`<script src="js/desktop-pet-page.js" defer></script>` 添加到 desktop-pet.js 之后（App scripts 区末尾，app.js 之后）。
 > 搜索索引 search.js 的 `NAV_MODULE`（:8）为白名单映射，desktop-pet 默认不入搜索，如需可后续加（本计划不要求，保持最小）。
 
-- [ ] **Step 4: 运行验证通过**
+- [x] **Step 4: 运行验证通过**
 
 Run: `node --test tests/desktop-pet.test.js`
 Expected: PASS；`npm test` 全量绿（modules-smoke/shell/navigation 相关测试应自动带出新导航项，若有断言 NAV 长度的旧测试需核对其是否枚举硬编码——预期无，NAV 已通用遍历）。
 
-- [ ] **Step 5: 全量回归 + typecheck + lint + E2E**
+- [x] **Step 5: 全量回归 + typecheck + lint + E2E**
 
 Run: `npm test`；`npm run typecheck`；`npm run lint`；`npm run test:e2e`
 Expected: 全绿 + 零问题 + E2E 冒烟通过。
 
-- [ ] **Step 6: 提交**
+- [x] **Step 6: 提交**
 
 ```powershell
 git commit -F commitmsg.txt   # "feat(desktop-pet): 独立板块页面 + 全局接线（nav/icons/moduleList）"

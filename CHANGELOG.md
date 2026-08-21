@@ -83,6 +83,9 @@
 - 离线缓存升版 v50 → v51（sw.js 缓存版本递增，ASSETS 42 项不变）。
 - **桌面玩偶互动对话系统（v6.0 desktop-pet Task 4，Phase 3 收尾）**：InteractionManager 完整实现——`canTrigger()`（≥2 在场 + 冷却 3-6min + 无播放/拖拽）、`trigger()`（随机选组合→按权重选对话→逐轮气泡播放 + 表情联动）、`end()`（复位表情 + 广播 interactionEnd）、destroy 清理；PetFamily 新增 `triggerInteraction()`/`endInteraction()` 公开方法。
 - 测试基线 607 → 615（desktop-pet 互动触发/冷却/播放/打断 7 项 + Task 3 已有 1 项修正，全量 615 绿；typecheck/lint 零问题）。
+- **桌面玩偶独立板块页面 + 全局接线（v6.0 desktop-pet Task 5，TDD 先行）**：新增 `js/desktop-pet-page.js`（UMD 自包含，注册 `Pages['desktop-pet']`，五分区布局：标题栏+金币、三角色卡含喂食按钮、显示设置（模式切换/大小/总开关/重置）、商店预览九种零食库存、成就列表含解锁/锁定状态，subScribe change 自动重绘）；`js/app.js` NAV/ICONS/TOGGLEABLE 增 `'desktop-pet'`；`js/store-stats.js` moduleKeysList 增一项；`js/store.js` DEFAULT_SETTINGS.modules 增 `desktop-pet`；`index.html` 引入 `desktop-pet-page.js`；`tests/contract.test.js` PAGES 契约增 `'desktop-pet'`。
+- 测试基线 615 → 620（desktop-pet 页面注册+契约 5 项，全量 620 绿；typecheck/lint 零问题）。
+- 离线缓存升版 v51 → v52（desktop-pet-page.js 新增触发 sync-sw 自动升版，ASSET_SIG 865459fe6ea0 → ed5d5e0c40a4，ASSETS 43 项）。
 
 ### 计划（来自 38 项审计清单，按优先级）
 
