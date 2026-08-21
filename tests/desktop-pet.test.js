@@ -849,3 +849,135 @@ test('desktop-pet: 拖拽中特效跳过——拖拽时不注入 DOM 子元素',
   assert.strictEqual(pet.el.children.length, before, '拖拽中无新子元素注入');
   pet.destroy();
 });
+
+/* ============================================================
+ * Task 9: 数据隔离与记忆——验证 desktopPet 状态独立性
+ * 契约依据：
+ *   - desktopPet 嵌套在 settings 集合内（非独立集合）
+ *   - mergeDesktopPetDefaults 深合并补全缺失字段
+ *   - PetFamily.resetAllData 只重置游戏数据，保留配置
+ *   - store.clearAll 重置全部数据（含 desktopPet）
+ * ============================================================ */
+
+test('desktop-pet: mergeDesktopPetDefaults——空对象补全全部默认字段', () => {
+  const { window } = boot();
+  const C = window.DesktopPetCore;
+  const merged = C.mergeDesktopPetDefaults({});
+  assert.strictEqual(merged.enabled, true, '默认 enabled');
+  assert.strictEqual(merged.mode, 'duo', '默认 mode');
+  assert.strictEqual(merged.resident, 'xiaomo', '默认 resident');
+  assert.strictEqual(typeof merged.size, 'number', '默认 size 存在');
+  assert.strictEqual(typeof merged.coins, 'number', '默认 coins 存在');
+  assert.ok(merged.affection && typeof merged.affection === 'object', '默认 affection 对象');
+  assert.ok(merged.inventory && typeof merged.inventory === 'object', '默认 inventory 对象');
+  assert.ok(merged.totalFed && typeof merged.totalFed === 'object', '默认 totalFed 对象');
+  assert.ok(Array.isArray(merged.rewardedTaskIds), '默认 rewardedTaskIds 数组');
+  assert.ok(merged.achievements && typeof merged.achievements === 'object', '默认 achievements 对象');
+  assert.ok(Array.isArray(merged.achievements.unlocked), '默认 achievements.unlocked 数组');
+  assert.ok(merged.achievements.stats && typeof merged.achievements.stats === 'object', '默认 achievements.stats 对象');
+  assert.strictEqual(merged.schemaVersion, 1, '默认 schemaVersion');
+});
+
+test('desktop-pet: mergeDesktopPetDefaults——部分字段不覆盖已有值', () => {
+  const { window } = boot();
+  const C = window.DesktopPetCore;
+  const existing = {
+    enabled: false, mode: 'trio', resident: 'lanling', size: 100,
+    coins: 50, affection: { xiaomo: 10, xiaoyu: 20, lanling: 30 },
+    inventory: { snack_01: 3 }, totalFed: { xiaomo: 5, xiaoyu: 0, lanling: 2 },
+    rewardedTaskIds: ['t1', 't2'],
+    achievements: { unlocked: ['ach1'], stats: { totalTasksDone: 10, streakDays: 3 } }
+  };
+  const merged = C.mergeDesktopPetDefaults(existing);
+  assert.strictEqual(merged.enabled, false, '保留 enabled=false');
+  assert.strictEqual(merged.mode, 'trio', '保留 mode=trio');
+  assert.strictEqual(merged.resident, 'lanling', '保留 resident=lanling');
+  assert.strictEqual(merged.size, 100, '保留 size=100');
+  assert.strictEqual(merged.coins, 50, '保留 coins=50');
+  assert.strictEqual(merged.affection.xiaomo, 10, '保留 affection.xiaomo');
+  assert.strictEqual(merged.inventory.snack_01, 3, '保留 inventory.snack_01');
+  assert.strictEqual(merged.rewardedTaskIds.length, 2, '保留 rewardedTaskIds');
+  assert.strictEqual(merged.achievements.unlocked.length, 1, '保留 achievements.unlocked');
+  assert.strictEqual(merged.achievements.stats.totalTasksDone, 10, '保留 stats.totalTasksDone');
+  assert.strictEqual(merged.achievements.stats.streakDays, 3, '保留 stats.streakDays');
+});
+
+test('desktop-pet: mergeDesktopPetDefaults——缺失嵌套字段自动补全', () => {
+  const { window } = boot();
+  const C = window.DesktopPetCore;
+  /* 只有 coins，缺少 achievements.stats.totalFeeds */
+  const partial = { coins: 25, achievements: { unlocked: [] } };
+  const merged = C.mergeDesktopPetDefaults(partial);
+  assert.strictEqual(merged.coins, 25, '保留 coins');
+  assert.ok(Array.isArray(merged.achievements.unlocked), '补全 achievements.unlocked');
+  assert.strictEqual(merged.achievements.stats.totalTasksDone, 0, '补全 stats.totalTasksDone');
+  assert.strictEqual(merged.achievements.stats.streakDays, 0, '补全 stats.streakDays');
+  assert.strictEqual(merged.achievements.stats.totalFeeds, 0, '补全 stats.totalFeeds');
+  assert.strictEqual(merged.achievements.stats.lastActiveDay, null, '补全 stats.lastActiveDay');
+});
+
+test('desktop-pet: resetAllData——只重置游戏数据，保留配置', () => {
+  const { window, store, bus } = boot();
+  const C = window.DesktopPetCore;
+  const family = new C.PetFamily({ store: store, bus: bus });
+  try {
+    /* 先设置一些配置和游戏数据 */
+    family.setMode('trio');
+    family.setSize(100);
+    family.addCoins(50, 'test');
+    const dp = family.settings.desktopPet;
+    dp.affection.xiaomo = 10;
+    dp.achievements.unlocked = ['ach1'];
+    dp.achievements.stats.totalTasksDone = 5;
+
+    family.resetAllData();
+
+    /* 游戏数据被重置 */
+    assert.strictEqual(dp.coins, 0, 'coins 重置为 0');
+    assert.strictEqual(dp.affection.xiaomo, 0, 'affection.xiaomo 重置');
+    assert.strictEqual(dp.achievements.unlocked.length, 0, 'achievements 清空');
+    assert.strictEqual(dp.achievements.stats.totalTasksDone, 0, 'stats 重置');
+
+    /* 配置被保留 */
+    assert.strictEqual(dp.mode, 'trio', 'mode 保留');
+    assert.strictEqual(dp.size, 100, 'size 保留');
+  } finally {
+    family.destroy();
+  }
+});
+
+test('desktop-pet: 数据与任务模块隔离——修改 tasks 不影响 desktopPet', () => {
+  const { window, store } = boot();
+  const dp = store.state.settings.desktopPet;
+  const coinsBefore = dp.coins;
+  const affXiaomoBefore = dp.affection.xiaomo;
+  const achUnlockedBefore = dp.achievements.unlocked.length;
+  const statsDoneBefore = dp.achievements.stats.totalTasksDone;
+
+  /* 模拟任务完成 */
+  store.state.tasks = [{ id: 't_isolation_1', text: 'test', done: true, doneAt: Date.now() }];
+
+  assert.strictEqual(dp.coins, coinsBefore, 'coins 不变');
+  assert.strictEqual(dp.affection.xiaomo, affXiaomoBefore, 'affection.xiaomo 不变');
+  assert.strictEqual(dp.achievements.unlocked.length, achUnlockedBefore, 'achievements.unlocked 不变');
+  assert.strictEqual(dp.achievements.stats.totalTasksDone, statsDoneBefore, 'stats.totalTasksDone 不变');
+});
+
+test('desktop-pet: PetFamily 构造深合并——store.state.settings 引用正确', () => {
+  const { window, store, bus } = boot();
+  const C = window.DesktopPetCore;
+  /* 确保 settings.desktopPet 存在且结构完整 */
+  const dp = store.state.settings.desktopPet;
+  assert.ok(dp, 'store.state.settings.desktopPet 存在');
+  assert.strictEqual(typeof dp.coins, 'number', 'coins 字段存在');
+  assert.ok(dp.achievements, 'achievements 字段存在');
+
+  const family = new C.PetFamily({ store: store, bus: bus });
+  try {
+    /* PetFamily 与 Store 共享 settings 引用 */
+    family.addCoins(10, 'test');
+    assert.strictEqual(store.state.settings.desktopPet.coins, dp.coins, 'Store 引用同步');
+  } finally {
+    family.destroy();
+  }
+});
