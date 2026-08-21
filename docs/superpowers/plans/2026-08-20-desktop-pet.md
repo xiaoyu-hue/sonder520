@@ -76,7 +76,7 @@ MSG
 - Produces: `window.DesktopPetCore`（UMD 导出，含 `CHARACTERS/SNACKS/ACHIEVEMENTS/DIALOGUES/QUOTES` 配置表与 `Pet` 类）、`window.__desktopPetFamily`（`PetFamily` 实例，由 Task 3 的 autoInit 提供——本 Task 仅提供 `Pet` 类与配置表模块级 API，`createFamily()` 在 Task 2 实现）。
 - Produces: `css/desktop-pet.css` 提供 `.dp-pet`、`.pet-xiaomo/.pet-xiaoyu/.pet-lanling`（覆盖 `--dp-body/--dp-body-light/--dp-body-dark/--dp-eye/--dp-mouth/--dp-bubble-bg`）、动画关键帧（呼吸/眨眼/弹跳/滑入滑出）、`prefers-reduced-motion` 降级。
 
-- [ ] **Step 1: 写失败测试（配置表完整性）**
+- [x] **Step 1: 写失败测试（配置表完整性）**（tests/desktop-pet.test.js 6 项）
 
 创建 `tests/desktop-pet.test.js`，先只测配置表与 Pet 构造（Phase 1 子集）：
 ```js
@@ -101,12 +101,12 @@ test('desktop-pet: CHARACTERS 配置完整性（3 角色）', () => {
 ```
 > 注：当前 index.html 尚未接线 desktop-pet.js，boot() 后 `window.DesktopPetCore` 为 undefined，此测试会 FAIL——这是预期的 TDD 红。
 
-- [ ] **Step 2: 运行验证失败**
+- [x] **Step 2: 运行验证失败**
 
 Run: `npm test -- tests/desktop-pet.test.js`（或 `node --test tests/desktop-pet.test.js`）
-Expected: FAIL——`core 未定义`（desktop-pet.js 未加载）。
+Expected: FAIL——`core 未定义`（desktop-pet.js 未加载）。✓ 已再确认
 
-- [ ] **Step 3: 实现配置表 + Pet 类 + CSS**
+- [x] **Step 3: 实现配置表 + Pet 类 + CSS**（js/desktop-pet.js + css/desktop-pet.css；ACHIEVEMENTS 以 reward 字段承载奖励、condition 为函数）
 
 `js/desktop-pet.js` 首区（配置表）按规格 2.5 / 6.1 / 附录 D/E 填入：
 - `CHARACTERS`（3 角色：id/name/desc/colors/bodyScale/breathe/blink/defaultEmotion/antics/quotes/decor）
@@ -122,32 +122,32 @@ Expected: FAIL——`core 未定义`（desktop-pet.js 未加载）。
 
 `css/desktop-pet.css`：`--dp-*` 变量、`.pet-xiaomo` 等三角色覆盖、动画关键帧、移动端（<640px single/64px/opacity .8）、`@media (prefers-reduced-motion: reduce)` 全部停用动画。
 
-- [ ] **Step 4: index.html 接线（阶段 A）+ 运行验证**
+- [x] **Step 4: index.html 接线（阶段 A）+ 运行验证**
 
 `index.html`：
-- CSS 加到第 26 行 `<link rel="stylesheet" href="css/style.css">` 之后：`<link rel="stylesheet" href="css/desktop-pet.css">`。
-- JS 加到第 101 行 `<script src="js/app.js" defer></script>` 之后：`<script src="js/desktop-pet.js" defer></script>`。
-> 注：desktop-pet-page.js 到 Task 5 再加。desktop-pet.js 只依赖 store.js/store-settings.js/store-content.js/event-bus.js，defer 顺序远在其后，安全。新增 script 必须保持 `defer`（scripts.test.js 强制断言）。
+- CSS 已经加在 `<link rel="stylesheet" href="css/style.css">` 之后（实测在 style.css 后。注：原文"第 26 行"行号随文件漂移，按锚点定位不按行号）。
+- JS 实际接在 `<script src="js/games.js" defer></script>` 与 `<script src="js/settings.js" defer></script>` 之间（在 app.js 之前；desktop-pet.js 只依赖 store/event-bus，顺序安全）。注：原文"第 101 行 app.js 之后"行号漂移，`defer` 保持即可（scripts.test.js 断言）。
 
 Run: `npm test -- tests/desktop-pet.test.js`
-Expected: PASS。
+Expected: PASS。✓ 已再确认 6/6 PASS
 
-- [ ] **Step 5: 全量回归**
+- [x] **Step 5: 全量回归**
 
 Run: `npm test`
-Expected: 592（原有）+ 新增全部绿。若 harness.js boot 后新增文件无意外冲突，应直接全绿。
+Expected: 592（原有）+ 新增全部绿。若 harness.js boot 后新增文件无意外冲突，应直接全绿。✓ `npm test` 598/598 全绿；`node scripts/sync-sw.js` v48→v49 后 scripts.test.js 绿
 
-- [ ] **Step 6: typecheck + lint**
+- [x] **Step 6: typecheck + lint**
 
 Run: `npm run typecheck` 和 `npm run lint`
-Expected: 零问题（若 tsc 对 `window.DesktopPetCore` 报未声明，在 `js/globals.d.ts` 补充声明）。
+Expected: 零问题（若 tsc 对 `window.DesktopPetCore` 报未声明，在 `js/globals.d.ts` 补充声明）。✓ tsc 零错（Pet 用 inline @constructor/@this 标注）；eslint 0 errors/0 warnings
 
-- [ ] **Step 7: 提交**
+- [x] **Step 7: 提交**
 
 ```powershell
-git add js/desktop-pet.js css/desktop-pet.css index.html js/globals.d.ts tests/desktop-pet.test.js
+git add js/desktop-pet.js css/desktop-pet.css index.html tests/desktop-pet.test.js sw.js   # sw.js 含 sync-sw 资产同步
 git commit -F commitmsg.txt   # 消息："feat(desktop-pet): 核心模块 Phase 1——三角色配置表 + Pet 类 + CSS 变量体系（TDD 先行）"
 ```
+✓ 已提交 `24a177d`（5 files changed, 1607 insertions）。注：`js/globals.d.ts` 无需改动（tsc 零错）。
 
 ---
 
@@ -162,7 +162,7 @@ git commit -F commitmsg.txt   # 消息："feat(desktop-pet): 核心模块 Phase 
 - Produces 方法：`createFamily(store, bus, config)`、`family.setMode/resident/size/enabled`、`family.enterPageMode/exitPageMode/destroy`、`family.on/off/emit`。
 - 数据操作占位（Task 3 实现）：`getState()/getCoins()/getAffection()/getInventory()/getAchievements()` 本 Task 先返回 settings.desktopPet 原子快照。
 
-- [ ] **Step 1: 写失败测试（显示模式与串门生命周期）**
+- [x] **Step 1: 写失败测试（显示模式与串门生命周期）**（tests/desktop-pet.test.js 新增 4 项：显示模式/串门生命周期/召唤冷却/占场拒绝）
 
 `tests/desktop-pet.test.js` 追加：
 ```js
@@ -181,14 +181,14 @@ test('desktop-pet: PetFamily 显示模式切换（实例数量正确）', () => 
 });
 ```
 
-- [ ] **Step 2: 运行验证失败**
+- [x] **Step 2: 运行验证失败**
 
 Run: `node --test tests/desktop-pet.test.js`
-Expected: FAIL——`family 未暴露`（Task 3 之前 autoInit 尚未接线；此处先实现 PetFamily 类但不挂 autoInit，测试手工通过 `createFamily` 建实例断言，故本步骤的失败点改为挂到 autoInit 之前的 getMode 断言）。
+Expected: FAIL——`family 未暴露`（Task 3 之前 autoInit 尚未接线；此处先实现 PetFamily 类但不挂 autoInit，测试手工通过 `createFamily` 建实例断言，故本步骤的失败点改为挂到 autoInit 之前的 getMode 断言）。✓ createFamily undefined FAIL 已确认
 
 > 本 Task 的验证策略：直接在测试里 `const fam = window.DesktopPetCore.createFamily(store, window.SonderBus, store.state.settings);`（用 boot() 返回的**实例** `store`，而非工厂 `window.SonderStore`——后者是 factory，调用 createStore() 会新建独立实例）驱动，不断言全局 autoInit（Task 3 才挂）。
 
-- [ ] **Step 3: 实现 PetFamily + 子管理器骨架 + 串门 + 布局**
+- [x] **Step 3: 实现 PetFamily + 子管理器骨架 + 串门 + 布局**（AnimationLoop/DisplayManager/InteractionManager 占位/PetFamily；离场 2s 窗口用 _exitTimer+_exitRole 跟踪防僵尸实例，_teardownVisitor 供 setEnabled(false) 立即清场）
 
 `js/desktop-pet.js` 新增：
 - `AnimationLoop`：单 rAF 循环，`start/stop`，`visibilitychange` 暂停（记录已过时间，恢复续算）；`_tick` 内 dt 上限 0.05s。
@@ -197,15 +197,15 @@ Expected: FAIL——`family 未暴露`（Task 3 之前 autoInit 尚未接线；�
 - `PetFamily`：组合子管理器，对外公开 `setMode/setResident/setSize/setEnabled/enterPageMode/exitPageMode/getState/getActivePetIds/on/off/emit/destroy`；`store._commit('settings')` 在每次状态落盘后调用。
 - `autoInit` **本 Task 不挂**，改为导出 `createFamily(store, bus, settings)` 供测试直连。
 
-- [ ] **Step 4: 运行验证通过**
+- [x] **Step 4: 运行验证通过**
 
 Run: `node --test tests/desktop-pet.test.js`
-Expected: PASS（显示模式、串门状态机、布局用到的最小断言）。
+Expected: PASS（显示模式、串门状态机、布局用到的最小断言）。✓ 11/11 PASS（含边界测试：离场窗口拒绝召唤、关闭开关立即清串门）
 
 - [ ] **Step 5: 全量回归 + typecheck + lint**
 
 Run: `npm test`；`npm run typecheck`；`npm run lint`
-Expected: 全绿 + 零问题。
+Expected: 全绿 + 零问题。✓ 603/603 全绿；tsc 零错（新构造函数补 @constructor/@this，嵌套函数改 var self）；eslint 0 errors/0 warnings
 
 - [ ] **Step 6: 提交**
 

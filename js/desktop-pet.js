@@ -390,8 +390,35 @@
 
   /* ============================================================
      第二区：工具函数（UTILS）
-     - clamp/rand/pick/now 等通用函数（Task 2+ 扩展）
+     - rand/pick/clamp/cloneJson 等通用函数
+     - mergeDesktopPetDefaults：settings.desktopPet 深合并默认值
      ============================================================ */
+
+  /* 桌面玩偶设置块默认值（规格 3.5 全字段）。Task 3 并入 store 默认值原样复用。 */
+  var DEFAULT_DESKTOP = {
+    enabled: true,
+    mode: 'duo',                    /* single | duo | trio */
+    resident: 'xiaomo',
+    size: 84,
+    layout: 'bottom-right',
+    positions: {
+      xiaomo: { x: null, y: null },
+      xiaoyu: { x: null, y: null },
+      lanling: { x: null, y: null }
+    },
+    coins: 0,
+    affection: { xiaomo: 0, xiaoyu: 0, lanling: 0 },
+    inventory: {},
+    totalFed: { xiaomo: 0, xiaoyu: 0, lanling: 0 },
+    rewardedTaskIds: [],
+    achievements: {
+      unlocked: [],
+      stats: { totalTasksDone: 0, lastActiveDay: null, streakDays: 0, totalFeeds: 0 }
+    }
+  };
+
+  var ROLE_IDS = ['xiaomo', 'xiaoyu', 'lanling'];
+  var MODES = ['single', 'duo', 'trio'];
 
   function rand(min, max) {
     return min + Math.floor(Math.random() * (max - min + 1));
@@ -399,6 +426,59 @@
 
   function pick(arr) {
     return arr[Math.floor(Math.random() * arr.length)];
+  }
+
+  function clamp(v, lo, hi) {
+    return Math.max(lo, Math.min(hi, v));
+  }
+
+  function cloneJson(o) {
+    if (o === undefined || o === null) return null;
+    try { return JSON.parse(JSON.stringify(o)); } catch (e) { return null; }
+  }
+
+  /* 深合并原始 desktopPet 块 → 完整默认配置（未知字段丢弃、数值边界约束）。
+   * 命名跨 Task 固定（规格 9.5 / 计划接口清单）：Task 3 在 store 侧复用同一实现。 */
+  function mergeDesktopPetDefaults(raw) {
+    var out = cloneJson(DEFAULT_DESKTOP);
+    if (!raw || typeof raw !== 'object') return out;
+    if (typeof raw.enabled === 'boolean') out.enabled = raw.enabled;
+    if (MODES.indexOf(raw.mode) !== -1) out.mode = raw.mode;
+    if (ROLE_IDS.indexOf(raw.resident) !== -1) out.resident = raw.resident;
+    if (typeof raw.size === 'number') out.size = clamp(Math.round(raw.size), 48, 160);
+    if (raw.layout === 'bottom-right' || raw.layout === 'bottom-left' || raw.layout === 'auto') out.layout = raw.layout;
+    if (raw.positions && typeof raw.positions === 'object') {
+      ROLE_IDS.forEach(function (id) {
+        var p = raw.positions[id];
+        out.positions[id] = (p && typeof p === 'object')
+          ? { x: typeof p.x === 'number' ? p.x : null, y: typeof p.y === 'number' ? p.y : null }
+          : { x: null, y: null };
+      });
+    }
+    if (typeof raw.coins === 'number') out.coins = Math.max(0, Math.round(raw.coins));
+    if (raw.affection && typeof raw.affection === 'object') {
+      ROLE_IDS.forEach(function (id) {
+        if (typeof raw.affection[id] === 'number') out.affection[id] = Math.max(0, Math.round(raw.affection[id]));
+      });
+    }
+    if (raw.inventory && typeof raw.inventory === 'object') out.inventory = cloneJson(raw.inventory);
+    if (raw.totalFed && typeof raw.totalFed === 'object') {
+      ROLE_IDS.forEach(function (id) {
+        if (typeof raw.totalFed[id] === 'number') out.totalFed[id] = Math.max(0, Math.round(raw.totalFed[id]));
+      });
+    }
+    if (Array.isArray(raw.rewardedTaskIds)) out.rewardedTaskIds = raw.rewardedTaskIds.slice(0, 500);
+    if (raw.achievements && typeof raw.achievements === 'object') {
+      if (Array.isArray(raw.achievements.unlocked)) out.achievements.unlocked = raw.achievements.unlocked.slice();
+      var st = raw.achievements.stats || {};
+      out.achievements.stats = {
+        totalTasksDone: typeof st.totalTasksDone === 'number' ? Math.max(0, st.totalTasksDone) : 0,
+        lastActiveDay: typeof st.lastActiveDay === 'string' ? st.lastActiveDay : null,
+        streakDays: typeof st.streakDays === 'number' ? Math.max(0, st.streakDays) : 0,
+        totalFeeds: typeof st.totalFeeds === 'number' ? Math.max(0, st.totalFeeds) : 0
+      };
+    }
+    return out;
   }
 
   /* ============================================================
@@ -1150,14 +1230,51 @@
     /* 预留 */
   };
 
-  /* 出场动画（Task 2 接入） */
+  /* 出场动画（Task 2：滑入 + wave，由 DisplayManager 串门调度调用） */
   Pet.prototype.enter = function (fromSide) {
-    /* 预留 */
+    if (!this.el) return;
+    this.show();
+    this._aniTimers = this._aniTimers || [];
+    var self = this;
+    if (fromSide === 'right') {
+      this.el.style.transition = 'transform 0.6s ease, opacity 0.6s ease';
+      this.el.style.opacity = '0';
+      this.el.style.transform = 'translateX(40px)';
+      this._aniTimers.push(setTimeout(function () {
+        self.el.style.opacity = '1';
+        self.el.style.transform = 'translateX(0)';
+      }, 20));
+    } else {
+      this.el.style.transition = 'opacity 0.6s ease';
+      this.el.style.opacity = '1';
+    }
+    this.setEmotion('wave');
+    this._aniTimers.push(setTimeout(function () {
+      if (self.el) self.el.style.transition = '';
+      if (self.character) self._setDefaultEmotion();
+    }, 2500));
   };
 
-  /* 离场动画（Task 2 接入） */
+  /* 离场动画（Task 2：goodbye 1.5s + 滑出 500ms） */
   Pet.prototype.exit = function (toSide) {
-    /* 预留 */
+    if (!this.el) return;
+    this._aniTimers = this._aniTimers || [];
+    var self = this;
+    this.setEmotion('goodbye');
+    this._aniTimers.push(setTimeout(function () {
+      if (!self.el) return;
+      self.el.style.transition = 'transform 0.5s ease, opacity 0.5s ease';
+      self.el.style.opacity = '0';
+      if (toSide === 'right') self.el.style.transform = 'translateX(40px)';
+      self._aniTimers.push(setTimeout(function () { self.hide(); }, 520));
+    }, 1500));
+  };
+
+  /* 回到角色默认表情（enter 结束后） */
+  Pet.prototype._setDefaultEmotion = function () {
+    if (this.character && this.character.defaultEmotion) {
+      this.setEmotion(this.character.defaultEmotion, 0);
+    }
   };
 
   /* 销毁（移除监听/定时器/DOM） */
@@ -1165,6 +1282,10 @@
     if (this._blinkTimer) clearTimeout(this._blinkTimer);
     if (this._idleQuoteTimer) clearTimeout(this._idleQuoteTimer);
     if (this._sayTimer) clearTimeout(this._sayTimer);
+    if (this._aniTimers) {
+      this._aniTimers.forEach(clearTimeout);
+      this._aniTimers = [];
+    }
     if (this._boundEnter && this.el) this.el.removeEventListener('mouseenter', this._boundEnter);
     if (this._boundLeave && this.el) this.el.removeEventListener('mouseleave', this._boundLeave);
     if (this.el && this.el.parentNode) this.el.parentNode.removeChild(this.el);
@@ -1172,10 +1293,613 @@
   };
 
   /* ============================================================
+     第四区：子管理器（MANAGERS）
+     - AnimationLoop：共享 rAF 循环（单循环驱动全部活跃实例 _tick）
+     - DisplayManager：显示模式（single/duo/trio）+ 串门调度 + 布局 + 拖拽
+     - InteractionManager：Task 4 接入，当前为占位
+     ============================================================ */
+
+  var requestFrame = (typeof requestAnimationFrame === 'function')
+    ? requestAnimationFrame
+    : function (cb) { return setTimeout(function () { cb(Date.now() + 1); }, 16); };
+  var cancelFrame = (typeof cancelAnimationFrame === 'function')
+    ? cancelAnimationFrame
+    : clearTimeout;
+
+  /* 共享 rAF 循环：start/stop，visibilitychange 暂停续算，dt 上限 0.05s */
+  /** @constructor
+   * @this {{ instances: any[], _raf: number, _running: boolean, _last: number,
+   *   _boundTick: Function, _boundVis: any,
+   *   add: Function, remove: Function, start: Function, stop: Function, _tick: Function }} */
+  function AnimationLoop() {
+    this.instances = [];
+    this._raf = 0;
+    this._running = false;
+    this._last = 0;
+    this._boundTick = this._tick.bind(this);
+    this._boundVis = null;
+  }
+
+  AnimationLoop.prototype.add = function (inst) {
+    if (this.instances.indexOf(inst) !== -1) return;
+    this.instances.push(inst);
+    this.start();
+  };
+
+  AnimationLoop.prototype.remove = function (inst) {
+    var i = this.instances.indexOf(inst);
+    if (i !== -1) this.instances.splice(i, 1);
+  };
+
+  AnimationLoop.prototype.start = function () {
+    if (this._running) return;
+    this._running = true;
+    this._last = 0;
+    this._raf = requestFrame(this._boundTick);
+    if (!this._boundVis && typeof document !== 'undefined') {
+      var self = this;
+      this._boundVis = function () {
+        if (document.hidden) {
+          self._running = false;
+          if (self._raf) cancelFrame(self._raf);
+          self._raf = 0;
+        } else {
+          self._running = true;
+          self._last = 0;
+          self._raf = requestFrame(self._boundTick);
+        }
+      };
+      document.addEventListener('visibilitychange', this._boundVis);
+    }
+  };
+
+  AnimationLoop.prototype.stop = function () {
+    this._running = false;
+    if (this._raf) cancelFrame(this._raf);
+    this._raf = 0;
+    if (this._boundVis && typeof document !== 'undefined') {
+      document.removeEventListener('visibilitychange', this._boundVis);
+      this._boundVis = null;
+    }
+  };
+
+  AnimationLoop.prototype._tick = function (t) {
+    if (!this._running) return;
+    var now = typeof t === 'number' ? t : Date.now();
+    var dt = this._last ? Math.min((now - this._last) / 1000, 0.05) : 0;
+    this._last = now;
+    var list = this.instances.slice();
+    for (var i = 0; i < list.length; i++) {
+      if (list[i] && typeof list[i]._tick === 'function') list[i]._tick(dt, now);
+    }
+    this._raf = requestFrame(this._boundTick);
+  };
+
+  /* 显示管理器：按模式管理实例数量、串门状态机、布局与拖拽 */
+  /** @constructor
+   * @this {{ family: any, instances: Object, visitorRole: any, _visitTimer: any, _leaveTimer: any,
+   *   _exitTimer: any, _exitRole: any, _cooldowns: Object, _boundResize: any, _resizeT: any,
+   *   _orderedIds: Function, syncInstances: Function, _createInstance: Function, _destroyInstance: Function,
+   *   _unbindDrag: Function, get: Function, layout: Function, _bindResize: Function, _bindDrag: Function,
+   *   _persistPosition: Function, _clearVisit: Function, _teardownVisitor: Function,
+   *   _scheduleVisit: Function, _candidates: Function,
+   *   summonVisitor: Function, _tryVisit: Function, _spawnVisitor: Function, _leaveVisitor: Function }} */
+  function DisplayManager(family) {
+    this.family = family;
+    this.instances = {};      /* roleId -> Pet */
+    this.visitorRole = null;  /* 当前串门角色 */
+    this._visitTimer = null;
+    this._leaveTimer = null;
+    this._exitTimer = null;   /* 离场动画 2s 窗口（期间禁止新串门） */
+    this._exitRole = null;    /* 离场中的角色（窗口期实例仍在场） */
+    this._cooldowns = {};     /* roleId -> 冷却结束时间戳(ms) */
+    this._boundResize = null;
+    this._resizeT = null;
+  }
+
+  /* 常驻角色的排序：其余角色在前、常驻在后（默认右下角常驻为锚点） */
+  DisplayManager.prototype._orderedIds = function () {
+    var resident = this.family.getResident();
+    var rest = ROLE_IDS.filter(function (id) { return id !== resident; });
+    return rest.concat([resident]);
+  };
+
+  DisplayManager.prototype.syncInstances = function () {
+    var mode = this.family.getMode();
+    var resident = this.family.getResident();
+    var wanted = mode === 'trio' ? ROLE_IDS.slice() : [resident];
+    if (mode === 'duo' && this.visitorRole && wanted.indexOf(this.visitorRole) === -1) {
+      wanted.push(this.visitorRole);
+    }
+
+    var self = this;
+    Object.keys(this.instances).forEach(function (id) {
+      if (wanted.indexOf(id) === -1) self._destroyInstance(id);
+    });
+
+    /* 只创建 wanted 集合：duo=常驻（不预建串门），single=常驻，trio=3 */
+    var orderedIds = this._orderedIds().filter(function (id) {
+      return wanted.indexOf(id) !== -1;
+    });
+    orderedIds.forEach(function (id) {
+      if (!self.instances[id]) self._createInstance(id, mode === 'duo' && id !== resident);
+    });
+
+    this.layout();
+    if (mode === 'duo') this._scheduleVisit(); else this._clearVisit();
+  };
+
+  DisplayManager.prototype._createInstance = function (roleId, isVisitor) {
+    var pet = new Pet({
+      container: this.family.ensureContainer(),
+      size: this.family.getSize(),
+      character: roleId,
+      autoIntegrate: false
+    });
+    if (pet.el) {
+      pet.el.style.position = 'absolute';
+      pet.el.setAttribute('data-role', roleId);
+      pet.el.classList.add('dp-role-' + roleId);
+      if (isVisitor) pet.el.classList.add('dp-visitor');
+      this._bindDrag(pet, roleId);
+    }
+    this.instances[roleId] = pet;
+    this.family.loop.add(pet);
+    return pet;
+  };
+
+  DisplayManager.prototype._destroyInstance = function (roleId) {
+    var pet = this.instances[roleId];
+    if (pet) {
+      this.family.loop.remove(pet);
+      this._unbindDrag(pet);
+      pet.destroy();
+    }
+    delete this.instances[roleId];
+    if (this.visitorRole === roleId) this.visitorRole = null;
+  };
+
+  DisplayManager.prototype._unbindDrag = function (pet) {
+    if (!pet.el) return;
+    var usePointer = (typeof window !== 'undefined') && typeof window.PointerEvent === 'function';
+    var DOWN = usePointer ? 'pointerdown' : 'mousedown';
+    var MOVE = usePointer ? 'pointermove' : 'mousemove';
+    var UP = usePointer ? 'pointerup' : 'mouseup';
+    if (pet._boundDown) pet.el.removeEventListener(DOWN, pet._boundDown);
+    if (typeof window !== 'undefined') {
+      if (pet._boundMove) window.removeEventListener(MOVE, pet._boundMove);
+      if (pet._boundUp) window.removeEventListener(UP, pet._boundUp);
+    }
+  };
+
+  DisplayManager.prototype.get = function (roleId) {
+    return this.instances[roleId] || null;
+  };
+
+  /* 布局（规格 3.4 默认右下角；2 个横向间距 10px，3 个间距 8px，<480px 纵向堆叠） */
+  DisplayManager.prototype.layout = function () {
+    var family = this.family;
+    var mode = family.getMode();
+    var size = family.getSize();
+    var w = (typeof window !== 'undefined' && window.innerWidth) || 1024;
+    var h = (typeof window !== 'undefined' && window.innerHeight) || 768;
+    if (!w || !h) return;
+    var gap = mode === 'trio' ? 8 : 10;
+    var margin = 16;
+    var vertical = w < 480;
+    var self = this;
+    var ids = this._orderedIds().filter(function (id) { return self.instances[id]; });
+    var positions = this.family.getPositions();
+
+    ids.forEach(function (id, index) {
+      var el = self.instances[id].el;
+      if (!el) return;
+      var x = null;
+      var y = null;
+      if (positions[id] && typeof positions[id].x === 'number' && typeof positions[id].y === 'number') {
+        x = positions[id].x;
+        y = positions[id].y;
+      } else if (vertical) {
+        x = w - size - margin;
+        y = h - size - margin - index * (size + gap);
+      } else {
+        x = w - size - margin - index * (size + gap);
+        y = h - size - margin;
+      }
+      el.style.left = clamp(Math.round(x), 0, Math.max(0, w - size)) + 'px';
+      el.style.top = clamp(Math.round(y), 0, Math.max(0, h - size)) + 'px';
+    });
+  };
+
+  /* resize 越界自动拉回（节流 100ms） */
+  DisplayManager.prototype._bindResize = function () {
+    if (this._boundResize || typeof window === 'undefined') return;
+    var self = this;
+    this._boundResize = function () {
+      if (self._resizeT) return;
+      self._resizeT = setTimeout(function () {
+        self._resizeT = null;
+        self.layout();
+      }, 100);
+    };
+    window.addEventListener('resize', this._boundResize);
+  };
+
+  /* 拖拽：位置独立持久化到 desktopPet.positions[roleId]（指针事件优先，回退鼠标事件） */
+  DisplayManager.prototype._bindDrag = function (pet, roleId) {
+    if (!pet.el) return;
+    var self = this;
+    var startX = 0;
+    var startY = 0;
+    var baseX = 0;
+    var baseY = 0;
+    var dragging = false;
+    var usePointer = (typeof window !== 'undefined') && typeof window.PointerEvent === 'function';
+    var DOWN = usePointer ? 'pointerdown' : 'mousedown';
+    var MOVE = usePointer ? 'pointermove' : 'mousemove';
+    var UP = usePointer ? 'pointerup' : 'mouseup';
+
+    pet._boundDown = function (e) {
+      if (e.button === 2 || self.visitorRole === roleId) return; /* 右键菜单/串门不可拖拽 */
+      dragging = true;
+      var pos = pet.el.getBoundingClientRect();
+      startX = (typeof e.clientX === 'number') ? e.clientX : 0;
+      startY = (typeof e.clientY === 'number') ? e.clientY : 0;
+      baseX = pos.left;
+      baseY = pos.top;
+      pet.el.style.transition = 'none';
+    };
+    pet._boundMove = function (e) {
+      if (!dragging) return;
+      var nx = (typeof e.clientX === 'number') ? e.clientX - startX + baseX : baseX;
+      var ny = (typeof e.clientY === 'number') ? e.clientY - startY + baseY : baseY;
+      pet.el.style.left = Math.round(nx) + 'px';
+      pet.el.style.top = Math.round(ny) + 'px';
+    };
+    pet._boundUp = function () {
+      if (!dragging) return;
+      dragging = false;
+      pet.el.style.transition = '';
+      self._persistPosition(roleId);
+    };
+
+    pet.el.addEventListener(DOWN, pet._boundDown);
+    if (typeof window !== 'undefined') {
+      window.addEventListener(MOVE, pet._boundMove);
+      window.addEventListener(UP, pet._boundUp);
+    }
+  };
+
+  DisplayManager.prototype._persistPosition = function (roleId) {
+    var el = this.instances[roleId] && this.instances[roleId].el;
+    if (!el) return;
+    this.family.getPositions()[roleId] = {
+      x: parseFloat(el.style.left || '0'),
+      y: parseFloat(el.style.top || '0')
+    };
+    this.family._commit();
+  };
+
+  /* ---- 串门状态机（规格 3.3：8-15min 触发、停留 2-4min、冷却 10min） ---- */
+  DisplayManager.prototype._clearVisit = function () {
+    if (this._visitTimer) { clearTimeout(this._visitTimer); this._visitTimer = null; }
+    if (this._leaveTimer) { clearTimeout(this._leaveTimer); this._leaveTimer = null; }
+    if (this._exitTimer) { clearTimeout(this._exitTimer); this._exitTimer = null; }
+  };
+
+  /* 立即移除串门实例（关闭开关/销毁时用，不做离场动画；含离场窗口中的实例） */
+  DisplayManager.prototype._teardownVisitor = function () {
+    this._clearVisit();
+    var roleId = this.visitorRole || this._exitRole;
+    this.visitorRole = null;
+    this._exitRole = null;
+    if (roleId && this.instances[roleId]) this._destroyInstance(roleId);
+  };
+
+  DisplayManager.prototype._scheduleVisit = function () {
+    var family = this.family;
+    this._clearVisit();
+    if (family._pageMode || family.getMode() !== 'duo' || !family.getEnabled()) return;
+    var self = this;
+    this._visitTimer = setTimeout(function () {
+      self._visitTimer = null;
+      if (self.family._pageMode) return; /* 页面模式暂停串门，退出时重调度 */
+      if (family.getMode() !== 'duo' || !family.getEnabled()) return;
+      self._tryVisit(true);
+    }, rand(8 * 60 * 1000, 15 * 60 * 1000));
+  };
+
+  /* 候选串门角色：非常驻且不在冷却期 */
+  DisplayManager.prototype._candidates = function () {
+    var resident = this.family.getResident();
+    var now = Date.now();
+    var self = this;
+    return ROLE_IDS.filter(function (id) {
+      if (id === resident) return false;
+      if (self.visitorRole === id) return false;
+      var cd = self._cooldowns[id];
+      return !(cd && now < cd);
+    });
+  };
+
+  /* 手动召唤（右键「叫小伙伴来玩」）：无视间隔仍受占场/冷却约束 */
+  DisplayManager.prototype.summonVisitor = function () {
+    var family = this.family;
+    if (family._pageMode || family.getMode() !== 'duo') return false;
+    if (this.visitorRole || this._exitTimer) return false; /* 占场或离场窗口期拒绝 */
+    var candidates = this._candidates();
+    if (!candidates.length) return false;
+    this._spawnVisitor(pick(candidates));
+    return true;
+  };
+
+  DisplayManager.prototype._tryVisit = function (auto) {
+    var family = this.family;
+    if (family._pageMode || family.getMode() !== 'duo' || this.visitorRole || this._exitTimer) return false;
+    var candidates = this._candidates();
+    if (!candidates.length) {
+      if (auto) this._scheduleVisit();
+      return false;
+    }
+    this._spawnVisitor(pick(candidates));
+    return true;
+  };
+
+  DisplayManager.prototype._spawnVisitor = function (roleId) {
+    this.visitorRole = roleId;
+    if (!this.instances[roleId]) this._createInstance(roleId, true);
+    this.layout();
+    var pet = this.instances[roleId];
+    if (pet) pet.enter('right');
+    var self = this;
+    /* 停留 2-4min 后 goodbye 1.5s + 滑出 500ms + 冷却 10min */
+    this._leaveTimer = setTimeout(function () {
+      self._leaveTimer = null;
+      self._leaveVisitor();
+    }, rand(2 * 60 * 1000, 4 * 60 * 1000));
+  };
+
+  DisplayManager.prototype._leaveVisitor = function () {
+    var roleId = this.visitorRole;
+    if (!roleId) { this._scheduleVisit(); return; }
+    var pet = this.instances[roleId];
+    this.visitorRole = null;
+    this._cooldowns[roleId] = Date.now() + 10 * 60 * 1000;
+    if (pet) pet.exit('right');
+    var self = this;
+    /* goodbye 1.5s + 滑出 500ms 后销毁；窗口期 _exitTimer 阻止新串门 */
+    this._exitRole = roleId;
+    this._exitTimer = setTimeout(function () {
+      self._exitTimer = null;
+      self._exitRole = null;
+      self._destroyInstance(roleId);
+      self._scheduleVisit();
+    }, 2000);
+  };
+
+  /* 互动管理器占位（Task 4：点击对话 / 投喂 / 摸头等） */
+  /** @constructor
+   * @this {{ family: any, active: boolean }} */
+  function InteractionManager(family) {
+    this.family = family;
+    this.active = true;
+  }
+
+  /* ============================================================
+     第五区：PetFamily（组合子管理器，对外公开接口）
+     - 构造依赖：store（SonderStore 实例）+ bus（SonderBus）+ config（settings 对象）
+     - 数据操作占位：getState/getCoins/getAffection/getInventory/getAchievements
+       返回 settings.desktopPet 原子快照（Task 3 接入 Coin/Affection/Achievement 后替换）
+     ============================================================ */
+
+  /** @constructor
+   * @this {{ store: any, bus: any, settings: any, _listeners: Object, _container: any, loop: any,
+   *   display: any, interaction: any, _pageMode: boolean,
+   *   _sync: Function, ensureContainer: Function, _commit: Function,
+   *   getMode: Function, setMode: Function, getResident: Function, setResident: Function,
+   *   getSize: Function, setSize: Function, getEnabled: Function, setEnabled: Function,
+   *   getPositions: Function, enterPageMode: Function, exitPageMode: Function,
+   *   summonVisitor: Function, getActivePetIds: Function,
+   *   getState: Function, getCoins: Function, getAffection: Function, getInventory: Function,
+   *   getAchievements: Function, on: Function, off: Function, emit: Function, destroy: Function }} */
+  function PetFamily(store, bus, config) {
+    this.store = store || null;
+    this.bus = bus || null;
+    this.settings = config || (store && store.state ? store.state.settings : {});
+    /* 自建 desktopPet 默认配置（Task 3 并入 store 默认值后此步幂等保留） */
+    this.settings.desktopPet = mergeDesktopPetDefaults(this.settings.desktopPet);
+
+    this._listeners = {};
+    this._container = null;
+    this.loop = new AnimationLoop();
+    this.display = new DisplayManager(this);
+    this.interaction = new InteractionManager(this);
+    this._pageMode = false;
+
+    this.display._bindResize();
+    this._sync();
+  }
+
+  /* ---- 生命周期 ---- */
+  PetFamily.prototype._sync = function () {
+    this.display.syncInstances();
+  };
+
+  PetFamily.prototype.ensureContainer = function () {
+    if (this._container) return this._container;
+    if (typeof document === 'undefined') return null;
+    var c = document.createElement('div');
+    c.className = 'dp-shelf';
+    c.style.cssText = 'position:fixed;left:0;top:0;right:0;bottom:0;pointer-events:none;z-index:9999;';
+    document.body.appendChild(c);
+    this._container = c;
+    return c;
+  };
+
+  /* 每次状态落盘后调用（settings 集合持久化） */
+  PetFamily.prototype._commit = function () {
+    if (this.store && typeof this.store._commit === 'function') {
+      try { this.store._commit('settings'); } catch (e) { /* 持久化失败不谎报成功 */ }
+    }
+    this.emit('change', this.getState());
+  };
+
+  /* ---- 公开：显示模式 ---- */
+  PetFamily.prototype.getMode = function () {
+    return this.settings.desktopPet.mode;
+  };
+
+  PetFamily.prototype.setMode = function (mode) {
+    if (MODES.indexOf(mode) === -1) return;
+    this.settings.desktopPet.mode = mode;
+    this._sync();
+    this._commit();
+  };
+
+  PetFamily.prototype.getResident = function () {
+    return this.settings.desktopPet.resident;
+  };
+
+  PetFamily.prototype.setResident = function (id) {
+    if (ROLE_IDS.indexOf(id) === -1) return;
+    this.settings.desktopPet.resident = id;
+    this._sync();
+    this._commit();
+  };
+
+  PetFamily.prototype.getSize = function () {
+    return this.settings.desktopPet.size;
+  };
+
+  PetFamily.prototype.setSize = function (px) {
+    var size = clamp(Math.round(px), 48, 160);
+    this.settings.desktopPet.size = size;
+    var self = this;
+    Object.keys(this.display.instances).forEach(function (id) {
+      var pet = self.display.get(id);
+      if (pet) pet.setSize(size);
+    });
+    this.display.layout();
+    this._commit();
+  };
+
+  PetFamily.prototype.getEnabled = function () {
+    return this.settings.desktopPet.enabled;
+  };
+
+  PetFamily.prototype.setEnabled = function (enabled) {
+    this.settings.desktopPet.enabled = !!enabled;
+    if (this._container) {
+      this._container.style.display = enabled ? '' : 'none';
+    }
+    if (!enabled) {
+      this.display._teardownVisitor(); /* 清定时器 + 立即移除串门实例，避免残留 */
+    } else if (this.settings.desktopPet.mode === 'duo') {
+      this.display._scheduleVisit();
+    }
+    this._commit();
+  };
+
+  PetFamily.prototype.getPositions = function () {
+    return this.settings.desktopPet.positions;
+  };
+
+  /* ---- 公开：页面模式（页面打开时隐藏悬浮玩偶，保持状态） ---- */
+  PetFamily.prototype.enterPageMode = function () {
+    this._pageMode = true;
+    if (this._container) this._container.style.display = 'none';
+    this.loop.stop();
+  };
+
+  PetFamily.prototype.exitPageMode = function () {
+    this._pageMode = false;
+    if (this._container) this._container.style.display = this.getEnabled() ? '' : 'none';
+    this.loop.start();
+    if (this.getEnabled() && this.getMode() === 'duo') this.display._scheduleVisit();
+  };
+
+  /* ---- 公开：串门 ---- */
+  PetFamily.prototype.summonVisitor = function () {
+    return this.display.summonVisitor();
+  };
+
+  /* ---- 公开：实例信息 ---- */
+  PetFamily.prototype.getActivePetIds = function () {
+    return Object.keys(this.display.instances);
+  };
+
+  /* ---- 数据操作占位（Task 3 替换为真实计算，对外返回原子快照） ---- */
+  PetFamily.prototype.getState = function () {
+    return cloneJson(this.settings.desktopPet);
+  };
+
+  PetFamily.prototype.getCoins = function () {
+    return this.settings.desktopPet.coins;
+  };
+
+  PetFamily.prototype.getAffection = function () {
+    return cloneJson(this.settings.desktopPet.affection);
+  };
+
+  PetFamily.prototype.getInventory = function () {
+    return cloneJson(this.settings.desktopPet.inventory);
+  };
+
+  PetFamily.prototype.getAchievements = function () {
+    return cloneJson(this.settings.desktopPet.achievements);
+  };
+
+  /* ---- 事件（on/off/emit，内部与跨模块弱耦合） ---- */
+  PetFamily.prototype.on = function (name, fn) {
+    if (!this._listeners[name]) this._listeners[name] = [];
+    this._listeners[name].push(fn);
+    var self = this;
+    return function () { self.off(name, fn); };
+  };
+
+  PetFamily.prototype.off = function (name, fn) {
+    var list = this._listeners[name];
+    if (!list) return;
+    var i = list.indexOf(fn);
+    if (i !== -1) list.splice(i, 1);
+  };
+
+  PetFamily.prototype.emit = function (name, detail) {
+    var list = this._listeners[name];
+    if (!list) return;
+    list.slice().forEach(function (fn) {
+      try { fn(detail); } catch (e) { /* 监听器异常不阻断 */ }
+    });
+  };
+
+  /* ---- 销毁（完整清理：实例/循环/容器/监听/定时器） ---- */
+  PetFamily.prototype.destroy = function () {
+    this.display._clearVisit();
+    var self = this;
+    Object.keys(this.display.instances).forEach(function (id) {
+      self.display._destroyInstance(id);
+    });
+    this.loop.stop();
+    if (typeof window !== 'undefined') {
+      if (this.display._boundResize) window.removeEventListener('resize', this.display._boundResize);
+    }
+    if (this._container && this._container.parentNode) {
+      this._container.parentNode.removeChild(this._container);
+    }
+    this._container = null;
+    this._listeners = {};
+  };
+
+  /* ============================================================
      第七区：工厂与自动初始化（FACTORY / INIT）
      - createPet：便捷构造单个玩偶（供页面/悬浮使用）
-     - createFamily / autoInit：Task 3 接入 PetFamily 后实现
+     - createFamily：创建 PetFamily（Task 2 实现；autoInit 由 Task 3 接入）
      ============================================================ */
+
+  /* 创建小莫灵家族（组合 store/settings 驱动，测试与页面共用入口） */
+  function createFamily(store, bus, config) {
+    return new PetFamily(store, bus, config);
+  }
 
   function createPet(options) {
     return new Pet(options);
@@ -1192,7 +1916,11 @@
     DIALOGUES: DIALOGUES,
     QUOTES: QUOTES,
     Pet: Pet,
-    createPet: createPet
+    createPet: createPet,
+    PetFamily: PetFamily,
+    createFamily: createFamily,
+    mergeDesktopPetDefaults: mergeDesktopPetDefaults,
+    DEFAULT_DESKTOP: DEFAULT_DESKTOP
   };
 
   return DesktopPetCore;

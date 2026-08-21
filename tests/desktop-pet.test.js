@@ -228,3 +228,118 @@ test('desktop-pet: Pet 构造/渲染 SVG/角色注入/销毁', () => {
   pet.destroy();
   assert.strictEqual(container.children.length, 0, 'destroy 后清空 DOM');
 });
+
+/* ============================================================
+ * Task 2: PetFamily 管理器（显示模式/常驻/串门/布局/共享 rAF）
+ * 契约依据：
+ *   - 规格 3.1-3.5：模式 single/duo/trio、常驻、位置、设置汇总
+ *   - 规格 3.3：串门状态机（手动召唤"叫小伙伴来玩"无视间隔仍受冷却）
+ *   - 规格 9.5 第四/区子管理器 + 第五区 PetFamily：createFamily
+ *   注：settings.desktopPet 由 Task 3 并入 store 默认值；本 Task PetFamily
+ *   自建默认配置并回写 settings，逻辑不依赖 store 预置。
+ * ============================================================ */
+
+test('desktop-pet: PetFamily 显示模式切换（实例数量正确）', () => {
+  const { window, store } = boot();
+  const C = window.DesktopPetCore;
+  assert.ok(C && typeof C.createFamily === 'function', 'createFamily 未暴露');
+
+  const family = C.createFamily(store, window.SonderBus, store.state.settings);
+  assert.ok(family, 'family 未创建');
+
+  /* 默认 duo：常驻 1 只（串门未到场前仅常驻） */
+  assert.strictEqual(family.getMode(), 'duo');
+  assert.strictEqual(family.getActivePetIds().length, 1, 'duo 初始 1 只');
+
+  family.setMode('single');
+  assert.strictEqual(family.getMode(), 'single');
+  assert.strictEqual(family.getActivePetIds().length, 1, 'single 1 只');
+
+  family.setMode('trio');
+  assert.strictEqual(family.getMode(), 'trio');
+  assert.strictEqual(family.getActivePetIds().length, 3, 'trio 三只同屏');
+  const ids = Array.from(family.getActivePetIds()).sort();
+  assert.deepStrictEqual(ids, ['lanling', 'xiaomo', 'xiaoyu'], 'trio 三角色齐');
+
+  family.destroy();
+});
+
+test('desktop-pet: PetFamily 常驻/尺寸/开关落盘到 settings.desktopPet', () => {
+  const { window, store } = boot();
+  const C = window.DesktopPetCore;
+  const family = C.createFamily(store, window.SonderBus, store.state.settings);
+
+  assert.ok(store.state.settings.desktopPet, 'createFamily 应自建 desktopPet 默认配置');
+
+  family.setResident('lanling');
+  assert.strictEqual(family.getResident(), 'lanling');
+  assert.strictEqual(store.state.settings.desktopPet.resident, 'lanling', '常驻落盘');
+
+  family.setSize(120);
+  assert.strictEqual(family.getSize(), 120);
+  assert.strictEqual(store.state.settings.desktopPet.size, 120, '尺寸落盘');
+
+  family.setEnabled(false);
+  assert.strictEqual(family.getEnabled(), false);
+  assert.strictEqual(store.state.settings.desktopPet.enabled, false, '开关落盘');
+
+  family.setEnabled(true);
+  assert.strictEqual(family.getEnabled(), true);
+
+  family.destroy();
+});
+
+test('desktop-pet: duo 串门状态机（手动召唤无视间隔，冷却被拒）', () => {
+  const { window, store } = boot();
+  const C = window.DesktopPetCore;
+  const family = C.createFamily(store, window.SonderBus, store.state.settings);
+  assert.strictEqual(family.getMode(), 'duo');
+
+  const before = family.getActivePetIds().length; /* 常驻 1 */
+  const summoned = family.summonVisitor();
+  assert.strictEqual(summoned, true, '召唤成功');
+  assert.strictEqual(family.getActivePetIds().length, before + 1, '串门到场');
+
+  /* duo 最多一只串门：当前有串门占场时再召唤被拒 */
+  const again = family.summonVisitor();
+  assert.strictEqual(again, false, '串门占场期间拒绝再召唤');
+
+  family.destroy();
+});
+
+test('desktop-pet: 串门边界——离场窗口拒绝召唤 / 关闭开关立即清串门', () => {
+  const { window, store } = boot();
+  const C = window.DesktopPetCore;
+  const family = C.createFamily(store, window.SonderBus, store.state.settings);
+
+  /* 离场动画 2s 窗口内：召唤被拒（保证任意时刻最多 1 只串门） */
+  assert.strictEqual(family.summonVisitor(), true, '首次召唤成功');
+  family.display._leaveVisitor(); /* 直接触发离场，进入 2s 退场窗口 */
+  assert.strictEqual(family.summonVisitor(), false, '离场窗口内拒绝再召唤');
+
+  /* 关闭开关：串门实例立即清除（含离场定时器），仅剩常驻 */
+  family.setEnabled(false);
+  assert.strictEqual(family.getActivePetIds().length, 1, '关闭后仅剩常驻');
+  assert.strictEqual(family.display.visitorRole, null, 'visitorRole 复位');
+  assert.strictEqual(family.display._exitTimer, null, '离场定时器已清');
+
+  family.destroy();
+});
+
+test('desktop-pet: PetFamily 布局/挂载到 DOM + destroy 清理', () => {
+  const { window, store } = boot();
+  const document = window.document;
+  const C = window.DesktopPetCore;
+
+  const family = C.createFamily(store, window.SonderBus, store.state.settings);
+  family.setMode('trio');
+
+  const petsInBody = Array.from(document.querySelectorAll('.dp-pet')).length;
+  assert.strictEqual(petsInBody, 3, 'trio 三只挂载到 DOM');
+
+  const container = document.querySelector('.dp-shelf');
+  assert.ok(container, '应有玩偶挂载容器 .dp-shelf');
+  family.destroy();
+  assert.strictEqual(document.querySelector('.dp-shelf'), null, 'destroy 移除容器');
+  assert.strictEqual(document.querySelectorAll('.dp-pet').length, 0, 'destroy 清空玩偶');
+});
