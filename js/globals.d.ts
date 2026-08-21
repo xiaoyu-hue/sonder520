@@ -168,6 +168,7 @@ interface SonderPage {
   title: string;
   render(container: HTMLElement, ctx: SonderCtx): void;
   add?(ctx: SonderCtx): void;
+  destroy?(ctx: SonderCtx): void;
 }
 
 interface SonderUI {
@@ -191,6 +192,7 @@ interface SonderCtx {
   navigate(route: string): void;
   _container?: HTMLElement;
   _dpUnsub?: () => void;
+  _dpBound?: boolean;
 }
 
 interface SonderFormOptions {

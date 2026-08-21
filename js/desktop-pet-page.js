@@ -28,7 +28,7 @@
   function getFamily() { return window.__desktopPetFamily || null; }
 
   /* ---- 渲染：标题栏 ---- */
-  function renderHeader(doc, container, family) {
+  function renderHeader(container, family) {
     var header = el('div', 'dp-page-header');
     var titleRow = el('div', 'dp-page-title');
     titleRow.appendChild(el('span', '', '🐾'));
@@ -46,7 +46,7 @@
   }
 
   /* ---- 渲染：三角色卡 ---- */
-  function renderPetCards(doc, container, family) {
+  function renderPetCards(container, family) {
     var wrap = el('div', 'dp-page-pets');
     ROLE_IDS.forEach(function (id) {
       var card = el('div', 'dp-page-card dp-page-card-' + id);
@@ -81,7 +81,7 @@
   }
 
   /* ---- 渲染：显示设置 ---- */
-  function renderSettings(doc, container, family) {
+  function renderSettings(container, family) {
     var section = el('div', 'dp-page-settings');
     section.appendChild(el('div', 'dp-page-section-title', '显示设置'));
 
@@ -102,7 +102,16 @@
       var sizeRow = el('div', 'dp-page-setting-row');
       sizeRow.appendChild(el('label', '', '大小：'));
       var sizeVal = el('span', 'dp-page-size-val', String(family.getSize()));
+      sizeVal.setAttribute('data-role', 'size-val');
       sizeRow.appendChild(sizeVal);
+      var slider = el('input', 'dp-page-size-slider');
+      slider.setAttribute('type', 'range');
+      slider.setAttribute('min', '48');
+      slider.setAttribute('max', '160');
+      slider.setAttribute('step', '4');
+      slider.setAttribute('value', String(family.getSize()));
+      slider.setAttribute('data-action', 'setSize');
+      sizeRow.appendChild(slider);
       section.appendChild(sizeRow);
 
       /* 总开关 */
@@ -125,7 +134,7 @@
   }
 
   /* ---- 渲染：商店预览 ---- */
-  function renderShopPreview(doc, container, family) {
+  function renderShopPreview(container, family) {
     var section = el('div', 'dp-page-shop');
     section.appendChild(el('div', 'dp-page-section-title', '商店'));
 
@@ -141,6 +150,7 @@
       var snack = C.SNACKS[id];
       if (!snack) return;
       var card = el('div', 'dp-page-snack-card');
+      card.setAttribute('data-snack', id);
       card.appendChild(el('div', 'dp-page-snack-icon', snack.icon));
       card.appendChild(el('div', 'dp-page-snack-name', snack.name));
       card.appendChild(el('div', 'dp-page-snack-price', '💰 ' + snack.price));
@@ -148,6 +158,10 @@
         var inv = family.getInventory();
         var qty = inv[id] || 0;
         card.appendChild(el('div', 'dp-page-snack-qty', '库存: ' + qty));
+        var buyBtn = el('button', 'dp-page-buy-btn', '购买');
+        buyBtn.setAttribute('data-action', 'buy');
+        buyBtn.setAttribute('data-snack-id', id);
+        card.appendChild(buyBtn);
       }
       grid.appendChild(card);
     });
@@ -156,7 +170,7 @@
   }
 
   /* ---- 渲染：成就列表 ---- */
-  function renderAchievements(doc, container, family) {
+  function renderAchievements(container, family) {
     var section = el('div', 'dp-page-achievements');
     section.appendChild(el('div', 'dp-page-section-title', '成就'));
 
@@ -192,13 +206,52 @@
     if (!container) return;
     container.innerHTML = '';
     var family = getFamily();
-    var doc = container.ownerDocument || document;
 
-    renderHeader(doc, container, family);
-    renderPetCards(doc, container, family);
-    renderSettings(doc, container, family);
-    renderShopPreview(doc, container, family);
-    renderAchievements(doc, container, family);
+    renderHeader(container, family);
+    renderPetCards(container, family);
+    renderSettings(container, family);
+    renderShopPreview(container, family);
+    renderAchievements(container, family);
+  }
+
+  /* ---- 事件委托：喂食/模式切换/大小/开关/重置/购买 ---- */
+  function handleAction(action, target, family) {
+    if (!family) return;
+    var tgt = /** @type {HTMLElement} */ (target);
+    if (action === 'feed') {
+      var petId = tgt.getAttribute('data-pet-id');
+      if (!petId) return;
+      /* 从库存中取第一个可用零食喂食 */
+      var inv = family.getInventory();
+      var snackKey = null;
+      var C = window.DesktopPetCore;
+      if (C && C.SNACKS) {
+        var keys = Object.keys(C.SNACKS);
+        for (var i = 0; i < keys.length; i++) {
+          if (inv[keys[i]] && inv[keys[i]] > 0) { snackKey = keys[i]; break; }
+        }
+      }
+      if (snackKey) {
+        family.feedPet(petId, snackKey);
+      }
+    } else if (action === 'setMode') {
+      var mode = tgt.getAttribute('data-value');
+      if (mode) family.setMode(mode);
+    } else if (action === 'setSize') {
+      var size = parseInt(/** @type {HTMLInputElement} */ (tgt).value, 10);
+      if (size >= 48 && size <= 160) family.setSize(size);
+      var sizeVal = document.querySelector('[data-role="size-val"]');
+      if (sizeVal) sizeVal.textContent = String(family.getSize());
+    } else if (action === 'toggle') {
+      family.setEnabled(!family.getEnabled());
+    } else if (action === 'reset') {
+      if (confirm('确定要重置所有小莫灵数据吗？此操作不可恢复。')) {
+        family.resetAllData();
+      }
+    } else if (action === 'buy') {
+      var snackId = tgt.getAttribute('data-snack-id');
+      if (snackId) family.buySnack(snackId);
+    }
   }
 
   /* ---- 注册页面 ---- */
@@ -208,19 +261,49 @@
       var family = getFamily();
       ctx._container = container;
 
+      /* 先清理上次订阅 */
+      if (ctx._dpUnsub) { try { ctx._dpUnsub(); } catch (e) { /* 忽略 */ } ctx._dpUnsub = null; }
+
       if (family) {
         try { family.enterPageMode(); } catch (e) { /* 忽略 */ }
       }
 
       render(ctx);
 
+      /* 事件委托：容器级一次绑定 */
+      if (!ctx._dpBound) {
+        ctx._dpBound = true;
+        container.addEventListener('click', function (e) {
+          var tgt = /** @type {HTMLElement} */ (e.target);
+          var action = tgt.getAttribute('data-action');
+          if (!action) return;
+          var fam = getFamily();
+          handleAction(action, tgt, fam);
+        });
+        /* range input 实时响应 */
+        container.addEventListener('input', function (e) {
+          var tgt = /** @type {HTMLElement} */ (e.target);
+          if (tgt.getAttribute('data-action') === 'setSize') {
+            var fam = getFamily();
+            if (fam) handleAction('setSize', tgt, fam);
+          }
+        });
+      }
+
       /* 订阅变更事件自动重绘 */
       if (family && family.on) {
         var unsub = family.on('change', function () {
           if (ctx._container) render(ctx);
         });
-        /* 存储 unsubscribe 供页面切换清理 */
         ctx._dpUnsub = unsub;
+      }
+    },
+    /* 页面离开时恢复悬浮玩偶 */
+    destroy: function (ctx) {
+      if (ctx._dpUnsub) { try { ctx._dpUnsub(); } catch (e) { /* 忽略 */ } ctx._dpUnsub = null; }
+      var family = getFamily();
+      if (family) {
+        try { family.exitPageMode(); } catch (e) { /* 忽略 */ }
       }
     }
   };

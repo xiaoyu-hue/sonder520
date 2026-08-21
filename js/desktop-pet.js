@@ -586,10 +586,11 @@
     svg.setAttribute('height', '100%');
     svg.style.overflow = 'visible';
 
-    /* defs：渐变 + 滤镜 */
+    /* defs：渐变 + 滤镜（随机 ID 防 trio 多实例碰撞） */
+    var _uid = Math.floor(Math.random() * 100000);
     var defs = document.createElementNS(SVG_NS, 'defs');
     var bodyGrad = document.createElementNS(SVG_NS, 'radialGradient');
-    bodyGrad.setAttribute('id', 'dpBodyGrad');
+    bodyGrad.setAttribute('id', 'dpBodyGrad' + _uid);
     bodyGrad.setAttribute('cx', '38%');
     bodyGrad.setAttribute('cy', '32%');
     bodyGrad.setAttribute('r', '70%');
@@ -608,7 +609,7 @@
     defs.appendChild(bodyGrad);
 
     var glowGrad = document.createElementNS(SVG_NS, 'radialGradient');
-    glowGrad.setAttribute('id', 'dpGlow');
+    glowGrad.setAttribute('id', 'dpGlow' + _uid);
     glowGrad.setAttribute('cx', '50%');
     glowGrad.setAttribute('cy', '50%');
     glowGrad.setAttribute('r', '50%');
@@ -624,7 +625,7 @@
     glowGrad.appendChild(gs2);
     defs.appendChild(glowGrad);
 
-    var svgId = 'dpInk' + Math.floor(Math.random() * 100000);
+    var svgId = 'dpInk' + _uid;
     var inkFilter = document.createElementNS(SVG_NS, 'filter');
     inkFilter.setAttribute('id', svgId);
     inkFilter.setAttribute('x', '-30%');
@@ -668,7 +669,7 @@
     glow.setAttribute('cy', '52');
     glow.setAttribute('rx', '42');
     glow.setAttribute('ry', '40');
-    glow.setAttribute('fill', 'url(#dpGlow)');
+    glow.setAttribute('fill', 'url(#dpGlow' + _uid + ')');
     svg.appendChild(glow);
 
     /* 身体组 */
@@ -677,7 +678,7 @@
     var body = document.createElementNS(SVG_NS, 'path');
     body.setAttribute('class', 'dp-body');
     body.setAttribute('d', 'M50 12 C68 12 82 28 82 48 C82 68 72 84 50 86 C28 84 18 68 18 48 C18 28 32 12 50 12 Z');
-    body.setAttribute('fill', 'url(#dpBodyGrad)');
+    body.setAttribute('fill', 'url(#dpBodyGrad' + _uid + ')');
     body.setAttribute('filter', 'url(#' + svgId + ')');
     bodyG.appendChild(body);
 
@@ -896,6 +897,10 @@
     this.setEmotion(this.emotion, 0);
     this._drawEyes(this.eyeL, this.eyeR, EMO_CONFIGS[this.emotion].eyes, 'idle');
     this._drawMouth(EMO_CONFIGS[this.emotion].mouth);
+
+    /* 启动眨眼/闲置语句定时器 */
+    this._scheduleBlink();
+    this._scheduleIdleQuote();
   };
 
   /* 绑定事件（交互拖拽/点击由 Task 2 接入后完整实现，此处仅预留 hover） */
@@ -1289,6 +1294,18 @@
     }
     if (this._boundEnter && this.el) this.el.removeEventListener('mouseenter', this._boundEnter);
     if (this._boundLeave && this.el) this.el.removeEventListener('mouseleave', this._boundLeave);
+    /* 清理拖拽事件 */
+    if (this._boundDown && this.el) this.el.removeEventListener('pointerdown', this._boundDown);
+    if (this._boundDown && this.el) this.el.removeEventListener('mousedown', this._boundDown);
+    if (typeof window !== 'undefined') {
+      if (this._boundMove) { window.removeEventListener('pointermove', this._boundMove); window.removeEventListener('mousemove', this._boundMove); }
+      if (this._boundUp) { window.removeEventListener('pointerup', this._boundUp); window.removeEventListener('mouseup', this._boundUp); }
+    }
+    /* 清理订阅 */
+    if (this.unsubs) {
+      this.unsubs.forEach(function (fn) { try { fn(); } catch (e) { /* 忽略 */ } });
+      this.unsubs = [];
+    }
     if (this.el && this.el.parentNode) this.el.parentNode.removeChild(this.el);
     this.el = null;
   };
@@ -1574,10 +1591,10 @@
   DisplayManager.prototype._persistPosition = function (roleId) {
     var el = this.instances[roleId] && this.instances[roleId].el;
     if (!el) return;
-    this.family.getPositions()[roleId] = {
-      x: parseFloat(el.style.left || '0'),
-      y: parseFloat(el.style.top || '0')
-    };
+    var x = parseFloat(el.style.left);
+    var y = parseFloat(el.style.top);
+    if (!isFinite(x) || !isFinite(y)) return;
+    this.family.getPositions()[roleId] = { x: x, y: y };
     this.family._commit();
   };
 
@@ -1703,8 +1720,9 @@
     var ids = this.family.getActivePetIds();
     if (ids.length < 2) return false;
     var now = Date.now();
-    var cooldown = 3 * 60 * 1000 + Math.random() * 3 * 60 * 1000; /* 3-6min */
-    if (now - this.lastAt < cooldown) return false;
+    var base = 3 * 60 * 1000; /* 基础冷却 3min */
+    var jitter = Math.random() * 3 * 60 * 1000; /* 0-3min 随机 */
+    if (now - this.lastAt < base + jitter) return false;
     return true;
   };
 
@@ -1996,7 +2014,6 @@
     var dp = this.settings.desktopPet;
     dp.coins = Math.max(0, dp.coins + Math.round(amount));
     this._commit();
-    this.emit('change', this.getState());
   };
 
   PetFamily.prototype.spendCoins = function (amount) {
@@ -2005,7 +2022,6 @@
     if (dp.coins < Math.round(amount)) return false;
     dp.coins = Math.max(0, dp.coins - Math.round(amount));
     this._commit();
-    this.emit('change', this.getState());
     return true;
   };
 
@@ -2018,7 +2034,6 @@
     dp.coins = Math.max(0, dp.coins - snack.price);
     dp.inventory[snackId] = (dp.inventory[snackId] || 0) + 1;
     this._commit();
-    this.emit('change', this.getState());
     return true;
   };
 
@@ -2036,7 +2051,6 @@
     dp.achievements.stats.totalFeeds = (dp.achievements.stats.totalFeeds || 0) + 1;
     this._commit();
     this.checkAchievements();
-    this.emit('change', this.getState());
     return true;
   };
 
@@ -2103,7 +2117,6 @@
     if (changed) {
       this._updateStreak();
       this._commit();
-      this.emit('change', this.getState());
     }
   };
 
@@ -2135,7 +2148,6 @@
       stats: { totalTasksDone: 0, lastActiveDay: null, streakDays: 0, totalFeeds: 0 }
     };
     this._commit();
-    this.emit('change', this.getState());
   };
 
   /* ---- 事件（on/off/emit，内部与跨模块弱耦合） ---- */
