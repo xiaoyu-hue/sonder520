@@ -442,3 +442,180 @@ test('desktop-pet: 数据深合并迁移（缺失嵌套字段补默认）', () =
   assert.deepEqual(merged.affection, { xiaomo: 0, xiaoyu: 0, lanling: 0 }, '默认亲密度');
   assert.strictEqual(merged.schemaVersion, 1, '迁移版本号');
 });
+
+/* ============================================================
+ * Task 4: 成就 UI + 多玩偶互动对话（Phase 3 收尾）
+ * 契约依据：
+ *   - 规格 7.1/7.2 互动触发条件：≥2 在场、间距 <200px 或同角、
+ *     距上次 3-6min、无拖拽、无播放中；随机类型 + 逐轮气泡
+ *   - 规格 6.2 商店弹窗/喂食弹窗
+ *   - 规格 5.3 成就横幅 + 飘字
+ * ============================================================ */
+
+test('desktop-pet: InteractionManager.canTrigger 基本判定', () => {
+  const { window, store } = boot();
+  const C = window.DesktopPetCore;
+  const family = C.createFamily(store, window.SonderBus, store.state.settings);
+  try {
+    family.setMode('trio');
+    const im = family.interaction;
+    assert.ok(im, 'interaction manager 存在');
+
+    /* trio 模式 3 只在场，满足 ≥2 条件 */
+    assert.strictEqual(im.canTrigger(), true, 'trio 3 只在场可触发');
+
+    family.setMode('single');
+    assert.strictEqual(im.canTrigger(), false, 'single 1 只不可触发');
+
+    family.setMode('duo');
+    assert.strictEqual(family.getActivePetIds().length, 1, 'duo 常驻 1 只');
+    assert.strictEqual(im.canTrigger(), false, 'duo 1 只在场不可触发');
+    assert.strictEqual(im.canTrigger(), false, 'duo 1 只在场不可触发');
+  } finally {
+    family.destroy();
+  }
+});
+
+test('desktop-pet: InteractionManager 冷却期间不可触发', () => {
+  const { window, store } = boot();
+  const C = window.DesktopPetCore;
+  const family = C.createFamily(store, window.SonderBus, store.state.settings);
+  try {
+    family.setMode('trio');
+    const im = family.interaction;
+
+    /* 模拟刚完成一次互动（lastAt 设为当前时间） */
+    im.lastAt = Date.now();
+    assert.strictEqual(im.canTrigger(), false, '冷却期内不可触发');
+
+    /* lastAt 设为很久以前 → 冷却已过 */
+    im.lastAt = Date.now() - 600000; /* 10 分钟前 */
+    assert.strictEqual(im.canTrigger(), true, '冷却过后可触发');
+  } finally {
+    family.destroy();
+  }
+});
+
+test('desktop-pet: InteractionManager 播放中不可重复触发', () => {
+  const { window, store } = boot();
+  const C = window.DesktopPetCore;
+  const family = C.createFamily(store, window.SonderBus, store.state.settings);
+  try {
+    family.setMode('trio');
+    const im = family.interaction;
+
+    im.lastAt = 0; /* 无冷却 */
+    assert.strictEqual(im.canTrigger(), true, '初始可触发');
+
+    /* 模拟播放中状态 */
+    im.playing = true;
+    assert.strictEqual(im.canTrigger(), false, '播放中不可触发');
+
+    im.playing = false;
+    assert.strictEqual(im.canTrigger(), true, '播放结束后恢复可触发');
+  } finally {
+    family.destroy();
+  }
+});
+
+test('desktop-pet: InteractionManager 拖拽中不可触发', () => {
+  const { window, store } = boot();
+  const C = window.DesktopPetCore;
+  const family = C.createFamily(store, window.SonderBus, store.state.settings);
+  try {
+    family.setMode('trio');
+    const im = family.interaction;
+
+    im.lastAt = 0;
+    assert.strictEqual(im.canTrigger(), true, '初始可触发');
+
+    /* 模拟拖拽中 */
+    im.dragging = true;
+    assert.strictEqual(im.canTrigger(), false, '拖拽中不可触发');
+
+    im.dragging = false;
+    assert.strictEqual(im.canTrigger(), true, '拖拽结束后恢复可触发');
+  } finally {
+    family.destroy();
+  }
+});
+
+test('desktop-pet: triggerInteraction 返回值与事件广播', () => {
+  const { window, store } = boot();
+  const C = window.DesktopPetCore;
+  const family = C.createFamily(store, window.SonderBus, store.state.settings);
+  try {
+    family.setMode('trio');
+    const im = family.interaction;
+    im.lastAt = 0; /* 无冷却 */
+
+    var eventFired = false;
+    var eventData = null;
+    family.on('interaction', function (d) {
+      eventFired = true;
+      eventData = d;
+    });
+
+    var result = family.triggerInteraction();
+    assert.strictEqual(result, true, 'triggerInteraction 返回 true');
+
+    /* 等待异步播放完成（JSDOM 下 setTimeout 即时触发） */
+    setTimeout(function () {
+      assert.strictEqual(eventFired, true, 'interaction 事件已广播');
+      assert.ok(eventData, '事件携带数据');
+    }, 50);
+  } finally {
+    family.destroy();
+  }
+});
+
+test('desktop-pet: 播放中触发 endInteraction 提前结束', () => {
+  const { window, store } = boot();
+  const C = window.DesktopPetCore;
+  const family = C.createFamily(store, window.SonderBus, store.state.settings);
+  try {
+    family.setMode('trio');
+    const im = family.interaction;
+    im.lastAt = 0;
+
+    var endedFired = false;
+    family.on('interactionEnd', function () {
+      endedFired = true;
+    });
+
+    family.triggerInteraction();
+    /* 立即调用 endInteraction 模拟点击打断 */
+    family.endInteraction();
+
+    assert.strictEqual(im.playing, false, 'endInteraction 后 playing 复位');
+    assert.strictEqual(endedFired, true, 'interactionEnd 事件已广播');
+  } finally {
+    family.destroy();
+  }
+});
+
+test('desktop-pet: triggerInteraction 冷却/播放中/拖拽返回 false', () => {
+  const { window, store } = boot();
+  const C = window.DesktopPetCore;
+  const family = C.createFamily(store, window.SonderBus, store.state.settings);
+  try {
+    family.setMode('trio');
+    const im = family.interaction;
+
+    /* 冷却中 */
+    im.lastAt = Date.now();
+    assert.strictEqual(family.triggerInteraction(), false, '冷却中返回 false');
+
+    /* 播放中 */
+    im.lastAt = 0;
+    im.playing = true;
+    assert.strictEqual(family.triggerInteraction(), false, '播放中返回 false');
+
+    /* 拖拽中 */
+    im.playing = false;
+    im.dragging = true;
+    assert.strictEqual(family.triggerInteraction(), false, '拖拽中返回 false');
+  } finally {
+    family.destroy();
+  }
+});

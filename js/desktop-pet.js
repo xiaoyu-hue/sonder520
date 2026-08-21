@@ -1681,10 +1681,128 @@
   /* 互动管理器占位（Task 4：点击对话 / 投喂 / 摸头等） */
   /** @constructor
    * @this {{ family: any, active: boolean }} */
+  /** @constructor
+   * @this {{ family: any, active: boolean, lastAt: number, playing: boolean,
+   *   dragging: boolean, _playTimer: any, _lineTimers: Array,
+   *   canTrigger: Function, _pickCombo: Function, _pickDialogue: Function,
+   *   _playSequence: Function, end: Function, destroy: Function }} */
   function InteractionManager(family) {
     this.family = family;
     this.active = true;
+    this.lastAt = 0;        /* 上次互动结束时间戳 */
+    this.playing = false;    /* 对话播放中 */
+    this.dragging = false;   /* 拖拽中 */
+    this._playTimer = null;  /* 逐轮播放定时器 */
+    this._lineTimers = [];   /* 气泡展示定时器 */
   }
+
+  /** 判断是否满足互动触发条件（≥2 在场、冷却过、无播放、无拖拽） */
+  InteractionManager.prototype.canTrigger = function () {
+    if (this.playing) return false;
+    if (this.dragging) return false;
+    var ids = this.family.getActivePetIds();
+    if (ids.length < 2) return false;
+    var now = Date.now();
+    var cooldown = 3 * 60 * 1000 + Math.random() * 3 * 60 * 1000; /* 3-6min */
+    if (now - this.lastAt < cooldown) return false;
+    return true;
+  };
+
+  /** 随机选取互动角色对（从在场角色中选 2 个） */
+  InteractionManager.prototype._pickCombo = function () {
+    var ids = this.family.getActivePetIds();
+    if (ids.length < 2) return null;
+    var shuffled = ids.slice().sort(function () { return Math.random() - 0.5; });
+    var a = shuffled[0], b = shuffled[1];
+    /* 规格：按固定组合键查找对话 */
+    var key1 = a + '+' + b;
+    var key2 = b + '+' + a;
+    return { a: a, b: b, key: DIALOGUES[key1] ? key1 : (DIALOGUES[key2] ? key2 : null) };
+  };
+
+  /** 从对话组中随机选一组（按 type 权重：chat 40/play 25/tease 20/comfort 10/sync 5） */
+  InteractionManager.prototype._pickDialogue = function (comboKey) {
+    var groups = DIALOGUES[comboKey];
+    if (!groups || !groups.length) return null;
+    var weights = { chat: 40, play: 25, tease: 20, comfort: 10, sync: 5 };
+    var total = 0;
+    groups.forEach(function (g) { total += (weights[g.type] || 10); });
+    var r = Math.random() * total;
+    var acc = 0;
+    for (var i = 0; i < groups.length; i++) {
+      acc += (weights[groups[i].type] || 10);
+      if (r <= acc) return groups[i];
+    }
+    return groups[0];
+  };
+
+  /** 逐轮播放对话气泡（每轮 1.5-2.5s 间隔，气泡 3s） */
+  InteractionManager.prototype._playSequence = function (dialogue, participants) {
+    var self = this;
+    var family = this.family;
+    var lines = dialogue.lines;
+    var idx = 0;
+    this.playing = true;
+    family.emit('interactionStart', { dialogue: dialogue, participants: participants });
+
+    function playNext() {
+      if (idx >= lines.length || !self.playing) {
+        self.end();
+        return;
+      }
+      var line = lines[idx];
+      var pet = family.display.get(line.speaker);
+      if (pet) {
+        var text = line.text;
+        var dur = 3000;
+        pet.sayLine(text, dur);
+        /* 表情联动：对话期间角色设为 excited */
+        if (line.speaker) pet.setEmotion('excited', dur);
+      }
+      idx++;
+      var gap = 1500 + Math.random() * 1000; /* 1.5-2.5s */
+      self._playTimer = setTimeout(playNext, gap);
+    }
+
+    playNext();
+  };
+
+  /** 触发互动（返回 true 成功触发，false 条件不满足） */
+  InteractionManager.prototype.trigger = function () {
+    if (!this.canTrigger()) return false;
+    var combo = this._pickCombo();
+    if (!combo || !combo.key) return false;
+    var dialogue = this._pickDialogue(combo.key);
+    if (!dialogue) return false;
+    var participants = [combo.a, combo.b];
+    this.family.emit('interaction', { type: dialogue.type, participants: participants });
+    this._playSequence(dialogue, participants);
+    return true;
+  };
+
+  /** 结束当前对话播放 */
+  InteractionManager.prototype.end = function () {
+    if (!this.playing) return;
+    this.playing = false;
+    this.lastAt = Date.now();
+    if (this._playTimer) { clearTimeout(this._playTimer); this._playTimer = null; }
+    this._lineTimers.forEach(function (t) { clearTimeout(t); });
+    this._lineTimers = [];
+    /* 复位参与角色表情 */
+    var family = this.family;
+    var ids = family.getActivePetIds();
+    ids.forEach(function (id) {
+      var pet = family.display.get(id);
+      if (pet) pet._setDefaultEmotion();
+    });
+    family.emit('interactionEnd', {});
+  };
+
+  /** 销毁清理 */
+  InteractionManager.prototype.destroy = function () {
+    this.end();
+    this.active = false;
+  };
 
   /* ============================================================
      第五区：PetFamily（组合子管理器，对外公开接口）
@@ -1839,6 +1957,15 @@
   /* ---- 公开：实例信息 ---- */
   PetFamily.prototype.getActivePetIds = function () {
     return Object.keys(this.display.instances);
+  };
+
+  /* ---- 公开：互动（Task 4） ---- */
+  PetFamily.prototype.triggerInteraction = function () {
+    return this.interaction.trigger();
+  };
+
+  PetFamily.prototype.endInteraction = function () {
+    this.interaction.end();
   };
 
   /* ---- 数据操作（Task 3：真实计算，对外返回原子快照） ---- */
@@ -2036,6 +2163,7 @@
 
   /* ---- 销毁（完整清理：实例/循环/容器/监听/定时器） ---- */
   PetFamily.prototype.destroy = function () {
+    this.interaction.destroy();
     this.display._clearVisit();
     var self = this;
     Object.keys(this.display.instances).forEach(function (id) {
