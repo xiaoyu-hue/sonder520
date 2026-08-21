@@ -88,6 +88,8 @@
 - 离线缓存升版 v51 → v52（desktop-pet-page.js 新增触发 sync-sw 自动升版，ASSET_SIG 865459fe6ea0 → ed5d5e0c40a4，ASSETS 43 项）。
 - **桌面玩偶全契约测试收口（v6.0 desktop-pet Task 6，规格 11.2 全清单）**：`tests/desktop-pet.test.js` 补全 `spendCoins` 余额不足/非法参数拒绝（负数/零/NaN/Infinity）+ 角色差异化（三实例 breathe/blink/bodyScale/defaultEmotion 参数不同），规格 11.2 十项清单全绿。
 - 测试基线 620 → 622（desktop-pet 收口 2 项，全量 622 绿；typecheck/lint 零问题）。
+- **桌面玩偶全面审计修复（v6.0 desktop-pet Task 7）**：P0 共 13 项——SVG 渐变 ID `_uid` 后缀去重防 trio 模式碰撞、change 事件去重（移除 addCoins/spendCoins/buySnack/feedPet/resetAllData/_onTaskChange 中冗余 emit，`_commit()` 已内部 emit）、`_persistPosition` NaN 防护（parseFloat 结果 isFinite 校验）、`_scheduleBlink()`/`_scheduleIdleQuote()` 启动点修正至 `_build()` 末尾、`canTrigger` 冷却改为确定性（`lastAt + base(3min) + jitter(0-3min)`，之前每次调用重新随机导致永不触发）、`Pet.destroy()` 完整清理（unsubs 订阅取消 + 拖拽事件解绑 + _aniTimers 清理）、`desktop-pet-page.js` 全面重写（事件委托绑定喂食/模式/大小/总开关/重置/购买按钮，enterPageMode/exitPageMode 生命周期，destroy 页面离开恢复悬浮玩偶，订阅清理防泄漏）、`desktop-pet.css` 补全页面样式（~170 行：header/设置/商店/成就/响应式断点）、`globals.d.ts` 补 SonderPage.destroy? + SonderCtx._dpBound? 声明。
+- 离线缓存升版 v52 → v53（多文件变更触发 sync-sw 自动升版，ASSETS 43 项不变）。
 
 ## [v5.2] - 2026-08-16
 
