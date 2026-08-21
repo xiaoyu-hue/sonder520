@@ -4,7 +4,7 @@
  * 内容变了而版本没升说明部署流程漏跑 sync-sw。 */
 'use strict';
 
-var CACHE = 'sonder-v56';
+var CACHE = 'sonder-v57';
 
 var ASSETS = [
   './',

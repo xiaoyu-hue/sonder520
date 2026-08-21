@@ -1406,3 +1406,114 @@ test('desktop-pet: 深夜行为——构造时调用 _checkLateNight', () => {
     family.destroy();
   }
 });
+
+/* ============================================================
+   Task 6：动画系统 + 视觉回归测试
+   ============================================================ */
+
+test('desktop-pet: _tick 呼吸缩放计算', () => {
+  const { window } = boot();
+  const C = window.DesktopPetCore;
+  const pet = new C.Pet({ character: C.CHARACTERS.xiaomo, container: window.document.body });
+  try {
+    pet._build();
+    const initialBreathe = pet.breathe;
+    const initialScale = pet.breatheScale;
+    /* 调用 _tick 推进 0.1s */
+    pet._tick(0.1, Date.now());
+    assert.ok(pet.breathe > initialBreathe, 'breathe 相位递增');
+    assert.ok(pet.breatheScale !== initialScale || pet.breatheScale === 1, 'breatheScale 已更新');
+    /* 再推进一个完整周期 */
+    pet._tick(3.2, Date.now() + 3200);
+    assert.ok(pet.breathe > 0, 'breathe 累积正值');
+  } finally {
+    pet.destroy();
+  }
+});
+
+test('desktop-pet: _tick 视线追踪平滑插值', () => {
+  const { window } = boot();
+  const C = window.DesktopPetCore;
+  const pet = new C.Pet({ character: C.CHARACTERS.xiaomo, container: window.document.body });
+  try {
+    pet._build();
+    pet._targetLookX = 5;
+    pet._targetLookY = -3;
+    pet.lookX = 0;
+    pet.lookY = 0;
+    pet._tick(0.05, Date.now());
+    /* 插值向目标移动 */
+    assert.ok(pet.lookX > 0, 'lookX 向目标移动');
+    assert.ok(pet.lookX < 5, 'lookX 未到终点（平滑插值）');
+    assert.ok(pet.lookY < 0, 'lookY 向目标移动');
+  } finally {
+    pet.destroy();
+  }
+});
+
+test('desktop-pet: _doBlink 切换 dp-eyes-closed 类名', async () => {
+  const { window } = boot();
+  const C = window.DesktopPetCore;
+  const pet = new C.Pet({ character: C.CHARACTERS.xiaomo, container: window.document.body });
+  pet._build();
+  assert.ok(pet.el, '构建后 el 存在');
+  assert.ok(!pet.el.classList.contains('dp-eyes-closed'), '初始无 dp-eyes-closed');
+  pet._doBlink();
+  assert.ok(pet.el.classList.contains('dp-eyes-closed'), '_doBlink 添加 dp-eyes-closed');
+  /* 等待眨眼结束（150ms） */
+  await new Promise(function (resolve) { setTimeout(resolve, 200); });
+  assert.ok(!pet.el.classList.contains('dp-eyes-closed'), '眨眼结束后移除 dp-eyes-closed');
+  pet.destroy();
+});
+
+test('desktop-pet: emotionDuration 倒计时自动复位', () => {
+  const { window } = boot();
+  const C = window.DesktopPetCore;
+  const pet = new C.Pet({ character: C.CHARACTERS.xiaomo, container: window.document.body });
+  try {
+    pet._build();
+    pet.setEmotion('happy', 500);
+    assert.strictEqual(pet.emotion, 'happy', '设置 happy 情绪');
+    assert.ok(pet.emotionDuration > 0, 'emotionDuration > 0');
+    /* 推进 0.1s（500 - 100 = 400 > 0，未到期） */
+    pet._tick(0.1, Date.now());
+    assert.ok(pet.emotionDuration > 0, '还未到期');
+    /* 推进 0.6s（400 - 600 <= 0，到期） */
+    pet._tick(0.6, Date.now() + 600);
+    assert.strictEqual(pet.emotionDuration, 0, '到期后复位为 0');
+  } finally {
+    pet.destroy();
+  }
+});
+
+test('desktop-pet: CSS 类名 dp-page 存在', () => {
+  const fs = require('fs');
+  const path = require('path');
+  const css = fs.readFileSync(path.resolve(__dirname, '../css/desktop-pet.css'), 'utf8');
+  assert.ok(css.includes('.dp-page'), 'CSS 中存在 .dp-page 选择器');
+});
+
+test('desktop-pet: CSS 变量映射——dp-page-bg 引用 var(--bg)', () => {
+  const fs = require('fs');
+  const path = require('path');
+  const css = fs.readFileSync(path.resolve(__dirname, '../css/desktop-pet.css'), 'utf8');
+  assert.ok(css.includes('var(--bg)'), '.dp-page 使用 var(--bg) 而非硬编码色值');
+  assert.ok(css.includes('var(--glass-2)'), '.dp-page 使用 var(--glass-2)');
+  assert.ok(css.includes('var(--border)'), '.dp-page 使用 var(--border)');
+  assert.ok(css.includes('var(--text)'), '.dp-page 使用 var(--text)');
+});
+
+test('desktop-pet: CSS 液态玻璃——卡片 backdrop-filter', () => {
+  const fs = require('fs');
+  const path = require('path');
+  const css = fs.readFileSync(path.resolve(__dirname, '../css/desktop-pet.css'), 'utf8');
+  assert.ok(css.includes('backdrop-filter'), 'CSS 使用 backdrop-filter 液态玻璃');
+  assert.ok(css.includes('.dp-page-card'), 'CSS 包含 .dp-page-card 选择器');
+});
+
+test('desktop-pet: CSS barsGrow 动画定义', () => {
+  const fs = require('fs');
+  const path = require('path');
+  const css = fs.readFileSync(path.resolve(__dirname, '../css/desktop-pet.css'), 'utf8');
+  assert.ok(css.includes('@keyframes barsGrow'), 'CSS 中定义了 @keyframes barsGrow');
+});

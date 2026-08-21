@@ -2371,6 +2371,10 @@
     this.settings = config || (store && store.state ? store.state.settings : {});
     /* 自建 desktopPet 默认配置（Task 3 并入 store 默认值后此步幂等保留） */
     this.settings.desktopPet = mergeDesktopPetDefaults(this.settings.desktopPet);
+    /* 移动端默认玩偶大小（Task 3.5.4） */
+    if (typeof window !== 'undefined' && window.innerWidth < 720) {
+      this.settings.desktopPet.size = this.settings.desktopPet.size || 64;
+    }
 
     this._listeners = {};
     this._container = null;
