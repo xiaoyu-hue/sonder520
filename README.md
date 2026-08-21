@@ -118,7 +118,7 @@ https://sonder520.netlify.app/
 
 - 应用为纯 HTML/CSS/原生 JS，构建/运行零依赖，不需要 npm 安装即可使用。
 
-- 运行全部测试：npm test（当前 603 项全部通过，覆盖存储/加密（含竞态与未来版本韧性）/结构化存储状态（TrustLayer 契约）/集合级持久化（ADR-009 决策 7：逐集合 key 读写/迁移/回填/加密集合独立 bundle）/标准模块工厂（ModuleFactory 契约与行为，含 v0.1.1 prepend/timeField 与 v0.1.2 orderField/move 扩展）/事件总线契约（EventBridge：EVENT 常量表与 payload 契约）/UI/各模块/样式/动效/壁纸/移动端自动适配/性能/游戏引擎/交互质量回归/PWA/搜索/离线状态指示/XSS 净化（含属性注入）/对比度/IndexedDB/通知/Web Worker/持久化危机兜底/动态交互层契约与行为/file:// 直开环境/ESM 试验田双实现一致性）。
+- 运行全部测试：npm test（当前 622 项全部通过，覆盖存储/加密（含竞态与未来版本韧性）/结构化存储状态（TrustLayer 契约）/集合级持久化（ADR-009 决策 7：逐集合 key 读写/迁移/回填/加密集合独立 bundle）/标准模块工厂（ModuleFactory 契约与行为，含 v0.1.1 prepend/timeField 与 v0.1.2 orderField/move 扩展）/事件总线契约（EventBridge：EVENT 常量表与 payload 契约）/UI/各模块/样式/动效/壁纸/移动端自动适配/性能/游戏引擎/交互质量回归/PWA/搜索/离线状态指示/XSS 净化（含属性注入）/对比度/IndexedDB/通知/Web Worker/持久化危机兜底/动态交互层契约与行为/file:// 直开环境/ESM 试验田双实现一致性/桌面玩偶（三角色+金币+商店+喂养+成就+互动对话））。
 
 - 类型检查（零构建）：npm run typecheck（JSDoc + tsc --noEmit，契约以 globals.d.ts 锁定）。
 
@@ -130,4 +130,4 @@ https://sonder520.netlify.app/
 
 - 产品需求：见 PRD.md（含版本历史、视觉设计、数据与操作、验收标准与技术架构说明）。
 
-- 架构决策记录：见 docs/adr/（ADR-001 零构建与脚本顺序契约、ADR-002 本地优先存储分层、ADR-003 契约固化式测试、ADR-004 PWA 缓存版本管理、ADR-005 安全基线、ADR-006 渲染模型与搜索契约、ADR-007 多标签写锁、ADR-008 全局符号契约、ADR-009 标准模块工厂、ADR-010 事件总线契约、ADR-011 试点迁移协议与 memo 入厂）——每次重大架构/安全决策落一个 ADR，防"决策只存在于 commit message 里"。
+- 架构决策记录：见 docs/adr/（ADR-001 零构建与脚本顺序契约、ADR-002 本地优先存储分层、ADR-003 契约固化式测试、ADR-004 PWA 缓存版本管理、ADR-005 安全基线、ADR-006 渲染模型与搜索契约、ADR-007 多标签写锁、ADR-008 全局符号契约、ADR-009 标准模块工厂、ADR-010 事件总线契约、ADR-011 试点迁移协议与 memo 入厂、ADR-012 桌面玩偶独立 Specialized 模块架构）——每次重大架构/安全决策落一个 ADR，防"决策只存在于 commit message 里"。

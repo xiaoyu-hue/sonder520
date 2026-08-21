@@ -38,7 +38,7 @@ https://xiaoyu-hue.github.io/sonder520/
 | **v5.0** | **两轮评审修复 + 一轮补丁（16 项）：统计语义、CSV 注入、扫雷死局、认输归属、渲染副作用、引擎校验、存储韧性、搜索索引、对比度 token、壳降级、测试 flake 加固、扫雷首击插旗暂存、终局认输防重记、AI 重入守卫、撤销不顶替当前页；测试深化至 423 项** |
 | **v5.1** | **性能与可靠性四补丁：PBKDF2 派生密钥缓存（解锁提速）、SonderBus 事件总线（跨模块解耦自动刷新）、五子棋 AI 异步化（Web Worker + 同步兜底 + 过期应手丢弃）、持久化危机兜底（双写失效红色警示条强制引导导出）；测试深化至 451 项** |
 | **v5.2** | **工程防线补强 + 可靠性（9 项）：表单注入转义（data-k 属性 + getAttribute 匹配）、waitFor 条件轮询（消除固定延时竞态）、测试超时硬性兜底（npm 30s + CI 10min）、__SONDER_TEST__ 门闩（测试钩子隔离）、死代码清理、重复逻辑收敛（num0/esc/hashStr/copyText）、弱覆盖域页面交互补测 29 项、CI Node 20 弃用警告消除、PWA 导航 Network First（刷新即拿新版，离线仍回退）；测试深化至 514 项** |
-| **v6.0** | **Sonder-Frame 渐进式框架（规划中，未发布）：TrustLayer 结构化存储状态（getStorageStatus/persistResult/diagnostics）+ IndexedDB 优先写（主快照反转，LS 降级副本）+ 集合级持久化（ADR-009 决策 7：逐集合独立 key 读写/单集合增量写/legacy 整份一次性迁移保旧键/加密逐集合独立 bundle）+ 标准模块工厂（ModuleFactory CRUD/Schema/净化/注册表，prepend/timeField/orderField/move 扩展）+ EventBridge 事件契约（EVENT 常量表）+ 试点迁移（memo/today/dev/news/selfmedia/consulting/reading/design 八个标准模块全部入厂——Phase 7 标准模块收官，嵌套边界/委托绑定收敛/最大模块压测/实时状态模块例外/业务字段 select 白名单归一）+ 离线状态指示器；测试基线 514 → 592 项** |
+| **v6.0** | **Sonder-Frame 渐进式框架（规划中，未发布）：TrustLayer 结构化存储状态（getStorageStatus/persistResult/diagnostics）+ IndexedDB 优先写（主快照反转，LS 降级副本）+ 集合级持久化（ADR-009 决策 7：逐集合独立 key 读写/单集合增量写/legacy 整份一次性迁移保旧键/加密逐集合独立 bundle）+ 标准模块工厂（ModuleFactory CRUD/Schema/净化/注册表，prepend/timeField/orderField/move 扩展）+ EventBridge 事件契约（EVENT 常量表）+ 试点迁移（memo/today/dev/news/selfmedia/consulting/reading/design 八个标准模块全部入厂——Phase 7 标准模块收官，嵌套边界/委托绑定收敛/最大模块压测/实时状态模块例外/业务字段 select 白名单归一）+ 桌面玩偶独立 Specialized 模块（三角色+金币+商店+喂养+成就+互动对话，ADR-012）+ 离线状态指示器；测试基线 514 → 622 项** |
 
 ### v5.0 更新摘要（本版）
 

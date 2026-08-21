@@ -21,5 +21,6 @@
 | ADR-009 | 标准模块工厂（ModuleFactory v0.1：CRUD/Schema/净化/注册）＋集合级持久化（决策 7，2026-08-20 落地） | 已采纳 |
 | ADR-010 | 跨模块事件总线契约（EventBridge v0.1：EVENT 常量表 + payload 契约） | 已采纳 |
 | ADR-011 | 试点迁移协议与 memo 入厂（ModuleFactory v0.1.1：prepend/timeField 扩展） | 已采纳 |
+| ADR-012 | 桌面玩偶独立 Specialized 模块架构（不进 ModuleFactory，复用集合级持久化） | 已采纳 |
 
 新增 ADR 时复制任意已采纳 ADR 的头部模板，先写「提议」，拍板后改「已采纳」。
