@@ -755,3 +755,97 @@ test('desktop-pet: 角色差异化——三实例 breathe/blink/bodyScale 参数
   /* 默认表情应有差异 */
   assert.notStrictEqual(xiaomo.defaultEmotion, xiaoyu.defaultEmotion, '小莫与小余默认表情不同');
 });
+
+/* ============================================================
+ * Task 8: 特效触发器——喂食星星/金币飘字/成就光环/互动爱心
+ * 契约依据：Task 8 新增 _trigger*Effect 方法 + _motionOk 门控
+ * ============================================================ */
+
+test('desktop-pet: 特效方法存在性——Pet 实例挂载 4 个 _trigger*Effect', () => {
+  const { window } = boot();
+  const C = window.DesktopPetCore;
+  const pet = new C.Pet({ id: 'xiaomo', el: window.document.createElement('div') });
+  assert.strictEqual(typeof pet._triggerFeedEffect, 'function', '_triggerFeedEffect 存在');
+  assert.strictEqual(typeof pet._triggerCoinEffect, 'function', '_triggerCoinEffect 存在');
+  assert.strictEqual(typeof pet._triggerAchievementEffect, 'function', '_triggerAchievementEffect 存在');
+  assert.strictEqual(typeof pet._triggerInteractEffect, 'function', '_triggerInteractEffect 存在');
+  pet.destroy();
+});
+
+test('desktop-pet: 特效方法安全降级——el 缺失时静默返回不抛异常', () => {
+  const { window } = boot();
+  const C = window.DesktopPetCore;
+  const pet = new C.Pet({ id: 'xiaoyu', el: null });
+  assert.doesNotThrow(function () { pet._triggerFeedEffect(); }, 'el=null 喂食特效不抛');
+  assert.doesNotThrow(function () { pet._triggerCoinEffect(5); }, 'el=null 金币特效不抛');
+  assert.doesNotThrow(function () { pet._triggerAchievementEffect(); }, 'el=null 成就特效不抛');
+  assert.doesNotThrow(function () { pet._triggerInteractEffect(); }, 'el=null 互动特效不抛');
+  pet.destroy();
+});
+
+test('desktop-pet: _triggerFeedEffect 创建星星子元素并自动清理', () => {
+  const { window } = boot();
+  const C = window.DesktopPetCore;
+  const pet = new C.Pet({ id: 'lanling', el: window.document.createElement('div') });
+  pet._triggerFeedEffect();
+  const sparkles = pet.el.querySelectorAll('.dp-fx-sparkle');
+  assert.strictEqual(sparkles.length, 5, '创建 5 颗星星');
+  assert.ok(sparkles[0].textContent.length > 0, '星星有内容');
+  pet.destroy();
+});
+
+test('desktop-pet: _triggerCoinEffect 创建飘字子元素', () => {
+  const { window } = boot();
+  const C = window.DesktopPetCore;
+  const pet = new C.Pet({ id: 'xiaomo', el: window.document.createElement('div') });
+  pet._triggerCoinEffect(10);
+  const coins = pet.el.querySelectorAll('.dp-fx-coin');
+  assert.strictEqual(coins.length, 1, '创建 1 个飘字');
+  assert.strictEqual(coins[0].textContent, '+10', '飘字内容正确');
+  pet.destroy();
+});
+
+test('desktop-pet: _triggerAchievementEffect 切换 CSS 类', () => {
+  const { window } = boot();
+  const C = window.DesktopPetCore;
+  const pet = new C.Pet({ id: 'xiaoyu', el: window.document.createElement('div') });
+  pet._triggerAchievementEffect();
+  assert.ok(pet.el.classList.contains('dp-fx-glow'), '添加 dp-fx-glow 类');
+  pet.destroy();
+});
+
+test('desktop-pet: _triggerInteractEffect 创建爱心子元素', () => {
+  const { window } = boot();
+  const C = window.DesktopPetCore;
+  const pet = new C.Pet({ id: 'xiaomo', el: window.document.createElement('div') });
+  pet._triggerInteractEffect();
+  const hearts = pet.el.querySelectorAll('.dp-fx-heart');
+  assert.strictEqual(hearts.length, 3, '创建 3 颗爱心');
+  assert.strictEqual(hearts[0].textContent, '♥', '爱心内容正确');
+  pet.destroy();
+});
+
+test('desktop-pet: _randomPet 返回有效角色实例', () => {
+  const { window, store, bus } = boot();
+  const C = window.DesktopPetCore;
+  const family = new C.PetFamily({ store: store, bus: bus });
+  const pet = family._randomPet();
+  assert.ok(pet, '_randomPet 返回非 null');
+  assert.ok(pet.character && pet.character.id, '返回的 pet 有 character.id');
+  assert.ok(Object.keys(C.CHARACTERS).indexOf(pet.character.id) !== -1, 'pet.character.id 在角色列表中');
+  family.destroy();
+});
+
+test('desktop-pet: 拖拽中特效跳过——拖拽时不注入 DOM 子元素', () => {
+  const { window } = boot();
+  const C = window.DesktopPetCore;
+  const pet = new C.Pet({ id: 'xiaomo', el: window.document.createElement('div') });
+  const before = pet.el.children.length;
+  pet._isDragging = true;
+  pet._triggerFeedEffect();
+  pet._triggerCoinEffect(5);
+  pet._triggerAchievementEffect();
+  pet._triggerInteractEffect();
+  assert.strictEqual(pet.el.children.length, before, '拖拽中无新子元素注入');
+  pet.destroy();
+});

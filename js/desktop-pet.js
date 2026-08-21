@@ -492,6 +492,11 @@
 
   var SVG_NS = 'http://www.w3.org/2000/svg';
 
+  /** 动效降级门控：减少动效模式下跳过特效注入 */
+  function _motionOk() {
+    try { return typeof window !== 'undefined' && window.MOTION && !window.MOTION.motionDisabled(); } catch (_e) { return false; }
+  }
+
   /* 表情配置表（15 种）：规格 C.1 表（eyes/mouth/decor） */
   var EMO_CONFIGS = {
     idle: { eyes: { shape: 'dot', lookX: 0, lookY: 0, scaleY: 1 }, mouth: { type: 'smile', w: 10, h: 4 }, decor: [] },
@@ -921,6 +926,83 @@
   /* 每帧更新（Task 2 由 PetFamily 共享 rAF 驱动） */
   Pet.prototype._tick = function (dt, t) {
     /* 预留：呼吸/眨眼/装饰动画（C.5） */
+  };
+
+  /* ---- 特效触发器（Task 8：交互视觉反馈） ---- */
+
+  /** 喂食星星散射：在角色周围创建 5 颗随机星星 */
+  Pet.prototype._triggerFeedEffect = function () {
+    if (this._isDragging || !_motionOk()) return;
+    var el = this.el;
+    if (!el) return;
+    var symbols = ['✦', '✧', '★', '·', '∗'];
+    for (var i = 0; i < 5; i++) {
+      (function (idx) {
+        var s = document.createElement('span');
+        s.className = 'dp-fx-sparkle';
+        s.textContent = symbols[idx % symbols.length];
+        s.style.setProperty('--tx', (Math.random() * 24 - 12) + 'px');
+        s.style.setProperty('--ty', -(Math.random() * 14 + 10) + 'px');
+        s.style.setProperty('--rot', (Math.random() * 360) + 'deg');
+        s.style.setProperty('--dur', (0.4 + Math.random() * 0.25) + 's');
+        s.style.left = (20 + Math.random() * 60) + '%';
+        s.style.top = (30 + Math.random() * 40) + '%';
+        el.appendChild(s);
+        setTimeout(function () { if (s.parentNode) s.parentNode.removeChild(s); }, 700);
+      })(i);
+    }
+  };
+
+  /** 金币飘字 +N：在角色顶部显示获得数量 */
+  Pet.prototype._triggerCoinEffect = function (amount) {
+    if (this._isDragging || !_motionOk()) return;
+    var el = this.el;
+    if (!el || !amount || amount <= 0) return;
+    var t = document.createElement('span');
+    t.className = 'dp-fx-coin';
+    t.textContent = '+' + amount;
+    el.appendChild(t);
+    setTimeout(function () { if (t.parentNode) t.parentNode.removeChild(t); }, 850);
+  };
+
+  /** 成就解锁光环：角色外框脉冲发光 */
+  Pet.prototype._triggerAchievementEffect = function () {
+    if (this._isDragging || !_motionOk()) return;
+    var el = this.el;
+    if (!el) return;
+    el.classList.add('dp-fx-glow');
+    setTimeout(function () { el.classList.remove('dp-fx-glow'); }, 950);
+  };
+
+  /** 互动爱心飘散：在角色周围创建 3 颗爱心 */
+  Pet.prototype._triggerInteractEffect = function () {
+    if (this._isDragging || !_motionOk()) return;
+    var el = this.el;
+    if (!el) return;
+    for (var i = 0; i < 3; i++) {
+      (function (idx) {
+        var h = document.createElement('span');
+        h.className = 'dp-fx-heart';
+        h.textContent = '♥';
+        h.style.setProperty('--tx', (Math.random() * 16 - 8) + 'px');
+        h.style.setProperty('--ty', -(Math.random() * 12 + 10) + 'px');
+        h.style.left = (25 + Math.random() * 50) + '%';
+        h.style.top = (20 + Math.random() * 30) + '%';
+        h.style.fontSize = (10 + Math.random() * 5) + 'px';
+        h.style.color = ['#ff6b8a', '#ff4757', '#e84393'][idx % 3];
+        el.appendChild(h);
+        setTimeout(function () { if (h.parentNode) h.parentNode.removeChild(h); }, 700);
+      })(i);
+    }
+  };
+
+  /** 获取随机角色实例（用于被动触发） */
+  PetFamily.prototype._randomPet = function () {
+    var instances = this.display && this.display.instances;
+    if (!instances) return null;
+    var keys = Object.keys(instances);
+    if (keys.length === 0) return null;
+    return instances[keys[Math.floor(Math.random() * keys.length)]];
   };
 
   /* 绘制眼睛（C.3：6 形状 + 2 特殊） */
@@ -1794,6 +1876,12 @@
     if (!dialogue) return false;
     var participants = [combo.a, combo.b];
     this.family.emit('interaction', { type: dialogue.type, participants: participants });
+    /* 特效：参与角色爱心飘散 */
+    var self = this;
+    participants.forEach(function (pid) {
+      var p = self.family.display && self.family.display.get(pid);
+      if (p) p._triggerInteractEffect();
+    });
     this._playSequence(dialogue, participants);
     return true;
   };
@@ -2050,6 +2138,9 @@
     dp.totalFed[petId] = (dp.totalFed[petId] || 0) + 1;
     dp.achievements.stats.totalFeeds = (dp.achievements.stats.totalFeeds || 0) + 1;
     this._commit();
+    /* 特效：喂食星星散射 */
+    var pet = this.display && this.display.get(petId);
+    if (pet) pet._triggerFeedEffect();
     this.checkAchievements();
     return true;
   };
@@ -2074,6 +2165,9 @@
         if (def.condition(achState)) {
           ach.unlocked.push(id);
           self.addCoins(def.reward, 'achievement:' + id);
+          /* 特效：成就解锁光环 */
+          var achPet = self._randomPet();
+          if (achPet) achPet._triggerAchievementEffect();
         }
       } catch (e) { /* 条件函数异常不阻断 */ }
     });
@@ -2117,6 +2211,9 @@
     if (changed) {
       this._updateStreak();
       this._commit();
+      /* 特效：金币飘字 */
+      var coinPet = this._randomPet();
+      if (coinPet) coinPet._triggerCoinEffect(5);
     }
   };
 
