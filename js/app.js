@@ -201,6 +201,11 @@
   window.__sonderHooks.idbReady.then(function () {
     if (store.needsUnlock()) { autoUnlockOnce(); }
     else { todayReminder(); }
+
+    /* 桌面玩偶自动初始化（Task 3 autoInit 接入，idbReady 后确保 store 就绪） */
+    if (window.DesktopPetCore && typeof window.DesktopPetCore.autoInit === 'function') {
+      try { window.DesktopPetCore.autoInit(); } catch (e) { /* autoInit 异常不阻断页面 */ }
+    }
   });
 
   /* ---------- 今日任务桌面提醒（设置页开关，每次打开/刷新页面触发一次） ---------- */

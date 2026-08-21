@@ -520,7 +520,9 @@
    * @this {{ container: any, size: number, character: any, color: Object, position: any, enabled: boolean,
    *   autoIntegrate: boolean, emotion: string, targetEmotion: string, emotionStart: number, emotionDuration: number,
    *   breathe: number, breatheScale: number, blink: any, lookX: number, lookY: number, bounceY: number, wobble: number,
-   *   blushOpacity: number, dragging: boolean, dragOffset: {x: number, y: number}, hovering: boolean,
+   *   blushOpacity: number, _targetLookX: number, _targetLookY: number,
+   *   dragging: boolean, dragOffset: {x: number, y: number}, hovering: boolean,
+   *   _clickCooldown: boolean, _longPressTimer: any, _contextMenu: any, isTouchDevice: boolean,
    *   bubbleTimer: any, idleTimer: any, bus: any, store: any, unsubs: any[], el: any, bodyG: any, eyeL: any,
    *   eyeR: any, mouth: any, bubble: any, _blinkTimer: any, _idleQuoteTimer: any, _sayTimer: any,
    *   _boundEnter: any, _boundLeave: any, _drawEyes: Function, _drawMouth: Function,
@@ -547,6 +549,8 @@
     this.blink = false;
     this.lookX = 0;
     this.lookY = 0;
+    this._targetLookX = 0;
+    this._targetLookY = 0;
     this.bounceY = 0;
     this.wobble = 0;
     this.blushOpacity = 0;
@@ -557,6 +561,10 @@
     this.hovering = false;
     this.bubbleTimer = null;
     this.idleTimer = null;
+    this._clickCooldown = false;
+    this._longPressTimer = null;
+    this._contextMenu = null;
+    this.isTouchDevice = !!(typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(hover: none)').matches);
 
     /* 集成引用（Task 2 接入） */
     this.bus = options.bus || null;
@@ -908,7 +916,7 @@
     this._scheduleIdleQuote();
   };
 
-  /* 绑定事件（交互拖拽/点击由 Task 2 接入后完整实现，此处仅预留 hover） */
+  /* 绑定事件：hover + 视线追踪 + 拖拽 + 点击交互 + 右键菜单 + 触控长按 */
   Pet.prototype._bindEvents = function () {
     if (!this.el) return;
     var self = this;
@@ -916,6 +924,189 @@
     this._boundLeave = function () { self.hovering = false; };
     this.el.addEventListener('mouseenter', this._boundEnter);
     this.el.addEventListener('mouseleave', this._boundLeave);
+
+    /* 视线追踪：鼠标在玩偶上移动时更新目标位置 */
+    this._boundMouseMove = function (e) {
+      if (!self.el) return;
+      var rect = self.el.getBoundingClientRect();
+      var cx = rect.left + rect.width / 2;
+      var cy = rect.top + rect.height / 2;
+      var dx = e.clientX - cx;
+      var dy = e.clientY - cy;
+      var dist = Math.sqrt(dx * dx + dy * dy);
+      var maxLook = 2.5;
+      self._targetLookX = dist > 0 ? (dx / dist) * maxLook : 0;
+      self._targetLookY = dist > 0 ? (dy / dist) * maxLook : 0;
+    };
+    this.el.addEventListener('mousemove', this._boundMouseMove);
+
+    /* 单击：随机表情 + 语录（2s 冷却） */
+    this._boundClick = function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (self._clickCooldown) return;
+      self._clickCooldown = true;
+      setTimeout(function () { self._clickCooldown = false; }, 2000);
+      var emos = ['happy', 'excited', 'relax', 'proud', 'surprised'];
+      var emo = emos[Math.floor(Math.random() * emos.length)];
+      self.setEmotion(emo, 2500);
+      if (self.character && self.character.quotes && self.character.quotes[emo]) {
+        self.say(pick(self.character.quotes[emo]), 3000);
+      }
+    };
+    this.el.addEventListener('click', this._boundClick);
+
+    /* 双击：从库存喂食 */
+    this._boundDblClick = function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      var family = self._family;
+      if (!family) {
+        self.say('还没有连接到仓库~', 2000);
+        return;
+      }
+      var dp = family.settings && family.settings.desktopPet;
+      var inv = (dp && dp.inventory) || {};
+      var keys = Object.keys(inv);
+      var snackKey = null;
+      for (var i = 0; i < keys.length; i++) {
+        if (inv[keys[i]] && inv[keys[i]] > 0) { snackKey = keys[i]; break; }
+      }
+      if (!snackKey) {
+        self.setEmotion('sad', 2000);
+        self.say('没有零食了，去商店看看吧~', 2500);
+        return;
+      }
+      var petId = self.character && self.character.id ? self.character.id : 'xiaomo';
+      family.feedPet(petId, snackKey);
+      self.setEmotion('happy', 3000);
+      self.say('好吃！谢谢投喂~', 3000);
+    };
+    this.el.addEventListener('dblclick', this._boundDblClick);
+
+    /* 右键菜单（桌面端） */
+    this._boundContextMenu = function (e) {
+      if (self.isTouchDevice) return;
+      e.preventDefault();
+      e.stopPropagation();
+      self._showContextMenu(e.clientX, e.clientY);
+    };
+    this.el.addEventListener('contextmenu', this._boundContextMenu);
+
+    /* 长按商店（移动端 500ms） */
+    this._boundTouchStart = function (e) {
+      if (!self.isTouchDevice) return;
+      self._longPressTimer = setTimeout(function () {
+        self._longPressTimer = null;
+        if (self.bus) self.bus.emit('desktop-pet:open-shop');
+        self.setEmotion('excited', 2000);
+        self.say('逛逛商店~', 2000);
+      }, 500);
+    };
+    this._boundTouchEnd = function () {
+      if (self._longPressTimer) {
+        clearTimeout(self._longPressTimer);
+        self._longPressTimer = null;
+      }
+    };
+    this.el.addEventListener('touchstart', this._boundTouchStart, { passive: true });
+    this.el.addEventListener('touchend', this._boundTouchEnd, { passive: true });
+    this.el.addEventListener('touchcancel', this._boundTouchEnd, { passive: true });
+  };
+
+  /* 右键上下文菜单 */
+  Pet.prototype._showContextMenu = function (x, y) {
+    this._closeContextMenu();
+    var self = this;
+    var menu = document.createElement('div');
+    menu.className = 'dp-context-menu';
+    menu.setAttribute('role', 'menu');
+
+    var hasInventory = false;
+    if (this.store) {
+      var dp = this.store.state.settings.desktopPet;
+      var inv = dp.inventory || {};
+      var keys = Object.keys(inv);
+      for (var i = 0; i < keys.length; i++) {
+        if (inv[keys[i]] && inv[keys[i]] > 0) { hasInventory = true; break; }
+      }
+    }
+
+    var items = [
+      { label: '摸摸头', action: function () { self.setEmotion('happy', 2500); self.say('嘿嘿~', 2000); } },
+      { label: '喂食', action: function () { self._contextFeed(); }, disabled: !hasInventory },
+      { label: '商店', action: function () { if (self.bus) self.bus.emit('desktop-pet:open-shop'); } },
+      { label: '隐藏', action: function () { self.hide(); } }
+    ];
+
+    for (var j = 0; j < items.length; j++) {
+      (function (item) {
+        var btn = document.createElement('div');
+        btn.className = 'dp-context-menu-item' + (item.disabled ? ' disabled' : '');
+        btn.textContent = item.label;
+        btn.setAttribute('role', 'menuitem');
+        if (!item.disabled) {
+          btn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            self._closeContextMenu();
+            item.action();
+          });
+        }
+        menu.appendChild(btn);
+      })(items[j]);
+    }
+
+    menu.style.left = x + 'px';
+    menu.style.top = y + 'px';
+    document.body.appendChild(menu);
+    this._contextMenu = menu;
+
+    /* 点击外部关闭 */
+    setTimeout(function () {
+      self._boundCloseMenu = function (e) {
+        if (menu && !menu.contains(e.target)) {
+          self._closeContextMenu();
+        }
+      };
+      document.addEventListener('click', self._boundCloseMenu, { once: true });
+      document.addEventListener('contextmenu', self._boundCloseMenu, { once: true });
+    }, 0);
+  };
+
+  Pet.prototype._closeContextMenu = function () {
+    if (this._contextMenu && this._contextMenu.parentNode) {
+      this._contextMenu.parentNode.removeChild(this._contextMenu);
+    }
+    this._contextMenu = null;
+    if (this._boundCloseMenu) {
+      document.removeEventListener('click', this._boundCloseMenu);
+      document.removeEventListener('contextmenu', this._boundCloseMenu);
+      this._boundCloseMenu = null;
+    }
+  };
+
+  /* 右键菜单喂食操作 */
+  Pet.prototype._contextFeed = function () {
+    var family = this._family;
+    if (!family) {
+      this.say('还没有连接到仓库~', 2000);
+      return;
+    }
+    var dp = family.settings && family.settings.desktopPet;
+    var inv = (dp && dp.inventory) || {};
+    var keys = Object.keys(inv);
+    var snackKey = null;
+    for (var i = 0; i < keys.length; i++) {
+      if (inv[keys[i]] && inv[keys[i]] > 0) { snackKey = keys[i]; break; }
+    }
+    if (!snackKey) {
+      this.say('没有零食了~', 2000);
+      return;
+    }
+    var petId = this.character && this.character.id ? this.character.id : 'xiaomo';
+    family.feedPet(petId, snackKey);
+    this.setEmotion('happy', 3000);
+    this.say('谢谢投喂~', 3000);
   };
 
   /* 启动自身动画（规格 C.6：rAF 由 PetFamily 统一驱动，此方法 Task 2 接循环） */
@@ -923,9 +1114,173 @@
     /* 预留：PetFamily 共享 rAF 启动后回调实例 */
   };
 
-  /* 每帧更新（Task 2 由 PetFamily 共享 rAF 驱动） */
+  /* 每帧更新：由 AnimationLoop 共享 rAF 驱动 */
   Pet.prototype._tick = function (dt, t) {
-    /* 预留：呼吸/眨眼/装饰动画（C.5） */
+    if (!this.el) return;
+
+    /* 呼吸相位 */
+    this.breathe += dt;
+    var breathePhase = Math.sin(this.breathe * Math.PI * 2 / 3.2);
+    this.breatheScale = 1 + breathePhase * 0.03;
+
+    /* 视线追踪平滑插值 */
+    this.lookX += (this._targetLookX - this.lookX) * Math.min(1, dt * 8);
+    this.lookY += (this._targetLookY - this.lookY) * Math.min(1, dt * 8);
+
+    /* 情绪持续时间倒计时 */
+    if (this.emotionDuration > 0) {
+      this.emotionDuration -= dt * 1000;
+      if (this.emotionDuration <= 0) {
+        this.emotionDuration = 0;
+        this.setEmotion(this.character.defaultEmotion || 'idle', 0);
+      }
+    }
+
+    /* 装饰动画 tick */
+    this._tickDecorations(dt, t);
+
+    /* 应用视觉到 SVG */
+    this._applyVisuals();
+  };
+
+  /** 将呼吸/视线/腮红状态应用到 SVG DOM */
+  Pet.prototype._applyVisuals = function () {
+    if (!this.el) return;
+
+    /* 身体组：呼吸缩放 + 弹跳 Y 偏移 */
+    if (this.bodyG) {
+      var yOff = this.bounceY || 0;
+      var s = this.breatheScale;
+      this.bodyG.setAttribute('transform',
+        'translate(0,' + yOff + ') scale(' + s + ',' + s + ')');
+    }
+
+    /* 眼睛：视线追踪偏移（在情绪 eyes lookX/Y 基础上叠加） */
+    if (this.eyeL && this.eyeR) {
+      var cfg = EMO_CONFIGS[this.emotion] || EMO_CONFIGS.idle;
+      var lx = this.lookX + (cfg.eyes.lookX || 0);
+      var ly = this.lookY + (cfg.eyes.lookY || 0);
+      this.eyeL.setAttribute('transform', 'translate(' + (38 + lx) + ',' + (48 + ly) + ')');
+      this.eyeR.setAttribute('transform', 'translate(' + (62 + lx) + ',' + (48 + ly) + ')');
+    }
+
+    /* 腮红透明度 */
+    if (this.blushOpacity !== undefined) {
+      var blushL = this.el.querySelector('.dp-blush-l');
+      var blushR = this.el.querySelector('.dp-blush-r');
+      if (blushL) blushL.setAttribute('opacity', String(this.blushOpacity));
+      if (blushR) blushR.setAttribute('opacity', String(this.blushOpacity));
+    }
+  };
+
+  /** 装饰动画逐帧更新（zzz 浮动、star 闪烁、sweat 滴落） */
+  Pet.prototype._tickDecorations = function (dt, t) {
+    if (!this.el) return;
+
+    /* zzz 浮动（sleepy 情绪） */
+    var zzz = this.el.querySelector('.dp-zzz');
+    if (zzz) {
+      if (this.emotion === 'sleepy') {
+        zzz.setAttribute('opacity', '1');
+        var phase = (t / 1000) % 2;
+        zzz.setAttribute('transform', 'translate(0,' + (-phase * 6) + ')');
+        zzz.style.opacity = String(1 - phase / 2);
+      } else {
+        zzz.setAttribute('opacity', '0');
+      }
+    }
+
+    /* 星星眼闪烁（excited 情绪） */
+    var starL = this.el.querySelector('.dp-star-l');
+    var starR = this.el.querySelector('.dp-star-r');
+    if (starL && starR) {
+      if (this.emotion === 'excited') {
+        var pulse = 0.7 + Math.sin(t / 180) * 0.3;
+        starL.setAttribute('opacity', String(pulse));
+        starR.setAttribute('opacity', String(pulse));
+      } else {
+        starL.setAttribute('opacity', '0');
+        starR.setAttribute('opacity', '0');
+      }
+    }
+
+    /* 思考气泡脉冲（thinking 情绪） */
+    var think = this.el.querySelector('.dp-think');
+    if (think) {
+      if (this.emotion === 'thinking') {
+        think.setAttribute('opacity', '1');
+        var thinkPulse = 0.6 + Math.sin(t / 300) * 0.4;
+        think.setAttribute('opacity', String(thinkPulse));
+      } else {
+        think.setAttribute('opacity', '0');
+      }
+    }
+
+    /* 感叹号弹跳（surprised 情绪） */
+    var exclaim = this.el.querySelector('.dp-exclaim');
+    if (exclaim) {
+      if (this.emotion === 'surprised') {
+        var ey = Math.sin(t / 150) * 2;
+        exclaim.setAttribute('transform', 'translate(0,' + ey + ')');
+        exclaim.setAttribute('opacity', '1');
+      } else {
+        exclaim.setAttribute('opacity', '0');
+      }
+    }
+
+    /* 问号旋转（confused 情绪） */
+    var question = this.el.querySelector('.dp-question');
+    if (question) {
+      if (this.emotion === 'confused') {
+        var qr = Math.sin(t / 400) * 8;
+        question.setAttribute('transform', 'rotate(' + qr + ', 72, 22)');
+        question.setAttribute('opacity', '1');
+      } else {
+        question.setAttribute('opacity', '0');
+      }
+    }
+
+    /* 闪光缩放（proud 情绪） */
+    var sparkle = this.el.querySelector('.dp-sparkle');
+    if (sparkle) {
+      if (this.emotion === 'proud') {
+        var sp = 0.8 + Math.sin(t / 220) * 0.2;
+        sparkle.setAttribute('transform', 'scale(' + sp + ')');
+        sparkle.setAttribute('opacity', '1');
+      } else {
+        sparkle.setAttribute('opacity', '0');
+      }
+    }
+
+    /* 挥手鳍摆动（wave/goodbye 情绪） */
+    var waveFin = this.el.querySelector('.dp-wave-fin');
+    if (waveFin) {
+      if (this.emotion === 'wave' || this.emotion === 'goodbye') {
+        waveFin.setAttribute('opacity', '1');
+        var waveAngle = Math.sin(t / 200) * 15;
+        waveFin.setAttribute('transform', 'rotate(' + waveAngle + ', 82, 50)');
+      } else {
+        waveFin.setAttribute('opacity', '0');
+      }
+    }
+
+    /* 放松波纹（relax 情绪） */
+    var relax = this.el.querySelector('.dp-relax-waves');
+    if (relax) {
+      relax.setAttribute('opacity', this.emotion === 'relax' ? '1' : '0');
+    }
+
+    /* 汗滴（busy 情绪） */
+    var sweat = this.el.querySelector('.dp-sweat');
+    if (sweat) {
+      if (this.emotion === 'busy') {
+        sweat.setAttribute('opacity', '1');
+        var sy2 = (t / 500) % 1 * 6;
+        sweat.setAttribute('transform', 'translate(0,' + sy2 + ')');
+      } else {
+        sweat.setAttribute('opacity', '0');
+      }
+    }
   };
 
   /* ---- 特效触发器（Task 8：交互视觉反馈） ---- */
@@ -1181,12 +1536,23 @@
     }, rand(lo, hi));
   };
 
-  /* 执行一次眨眼（视觉由 CSS/JS 动画实现） */
+  /* 执行一次眨眼（视觉由 CSS dp-eyes-closed 实现） */
   Pet.prototype._doBlink = function () {
-    if (this.el) this.el.classList.add('dp-blinking');
+    if (!this.el) return;
+    /* 保存当前眼睛形状，切换到闭眼 */
+    var _savedShape = this._currentEyeShape || null;
+    var cfg = EMO_CONFIGS[this.emotion] || EMO_CONFIGS.idle;
+    drawEyeShape(this.eyeL, 'closed', 'left', 0.08);
+    drawEyeShape(this.eyeR, 'closed', 'right', 0.08);
+    this.el.classList.add('dp-eyes-closed');
     var self = this;
     setTimeout(function () {
-      if (self.el) self.el.classList.remove('dp-blinking');
+      if (!self.el) return;
+      self.el.classList.remove('dp-eyes-closed');
+      /* 恢复当前情绪的眼睛形状 */
+      if (self.eyeL && self.eyeR) {
+        self._drawEyes(self.eyeL, self.eyeR, cfg.eyes, 'idle');
+      }
     }, 160);
   };
 
@@ -1370,12 +1736,21 @@
     if (this._blinkTimer) clearTimeout(this._blinkTimer);
     if (this._idleQuoteTimer) clearTimeout(this._idleQuoteTimer);
     if (this._sayTimer) clearTimeout(this._sayTimer);
+    if (this._longPressTimer) clearTimeout(this._longPressTimer);
     if (this._aniTimers) {
       this._aniTimers.forEach(clearTimeout);
       this._aniTimers = [];
     }
     if (this._boundEnter && this.el) this.el.removeEventListener('mouseenter', this._boundEnter);
     if (this._boundLeave && this.el) this.el.removeEventListener('mouseleave', this._boundLeave);
+    if (this._boundMouseMove && this.el) this.el.removeEventListener('mousemove', this._boundMouseMove);
+    if (this._boundClick && this.el) this.el.removeEventListener('click', this._boundClick);
+    if (this._boundDblClick && this.el) this.el.removeEventListener('dblclick', this._boundDblClick);
+    if (this._boundContextMenu && this.el) this.el.removeEventListener('contextmenu', this._boundContextMenu);
+    if (this._boundTouchStart && this.el) this.el.removeEventListener('touchstart', this._boundTouchStart);
+    if (this._boundTouchEnd && this.el) this.el.removeEventListener('touchend', this._boundTouchEnd);
+    if (this._boundTouchCancel && this.el) this.el.removeEventListener('touchcancel', this._boundTouchEnd);
+    this._closeContextMenu();
     /* 清理拖拽事件 */
     if (this._boundDown && this.el) this.el.removeEventListener('pointerdown', this._boundDown);
     if (this._boundDown && this.el) this.el.removeEventListener('mousedown', this._boundDown);
@@ -1544,6 +1919,7 @@
       this._bindDrag(pet, roleId);
     }
     this.instances[roleId] = pet;
+    pet._family = this.family;
     this.family.loop.add(pet);
     return pet;
   };
@@ -1805,6 +2181,19 @@
     var base = 3 * 60 * 1000; /* 基础冷却 3min */
     var jitter = Math.random() * 3 * 60 * 1000; /* 0-3min 随机 */
     if (now - this.lastAt < base + jitter) return false;
+    /* 距离检测（Task 3.2）：两只玩偶超过 200px 不触发互动 */
+    var instances = this.family.display.instances;
+    var keys = Object.keys(instances);
+    if (keys.length >= 2) {
+      var p1 = instances[keys[0]] && instances[keys[0]].el;
+      var p2 = instances[keys[1]] && instances[keys[1]].el;
+      if (p1 && p2 && typeof p1.getBoundingClientRect === 'function' && typeof p2.getBoundingClientRect === 'function') {
+        var r1 = p1.getBoundingClientRect();
+        var r2 = p2.getBoundingClientRect();
+        var dist = Math.hypot(r1.left - r2.left, r1.top - r2.top);
+        if (dist > 200) return false;
+      }
+    }
     return true;
   };
 
@@ -1964,6 +2353,7 @@
   /** @constructor
    * @this {{ store: any, bus: any, settings: any, _listeners: Object, _container: any, loop: any,
    *   display: any, interaction: any, _pageMode: boolean,
+   *   _sessionCoins: number, _sessionCoinCap: number, _interactionTimer: any,
    *   _unsubTasks: any, _onTaskChangeBound: Function, _onTaskChange: Function,
    *   _sync: Function, ensureContainer: Function, _commit: Function,
    *   getMode: Function, setMode: Function, getResident: Function, setResident: Function,
@@ -1973,6 +2363,7 @@
    *   getState: Function, getCoins: Function, getAffection: Function, getInventory: Function,
    *   getAchievements: Function, addCoins: Function, spendCoins: Function, buySnack: Function,
    *   feedPet: Function, checkAchievements: Function, resetAllData: Function,
+   *   _updateStreak: Function,
    *   on: Function, off: Function, emit: Function, destroy: Function }} */
   function PetFamily(store, bus, config) {
     this.store = store || null;
@@ -1988,13 +2379,36 @@
     this.interaction = new InteractionManager(this);
     this._pageMode = false;
 
+    /* 会话金币上限（Task 3.3） */
+    this._sessionCoins = 0;
+    this._sessionCoinCap = 100;
+
+    /* 自动触发互动对话（Task 3.1：每 3 分钟检查） */
+    var self = this;
+    this._interactionTimer = null;
+    if (typeof setInterval !== 'undefined') {
+      this._interactionTimer = setInterval(function () {
+        if (self.display.getMode() === 'single') return;
+        if (self.interaction && self.interaction.canTrigger()) {
+          self.interaction.trigger();
+        }
+      }, 3 * 60 * 1000);
+    }
+
+    /* 页面加载 streak 检查（Task 3.4） */
+    this._updateStreak();
+
+    /* 深夜行为（Task 3.5） */
+    var residentId = this.getResident();
+    var resident = this.display.get(residentId);
+    if (resident) resident._checkLateNight();
+
     this.display._bindResize();
     this._sync();
 
     /* 任务完成金币检测：扫描存量 + 订阅变更 */
     this._unsubTasks = null;
     if (this.bus && typeof this.bus.on === 'function') {
-      var self = this;
       this._onTaskChangeBound = function () { self._onTaskChange(); };
       this._unsubTasks = this.bus.on('/data/tasks', this._onTaskChangeBound);
       this._onTaskChange();
@@ -2143,6 +2557,12 @@
   /* ---- 金币系统 ---- */
   PetFamily.prototype.addCoins = function (amount, reason) {
     if (typeof amount !== 'number' || amount < 0 || !isFinite(amount)) return;
+    /* 会话金币上限（Task 3.3） */
+    if (this._sessionCoins + amount > this._sessionCoinCap) {
+      amount = Math.max(0, this._sessionCoinCap - this._sessionCoins);
+    }
+    if (amount <= 0) return;
+    this._sessionCoins += Math.round(amount);
     var dp = this.settings.desktopPet;
     dp.coins = Math.max(0, dp.coins + Math.round(amount));
     this._commit();
@@ -2286,6 +2706,7 @@
   PetFamily.prototype.resetAllData = function () {
     var dp = this.settings.desktopPet;
     dp.coins = 0;
+    this._sessionCoins = 0;
     dp.affection = { xiaomo: 0, xiaoyu: 0, lanling: 0 };
     dp.inventory = {};
     dp.totalFed = { xiaomo: 0, xiaoyu: 0, lanling: 0 };
@@ -2332,6 +2753,7 @@
     if (typeof window !== 'undefined') {
       if (this.display._boundResize) window.removeEventListener('resize', this.display._boundResize);
     }
+    if (this._interactionTimer) { clearInterval(this._interactionTimer); this._interactionTimer = null; }
     if (this._container && this._container.parentNode) {
       this._container.parentNode.removeChild(this._container);
     }

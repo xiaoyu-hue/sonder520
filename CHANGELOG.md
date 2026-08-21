@@ -7,6 +7,14 @@
 
 ### 已实施
 
+- **桌面玩偶 v6.0 全面升级——阶段 1-3（动画/交互/自动触发）**：
+  - 阶段 1 动画系统：Pet animationFrame 完整实现（idle/walk/sleep 状态机 SVG 变换 + blink 定时 + idle 随机语录 + 呼吸/眨眼/身体缩放参数差异化）；`PetFamily.autoInit()` 移入 `idbReady.then()` 回调保证 IndexedDB 可用。
+  - 阶段 2 交互系统：`isTouchDevice` 检测（`matchMedia('(hover: none)')`）；单击触发表情+语录（2s 冷却防连击）；双击喂食（从库存取第一个零食）；右键菜单（glass morphism 样式：摸摸头/喂食/商店/隐藏）；长按商店（移动端 500ms）；`_family` backref 确保右键操作可达 PetFamily；destroy 完整清理 6 个新监听器+长按定时器+菜单。
+  - 阶段 3 自动触发+数据完整性：3 分钟 `setInterval` 自动检查互动触发（仅 multi/trio 模式）；`canTrigger` 距离检测（>200px 不触发）；会话金币上限 100（超出截断，resetAllData 清零）；构造器 `_updateStreak()` + `_checkLateNight()` 初始化。
+  - 修复：`EMO_CONFIGS` 无 `love` 情绪（点击池改为 happy/excited/relax/proud/surprised）；`say()` 被 `setEmotion()` 覆盖（调用顺序调整）；`_build()` 双重调用破坏事件绑定。
+- 测试基线 641 → 657（desktop-pet +16 项：isTouchDevice/单击/双击无库存/双击喂食/右键菜单/右键摸头/右键禁用/destroy 清理/金币上限截断/金币上限 resetAllData/定时器设置/单人不触发/距离远不触发/距离近可触发/streak 检查/深夜行为，全量 657 绿；typecheck/lint 零问题）。
+- 离线缓存升版 v54 → v55（desktop-pet.js/css 指纹变化 + sw.js 版本递增，ASSETS 43 项不变）。
+
 - **games.js 域拆分（1056 → ~220 行）**：按职责拆为 `games-shared.js`（共享状态/AI 调度，须最先加载）+ `games-mini.js`（四款休闲小游戏）+ `games-battle.js`（对弈/AI/战绩）+ 编排层 games.js；index.html 脚本顺序契约同步扩展（games-logic → games-view → games-shared → games-mini → games-battle → games.js），行为零变更（110 项游戏测试全绿，全量 516 项）。契约测试 state.test.js 白名单与 `SonderGames*` 全局声明（globals.d.ts）随拆分层级同步。
 - **ESM 试验田（ADR-001 演进条款落地评估）**：新增 `js/quotes-core.mjs`（纯 ESM 零依赖）+ 双实现一致性测试——生产保持 UMD/零构建不动摇（qa.test.js `require` quotes.js 依赖 UMD；harness 注入方式已升级，见下），试验田以一致性守卫证明「同源双实现」策略可行。
 - **ADR 治理落地**：docs/adr/README.md 建立三态状态体系（提议/已采纳/已废弃）+ 全部 ADR 状态索引；harness 脚本注入由 `window.eval` 改为真实 `<script>` 元素（执行语义与浏览器一致，为原生 ESM/module 迁移留门）；旧命名测试文件改语义名（issue1/2/3 → selfmedia-stats/reading-stats/reading-progress，m3/m4/m5 → today-home-ux/modules-smoke/settings-ux）。

@@ -513,6 +513,40 @@
   opacity: 0.85;
 }
 
+/* ---- 右键上下文菜单（Task 2） ---- */
+.dp-context-menu {
+  position: fixed;
+  z-index: 10001;
+  background: var(--glass-sober, rgba(255,255,255,0.72));
+  backdrop-filter: blur(20px) saturate(1.4);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+  border: 1px solid var(--border, rgba(0,0,0,0.08));
+  border-radius: var(--radius, 8px);
+  box-shadow: var(--shadow, 0 4px 24px rgba(0,0,0,0.10));
+  min-width: 140px;
+  padding: 6px 0;
+  animation: dp-menu-in 0.15s var(--ease, ease-out);
+}
+@keyframes dp-menu-in {
+  from { opacity: 0; transform: scale(0.92); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.dp-context-menu-item {
+  padding: 8px 16px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text, #333);
+  transition: background 0.15s;
+  user-select: none;
+}
+.dp-context-menu-item:hover {
+  background: var(--accent-soft, rgba(0,122,255,0.08));
+}
+.dp-context-menu-item.disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
 /* 移动端（<640px）：单只尺寸 64px、半透明 0.8，避免遮挡 */
 @media (max-width: 639px) {
   .dp-pet {
