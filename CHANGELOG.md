@@ -72,6 +72,12 @@
 - **集合级持久化（ADR-009 决策 7 落地，Sonder-Frame TrustLayer 存储主线路收尾）**：整份快照读写改为**逐集合独立 key**——LS `sonder_col_<id>_v1` / IDB entry key `<id>`（entry 结构 `{savedAt, data}` 不变），写路径仅序列化落盘变更集合（`_colJson` 按集合去重，等价整份 `_lastJson` 比较），读路径逐集合按 `lsMeta vs savedAt` 取新合并（同毫秒相等取 LS），缺集合 LS→IDB / IDB→LS 双向回填。legacy 整份快照作迁移来源一次性拆分（`_migrateLegacyIfNeeded`），**旧 key 保留不删**（回滚安全），轻量探测（`_hasLegacySnapshot`）沿用 STORAGE_KEY 链。**写序不变量保持**：明文双写 `_persistLocal（逐集合+meta）→ _idbWriteCols（同 meta）` 顺序不可交换；跨标签写锁/让位协议仍以 LS `sonder_meta_v1` 为基线。**加密升级为逐集合独立 bundle**（`{e:1,v,iv,data}`，`_lockedEncWrite` 锁内让位协议 + `_encChain` 串行队列语义保留），集合级吸收 `_absorbNewer` 以当前内存为基座，仅覆盖另一标签已写的集合（不清空本标签未竞态集合）。`loadIdb` 锁定态返回升级（密文集合不合并、置 `_idbEncLocked`）。工厂与领域方法落盘全部改经 `store._commit(集合id)`（ModuleFactory CRUD/orderField move、store-settings/theme、store-tasks、store-media、store-content）。新增契约测试 `tests/store-granular.test.js`；既有存储/加密/写锁/升级测试按集合级 key 契约升级（legacy 探测用例保留 STORAGE_KEY 注入），normalize 缺字段补默认的两个持久化加载用例注入限定 STORAGE_KEY 单键（修复集合枚举将整份误当集合 payload 的读取污染）。
 - 测试基线 584 → 592（新增集合级契约 8 项，全量绿；typecheck/lint 零问题）。
 - 离线缓存升版 v47 → v48（store.js 指纹变化触发 sync-sw 自动升版，ASSET_SIG 4f44c601ae33 → 15050c9e7b83，ASSETS 40 项不变）。
+- **桌面玩偶核心模块 Phase 1（v6.0 desktop-pet Task 1，TDD 先行）**：新增 `js/desktop-pet.js`（UMD 自包含）——三角色配置表（小莫/墨灵/纸鹤：尺寸/配色/性格/台词/动画帧）、`Pet` 类（idle/walk/sleep 状态机 + 生命周期 destroy）、CSS 变量体系（`css/desktop-pet.css`，复用墨色/宣纸设计 token）；`DEFAULT_DESKTOP` 常量导出；index.html 引入两文件。新增契约测试 `tests/desktop-pet.test.js` 6 项。
+- 测试基线 592 → 598（desktop-pet 契约 6 项，全量绿；typecheck/lint 零问题）。
+- 离线缓存升版 v48 → v49（desktop-pet 新增 js/css 两文件入 ASSETS，40 → 42 项，ASSET_SIG 15050c9e7b83 → d8d03bb35c65）。
+- **桌面玩偶 PetFamily 管理器（v6.0 desktop-pet Task 2，Phase 1 收尾）**：显示模式三态（off/single/family）、串门调度（随机间隔 + 页面模式守卫 + 离场窗口 `_exitTimer`/`_exitRole` 跟踪）、布局防重叠、共享 rAF 心跳；`_teardownVisitor()` 完整清理（访问定时器/离场定时器/串门实例）；`setEnabled(false)` 全量 teardown。新增测试 5 项（含「关闭后仅剩常驻」边界回归）。
+- 测试基线 598 → 603（PetFamily 契约 5 项，全量绿；typecheck/lint 零问题）。
+- 离线缓存升版 v49 → v50（desktop-pet.js 指纹变化触发 sync-sw 自动升版，ASSET_SIG d8d03bb35c65 → c0f731ee9bea，ASSETS 42 项不变）。
 
 ### 计划（来自 38 项审计清单，按优先级）
 
