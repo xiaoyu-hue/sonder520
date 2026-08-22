@@ -5,6 +5,17 @@
 
 ## [v6.0] - 2026-08-21
 
+## [v6.0] - 2026-08-22 (三端适配)
+
+### 已实施
+
+- **P1 断点统一（TDD 白名单契约）**：全仓 @media 宽度值收敛为 ≤360/720/900/960 五带序列；style.css 1000→960、640→720、删除两处冗余 640 查询；desktop-pet.css 639→720 修复 CSS/JS 断点不一致；新增断点白名单契约测试（responsive.test.js）防魔法数回潮；旧断言同步更新。测试 695→696。
+- **P2 三端 Playwright 验证矩阵**：playwright.config.js 扩为三 project（desktop-chromium 1280×800 / mobile-ios webkit 375×667 isMobile+hasTouch / tablet-ipad webkit 768×1024 hasTouch）；新增 e2e/responsive.spec.js 5 项三端视口冒烟（无横向溢出/导航可见可点/各模块无溢出/搜索面板不出屏/导航功能完整）；安装 webkit 浏览器二进制。三端基线：desktop 10/10、mobile 9/10、tablet 9/10（2 项失败为 WebKit 离线 reload 引擎内部错误，非应用缺陷）。
+- **P3 触控质量三连修复**：.btn/.small-btn 在 ≤720px 手机带内 min-height:44px 达标 WCAG 触控规范（landscape 覆盖 auto 保持 38px 降档）；≤360px .hbar input font-size 15→16px 修复 iOS 聚焦缩放违规；≤720px .topbar padding 增加 env(safe-area-inset-top) 修复 PWA standalone 刘海屏遮挡。
+- **P4 七模块移动端适配**：≤720px .card padding 18→14px 收紧留白；.row>.grow flex-basis:100% 标签值成对堆叠→单列；.stat-row flex-wrap:wrap 统计行窄屏换行；.hbar .btn/.small-btn flex:1 1 auto + text-align:center 操作按钮等宽排列。
+- 离线缓存升版 v71 → v74。
+
+
 ### 已实施
 
 - **ADR-014 Phase ④ IndexedDB 真源反转（v6.0 核心遗留项落地）**：稳态载入冲突消解反转为 IDB 优先（savedAt 同刻/更新即胜出，LS 仅严格更新或 IDB 缺失/损坏时接管）；`_storeWrite` 物理写序反转（盖 meta → IDB 主快照先落 → LS 副本随后，同批同戳）；跨标签信号通道与写锁基线维持 LS meta（LS=信号+副本层，IDB=载入真源，符合规范 Metadata 定位）；引导期豁免——刚完成 legacy 拆分的那次合并平局仍取 LS，首次安装不误报重绘。测试 +3（idb-primary.test.js：rawLS 注入构造纯冲突平局断言/LS 严格新回归/物理写序），695 全绿。数据格式零变化、零迁移，单文件可回滚。
