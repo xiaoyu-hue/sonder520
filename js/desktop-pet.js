@@ -522,7 +522,8 @@
    *   breathe: number, breatheScale: number, blink: any, lookX: number, lookY: number, bounceY: number, wobble: number,
    *   blushOpacity: number, _targetLookX: number, _targetLookY: number,
    *   dragging: boolean, dragOffset: {x: number, y: number}, hovering: boolean,
-   *   _clickCooldown: boolean, _longPressTimer: any, _contextMenu: any, isTouchDevice: boolean,
+   *   _clickCooldown: boolean, _clickCooldownTimer: any, _longPressTimer: any, _contextMenu: any,
+   *   _menuBindTimer: any, _fxTimers: any[], _destroyed: boolean, isTouchDevice: boolean,
    *   bubbleTimer: any, idleTimer: any, bus: any, store: any, unsubs: any[], el: any, bodyG: any, eyeL: any,
    *   eyeR: any, mouth: any, bubble: any, _blinkTimer: any, _idleQuoteTimer: any, _sayTimer: any,
    *   _boundEnter: any, _boundLeave: any, _drawEyes: Function, _drawMouth: Function,
@@ -562,8 +563,12 @@
     this.bubbleTimer = null;
     this.idleTimer = null;
     this._clickCooldown = false;
+    this._clickCooldownTimer = null; /* 冷却复位定时器（destroy 需清理） */
     this._longPressTimer = null;
     this._contextMenu = null;
+    this._menuBindTimer = null;      /* 菜单外点关闭绑定延迟句柄（destroy 需清理） */
+    this._fxTimers = [];             /* 特效/眨眼恢复等短命定时器（destroy 统一清理） */
+    this._destroyed = false;         /* 自续期链守卫：clearTimeout 与已入队回调竞态时断链 */
     this.isTouchDevice = !!(typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(hover: none)').matches);
 
     /* 集成引用（Task 2 接入） */
@@ -946,7 +951,8 @@
       e.stopPropagation();
       if (self._clickCooldown) return;
       self._clickCooldown = true;
-      setTimeout(function () { self._clickCooldown = false; }, 2000);
+      if (self._clickCooldownTimer) clearTimeout(self._clickCooldownTimer);
+      self._clickCooldownTimer = setTimeout(function () { self._clickCooldown = false; }, 2000);
       var emos = ['happy', 'excited', 'relax', 'proud', 'surprised'];
       var emo = emos[Math.floor(Math.random() * emos.length)];
       self.setEmotion(emo, 2500);
@@ -1061,15 +1067,19 @@
     document.body.appendChild(menu);
     this._contextMenu = menu;
 
-    /* 点击外部关闭 */
-    setTimeout(function () {
-      self._boundCloseMenu = function (e) {
+    /* 点击外部关闭（延迟绑定句柄需跟踪：destroy 后不得再向 document 挂监听） */
+    var self2 = this;
+    if (this._menuBindTimer) clearTimeout(this._menuBindTimer);
+    this._menuBindTimer = setTimeout(function () {
+      self2._menuBindTimer = null;
+      if (self2._destroyed) return;
+      self2._boundCloseMenu = function (e) {
         if (menu && !menu.contains(e.target)) {
-          self._closeContextMenu();
+          self2._closeContextMenu();
         }
       };
-      document.addEventListener('click', self._boundCloseMenu, { once: true });
-      document.addEventListener('contextmenu', self._boundCloseMenu, { once: true });
+      document.addEventListener('click', self2._boundCloseMenu, { once: true });
+      document.addEventListener('contextmenu', self2._boundCloseMenu, { once: true });
     }, 0);
   };
 
@@ -1288,6 +1298,7 @@
   /** 喂食星星散射：在角色周围创建 5 颗随机星星 */
   Pet.prototype._triggerFeedEffect = function () {
     if (this._isDragging || !_motionOk()) return;
+    var self = this;
     var el = this.el;
     if (!el) return;
     var symbols = ['✦', '✧', '★', '·', '∗'];
@@ -1303,7 +1314,8 @@
         s.style.left = (20 + Math.random() * 60) + '%';
         s.style.top = (30 + Math.random() * 40) + '%';
         el.appendChild(s);
-        setTimeout(function () { if (s.parentNode) s.parentNode.removeChild(s); }, 700);
+        var fxTimer = setTimeout(function () { if (s.parentNode) s.parentNode.removeChild(s); }, 700);
+        if (self._fxTimers) self._fxTimers.push(fxTimer);
       })(i);
     }
   };
@@ -1317,7 +1329,8 @@
     t.className = 'dp-fx-coin';
     t.textContent = '+' + amount;
     el.appendChild(t);
-    setTimeout(function () { if (t.parentNode) t.parentNode.removeChild(t); }, 850);
+    var fxTimer2 = setTimeout(function () { if (t.parentNode) t.parentNode.removeChild(t); }, 850);
+    if (this._fxTimers) this._fxTimers.push(fxTimer2);
   };
 
   /** 成就解锁光环：角色外框脉冲发光 */
@@ -1325,13 +1338,16 @@
     if (this._isDragging || !_motionOk()) return;
     var el = this.el;
     if (!el) return;
+    var self3 = this;
     el.classList.add('dp-fx-glow');
-    setTimeout(function () { el.classList.remove('dp-fx-glow'); }, 950);
+    var fxTimer3 = setTimeout(function () { if (!self3._destroyed && el) el.classList.remove('dp-fx-glow'); }, 950);
+    if (this._fxTimers) this._fxTimers.push(fxTimer3);
   };
 
   /** 互动爱心飘散：在角色周围创建 3 颗爱心 */
   Pet.prototype._triggerInteractEffect = function () {
     if (this._isDragging || !_motionOk()) return;
+    var self4 = this;
     var el = this.el;
     if (!el) return;
     for (var i = 0; i < 3; i++) {
@@ -1346,7 +1362,8 @@
         h.style.fontSize = (10 + Math.random() * 5) + 'px';
         h.style.color = ['#ff6b8a', '#ff4757', '#e84393'][idx % 3];
         el.appendChild(h);
-        setTimeout(function () { if (h.parentNode) h.parentNode.removeChild(h); }, 700);
+        var fxTimer4 = setTimeout(function () { if (h.parentNode) h.parentNode.removeChild(h); }, 700);
+        if (self4._fxTimers) self4._fxTimers.push(fxTimer4);
       })(i);
     }
   };
@@ -1524,13 +1541,15 @@
     for (var i = 0; i < arr.length; i++) sib.removeChild(arr[i]);
   }
 
-  /* 调度下次眨眼（随机间隔） */
+  /* 调度下次眨眼（随机间隔；_destroyed 守卫防竞态复活） */
   Pet.prototype._scheduleBlink = function () {
+    if (this._destroyed) return;
     var self = this;
     var lo = this.character.blink[0];
     var hi = this.character.blink[1];
     if (this._blinkTimer) clearTimeout(this._blinkTimer);
     this._blinkTimer = setTimeout(function () {
+      if (self._destroyed) return;
       self._doBlink();
       self._scheduleBlink();
     }, rand(lo, hi));
@@ -1538,7 +1557,7 @@
 
   /* 执行一次眨眼（视觉由 CSS dp-eyes-closed 实现） */
   Pet.prototype._doBlink = function () {
-    if (!this.el) return;
+    if (!this.el || this._destroyed) return;
     /* 保存当前眼睛形状，切换到闭眼 */
     var _savedShape = this._currentEyeShape || null;
     var cfg = EMO_CONFIGS[this.emotion] || EMO_CONFIGS.idle;
@@ -1546,21 +1565,24 @@
     drawEyeShape(this.eyeR, 'closed', 'right', 0.08);
     this.el.classList.add('dp-eyes-closed');
     var self = this;
-    setTimeout(function () {
-      if (!self.el) return;
+    var restoreTimer = setTimeout(function () {
+      if (!self.el || self._destroyed) return;
       self.el.classList.remove('dp-eyes-closed');
       /* 恢复当前情绪的眼睛形状 */
       if (self.eyeL && self.eyeR) {
         self._drawEyes(self.eyeL, self.eyeR, cfg.eyes, 'idle');
       }
     }, 160);
+    if (this._fxTimers) this._fxTimers.push(restoreTimer);
   };
 
-  /* 调度待机语录（15-30 秒，40% 概率，D.4） */
+  /* 调度待机语录（15-30 秒，40% 概率，D.4；_destroyed 守卫防竞态复活） */
   Pet.prototype._scheduleIdleQuote = function () {
+    if (this._destroyed) return;
     var self = this;
     if (this._idleQuoteTimer) clearTimeout(this._idleQuoteTimer);
     this._idleQuoteTimer = setTimeout(function () {
+      if (self._destroyed) return;
       if (self.emotion === 'idle' && Math.random() < 0.4) {
         self.say(pick(self.character.quotes.idle), 3000);
       }
@@ -1731,12 +1753,21 @@
     }
   };
 
-  /* 销毁（移除监听/定时器/DOM） */
+  /* 销毁（移除监听/定时器/DOM）。_destroyed 置位必须最先执行：
+   * 自续期链（眨眼/语录）与延迟绑定回调据此放弃复活。 */
   Pet.prototype.destroy = function () {
+    this._destroyed = true;
     if (this._blinkTimer) clearTimeout(this._blinkTimer);
     if (this._idleQuoteTimer) clearTimeout(this._idleQuoteTimer);
     if (this._sayTimer) clearTimeout(this._sayTimer);
     if (this._longPressTimer) clearTimeout(this._longPressTimer);
+    if (this._clickCooldownTimer) { clearTimeout(this._clickCooldownTimer); this._clickCooldownTimer = null; }
+    if (this._menuBindTimer) { clearTimeout(this._menuBindTimer); this._menuBindTimer = null; }
+    /* 特效/眨眼恢复等短命定时器统一清理 */
+    if (this._fxTimers) {
+      this._fxTimers.forEach(clearTimeout);
+      this._fxTimers = [];
+    }
     if (this._aniTimers) {
       this._aniTimers.forEach(clearTimeout);
       this._aniTimers = [];
@@ -2158,7 +2189,7 @@
    * @this {{ family: any, active: boolean }} */
   /** @constructor
    * @this {{ family: any, active: boolean, lastAt: number, playing: boolean,
-   *   dragging: boolean, _playTimer: any, _lineTimers: Array,
+   *   dragging: boolean, _playTimer: any,
    *   canTrigger: Function, _pickCombo: Function, _pickDialogue: Function,
    *   _playSequence: Function, end: Function, destroy: Function }} */
   function InteractionManager(family) {
@@ -2168,7 +2199,6 @@
     this.playing = false;    /* 对话播放中 */
     this.dragging = false;   /* 拖拽中 */
     this._playTimer = null;  /* 逐轮播放定时器 */
-    this._lineTimers = [];   /* 气泡展示定时器 */
   }
 
   /** 判断是否满足互动触发条件（≥2 在场、冷却过、无播放、无拖拽） */
@@ -2325,8 +2355,6 @@
     this.playing = false;
     this.lastAt = Date.now();
     if (this._playTimer) { clearTimeout(this._playTimer); this._playTimer = null; }
-    this._lineTimers.forEach(function (t) { clearTimeout(t); });
-    this._lineTimers = [];
     /* 复位参与角色表情 */
     var family = this.family;
     var ids = family.getActivePetIds();
@@ -2387,11 +2415,13 @@
     this._sessionCoins = 0;
     this._sessionCoinCap = 100;
 
-    /* 自动触发互动对话（Task 3.1：每 3 分钟检查） */
+    /* 自动触发互动对话（Task 3.1：每 3 分钟检查；页面隐藏时跳过——
+     * 后台标签 rAF 已停但 interval 仍会触发，防隐身赚金币/事件堆积） */
     var self = this;
     this._interactionTimer = null;
     if (typeof setInterval !== 'undefined') {
       this._interactionTimer = setInterval(function () {
+        if (typeof document !== 'undefined' && document.hidden) return;
         if (self.display.getMode() === 'single') return;
         if (self.interaction && self.interaction.canTrigger()) {
           self.interaction.trigger();
@@ -2757,6 +2787,7 @@
     if (typeof window !== 'undefined') {
       if (this.display._boundResize) window.removeEventListener('resize', this.display._boundResize);
     }
+    if (this.display._resizeT) { clearTimeout(this.display._resizeT); this.display._resizeT = null; }
     if (this._interactionTimer) { clearInterval(this._interactionTimer); this._interactionTimer = null; }
     if (this._container && this._container.parentNode) {
       this._container.parentNode.removeChild(this._container);
@@ -2787,6 +2818,9 @@
     try {
       var store = window.__sonderHooks && window.__sonderHooks.store;
       if (!store) return;
+      /* 模块开关守卫：用户关闭桌面玩偶时不创建 family（否则定时器链照跑） */
+      var modules = store.state.settings.modules || {};
+      if (modules['desktop-pet'] === false) return;
       var bus = window.SonderBus && window.SonderBus.bus;
       var family = createFamily(store, bus, store.state.settings);
       window.__desktopPetFamily = family;

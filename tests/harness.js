@@ -105,6 +105,18 @@ function boot(opts = {}) {
     window.document.head.appendChild(el);
   });
 
+  /* 测试默认 stub 掉全局玩偶自动初始化（定时器泄漏根治，Commit 4）：
+   * autoInit 会为每个 JSDOM 创建带 4 条自续期链的全局 PetFamily
+   * （3min 互动 interval / rAF 帧循环 / 眨眼 setTimeout 链 / 语录链），
+   * 且无任何测试销毁它 → node --test 进程必须 --test-force-exit 的根因。
+   * 需要全局 family 的测试应显式 DesktopPetCore.createFamily(...) 并自行 destroy；
+   * 个别用例可传 opts.petAutoInit=true 保留真实行为。 */
+  if (!opts.petAutoInit) {
+    try {
+      if (window.DesktopPetCore) window.DesktopPetCore.autoInit = function () { /* 测试 stub */ };
+    } catch (e) { /* 忽略 */ }
+  }
+
   window.dispatchEvent(new window.Event('load'));
 
   const hooks = window.__sonderHooks;

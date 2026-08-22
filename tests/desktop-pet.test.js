@@ -245,85 +245,91 @@ test('desktop-pet: PetFamily 显示模式切换（实例数量正确）', () => 
   assert.ok(C && typeof C.createFamily === 'function', 'createFamily 未暴露');
 
   const family = C.createFamily(store, window.SonderBus, store.state.settings);
-  assert.ok(family, 'family 未创建');
+  try {
+    assert.ok(family, 'family 未创建');
 
-  /* 默认 duo：常驻 1 只（串门未到场前仅常驻） */
-  assert.strictEqual(family.getMode(), 'duo');
-  assert.strictEqual(family.getActivePetIds().length, 1, 'duo 初始 1 只');
+    /* 默认 duo：常驻 1 只（串门未到场前仅常驻） */
+    assert.strictEqual(family.getMode(), 'duo');
+    assert.strictEqual(family.getActivePetIds().length, 1, 'duo 初始 1 只');
 
-  family.setMode('single');
-  assert.strictEqual(family.getMode(), 'single');
-  assert.strictEqual(family.getActivePetIds().length, 1, 'single 1 只');
+    family.setMode('single');
+    assert.strictEqual(family.getMode(), 'single');
+    assert.strictEqual(family.getActivePetIds().length, 1, 'single 1 只');
 
-  family.setMode('trio');
-  assert.strictEqual(family.getMode(), 'trio');
-  assert.strictEqual(family.getActivePetIds().length, 3, 'trio 三只同屏');
-  const ids = Array.from(family.getActivePetIds()).sort();
-  assert.deepStrictEqual(ids, ['lanling', 'xiaomo', 'xiaoyu'], 'trio 三角色齐');
-
-  family.destroy();
+    family.setMode('trio');
+    assert.strictEqual(family.getMode(), 'trio');
+    assert.strictEqual(family.getActivePetIds().length, 3, 'trio 三只同屏');
+    const ids = Array.from(family.getActivePetIds()).sort();
+    assert.deepStrictEqual(ids, ['lanling', 'xiaomo', 'xiaoyu'], 'trio 三角色齐');
+  } finally {
+    family.destroy();
+  }
 });
 
 test('desktop-pet: PetFamily 常驻/尺寸/开关落盘到 settings.desktopPet', () => {
   const { window, store } = boot();
   const C = window.DesktopPetCore;
   const family = C.createFamily(store, window.SonderBus, store.state.settings);
+  try {
+    assert.ok(store.state.settings.desktopPet, 'createFamily 应自建 desktopPet 默认配置');
 
-  assert.ok(store.state.settings.desktopPet, 'createFamily 应自建 desktopPet 默认配置');
+    family.setResident('lanling');
+    assert.strictEqual(family.getResident(), 'lanling');
+    assert.strictEqual(store.state.settings.desktopPet.resident, 'lanling', '常驻落盘');
 
-  family.setResident('lanling');
-  assert.strictEqual(family.getResident(), 'lanling');
-  assert.strictEqual(store.state.settings.desktopPet.resident, 'lanling', '常驻落盘');
+    family.setSize(120);
+    assert.strictEqual(family.getSize(), 120);
+    assert.strictEqual(store.state.settings.desktopPet.size, 120, '尺寸落盘');
 
-  family.setSize(120);
-  assert.strictEqual(family.getSize(), 120);
-  assert.strictEqual(store.state.settings.desktopPet.size, 120, '尺寸落盘');
+    family.setEnabled(false);
+    assert.strictEqual(family.getEnabled(), false);
+    assert.strictEqual(store.state.settings.desktopPet.enabled, false, '开关落盘');
 
-  family.setEnabled(false);
-  assert.strictEqual(family.getEnabled(), false);
-  assert.strictEqual(store.state.settings.desktopPet.enabled, false, '开关落盘');
-
-  family.setEnabled(true);
-  assert.strictEqual(family.getEnabled(), true);
-
-  family.destroy();
+    family.setEnabled(true);
+    assert.strictEqual(family.getEnabled(), true);
+  } finally {
+    family.destroy();
+  }
 });
 
 test('desktop-pet: duo 串门状态机（手动召唤无视间隔，冷却被拒）', () => {
   const { window, store } = boot();
   const C = window.DesktopPetCore;
   const family = C.createFamily(store, window.SonderBus, store.state.settings);
-  assert.strictEqual(family.getMode(), 'duo');
+  try {
+    assert.strictEqual(family.getMode(), 'duo');
 
-  const before = family.getActivePetIds().length; /* 常驻 1 */
-  const summoned = family.summonVisitor();
-  assert.strictEqual(summoned, true, '召唤成功');
-  assert.strictEqual(family.getActivePetIds().length, before + 1, '串门到场');
+    const before = family.getActivePetIds().length; /* 常驻 1 */
+    const summoned = family.summonVisitor();
+    assert.strictEqual(summoned, true, '召唤成功');
+    assert.strictEqual(family.getActivePetIds().length, before + 1, '串门到场');
 
-  /* duo 最多一只串门：当前有串门占场时再召唤被拒 */
-  const again = family.summonVisitor();
-  assert.strictEqual(again, false, '串门占场期间拒绝再召唤');
-
-  family.destroy();
+    /* duo 最多一只串门：当前有串门占场时再召唤被拒 */
+    const again = family.summonVisitor();
+    assert.strictEqual(again, false, '串门占场期间拒绝再召唤');
+  } finally {
+    family.destroy();
+  }
 });
 
 test('desktop-pet: 串门边界——离场窗口拒绝召唤 / 关闭开关立即清串门', () => {
   const { window, store } = boot();
   const C = window.DesktopPetCore;
   const family = C.createFamily(store, window.SonderBus, store.state.settings);
+  try {
+    /* 离场动画 2s 窗口内：召唤被拒（保证任意时刻最多 1 只串门） */
+    assert.strictEqual(family.summonVisitor(), true, '首次召唤成功');
+    family.display._leaveVisitor(); /* 直接触发离场，进入 2s 退场窗口 */
+    assert.strictEqual(family.summonVisitor(), false, '离场窗口内拒绝再召唤');
 
-  /* 离场动画 2s 窗口内：召唤被拒（保证任意时刻最多 1 只串门） */
-  assert.strictEqual(family.summonVisitor(), true, '首次召唤成功');
-  family.display._leaveVisitor(); /* 直接触发离场，进入 2s 退场窗口 */
-  assert.strictEqual(family.summonVisitor(), false, '离场窗口内拒绝再召唤');
-
-  /* 关闭开关：串门实例立即清除（含离场定时器），仅剩常驻 */
-  family.setEnabled(false);
-  assert.strictEqual(family.getActivePetIds().length, 1, '关闭后仅剩常驻');
-  assert.strictEqual(family.display.visitorRole, null, 'visitorRole 复位');
-  assert.strictEqual(family.display._exitTimer, null, '离场定时器已清');
-
-  family.destroy();
+    /* 关闭开关：串门实例立即清除（含离场定时器），仅剩常驻 */
+    family.setEnabled(false);
+    assert.strictEqual(family.getActivePetIds().length, 1, '关闭后仅剩常驻');
+    assert.strictEqual(family.display.visitorRole, null, 'visitorRole 复位');
+    assert.strictEqual(family.display._exitTimer, null, '离场定时器已清');
+  } finally {
+    family.destroy();
+  }
 });
 
 test('desktop-pet: PetFamily 布局/挂载到 DOM + destroy 清理', () => {
@@ -332,14 +338,17 @@ test('desktop-pet: PetFamily 布局/挂载到 DOM + destroy 清理', () => {
   const C = window.DesktopPetCore;
 
   const family = C.createFamily(store, window.SonderBus, store.state.settings);
-  family.setMode('trio');
+  try {
+    family.setMode('trio');
 
-  const petsInBody = Array.from(document.querySelectorAll('.dp-pet')).length;
-  assert.strictEqual(petsInBody, 3, 'trio 三只挂载到 DOM');
+    const petsInBody = Array.from(document.querySelectorAll('.dp-pet')).length;
+    assert.strictEqual(petsInBody, 3, 'trio 三只挂载到 DOM');
 
-  const container = document.querySelector('.dp-shelf');
-  assert.ok(container, '应有玩偶挂载容器 .dp-shelf');
-  family.destroy();
+    const container = document.querySelector('.dp-shelf');
+    assert.ok(container, '应有玩偶挂载容器 .dp-shelf');
+  } finally {
+    family.destroy();
+  }
   assert.strictEqual(document.querySelector('.dp-shelf'), null, 'destroy 移除容器');
   assert.strictEqual(document.querySelectorAll('.dp-pet').length, 0, 'destroy 清空玩偶');
 });
@@ -559,11 +568,11 @@ test('desktop-pet: triggerInteraction 返回值与事件广播', () => {
     var result = family.triggerInteraction();
     assert.strictEqual(result, true, 'triggerInteraction 返回 true');
 
-    /* 等待异步播放完成（JSDOM 下 setTimeout 即时触发） */
-    setTimeout(function () {
-      assert.strictEqual(eventFired, true, 'interaction 事件已广播');
-      assert.ok(eventData, '事件携带数据');
-    }, 50);
+    /* 事件在 triggerInteraction 内同步广播（family.emit 直调），
+     * 断言同步书写——旧用例放 setTimeout(50) 内属孤儿断言（失败不计入本测试） */
+    assert.strictEqual(eventFired, true, 'interaction 事件已广播');
+    assert.ok(eventData, '事件携带数据');
+    assert.strictEqual(typeof eventData.type, 'string', '事件含 type 字段');
   } finally {
     family.destroy();
   }
@@ -1336,21 +1345,21 @@ test('desktop-pet: 距离检测——超过 200px 不触发', () => {
   const C = window.DesktopPetCore;
   const family = new C.PetFamily(store);
   try {
-    family.setMode('multi');
-    /* mock getBoundingClientRect 远距离 */
+    family.setMode('trio'); /* trio 才有 ≥2 实例（旧用例传 'multi' 非法值被白名单静默忽略→分支空转） */
     const instances = family.display.instances;
     const keys = Object.keys(instances);
-    if (keys.length >= 2) {
-      const orig0 = instances[keys[0]].el.getBoundingClientRect;
-      const orig1 = instances[keys[1]].el.getBoundingClientRect;
-      instances[keys[0]].el.getBoundingClientRect = () => ({ left: 0, top: 0, width: 32, height: 32, right: 32, bottom: 32 });
-      instances[keys[1]].el.getBoundingClientRect = () => ({ left: 300, top: 300, width: 32, height: 32, right: 332, bottom: 332 });
-      /* canTrigger 应返回 false（距离 > 200px） */
-      assert.strictEqual(family.interaction.canTrigger(), false, '距离超 200px canTrigger=false');
-      /* 恢复 */
-      instances[keys[0]].el.getBoundingClientRect = orig0;
-      instances[keys[1]].el.getBoundingClientRect = orig1;
-    }
+    assert.ok(keys.length >= 2, 'trio 模式应至少 2 只在场');
+    /* 重置互动冷却：保证 canTrigger 结果仅由距离决定 */
+    family.interaction.lastAt = 0;
+    const orig0 = instances[keys[0]].el.getBoundingClientRect;
+    const orig1 = instances[keys[1]].el.getBoundingClientRect;
+    instances[keys[0]].el.getBoundingClientRect = () => ({ left: 0, top: 0, width: 32, height: 32, right: 32, bottom: 32 });
+    instances[keys[1]].el.getBoundingClientRect = () => ({ left: 300, top: 300, width: 32, height: 32, right: 332, bottom: 332 });
+    /* canTrigger 应返回 false（距离 > 200px） */
+    assert.strictEqual(family.interaction.canTrigger(), false, '距离超 200px canTrigger=false');
+    /* 恢复 */
+    instances[keys[0]].el.getBoundingClientRect = orig0;
+    instances[keys[1]].el.getBoundingClientRect = orig1;
   } finally {
     family.destroy();
   }
@@ -1361,19 +1370,18 @@ test('desktop-pet: 距离检测——近距离可触发', () => {
   const C = window.DesktopPetCore;
   const family = new C.PetFamily(store);
   try {
-    family.setMode('multi');
+    family.setMode('trio');
     const instances = family.display.instances;
     const keys = Object.keys(instances);
-    if (keys.length >= 2) {
-      /* mock getBoundingClientRect 近距离 */
-      instances[keys[0]].el.getBoundingClientRect = () => ({ left: 100, top: 100, width: 32, height: 32, right: 132, bottom: 132 });
-      instances[keys[1]].el.getBoundingClientRect = () => ({ left: 150, top: 150, width: 32, height: 32, right: 182, bottom: 182 });
-      /* canTrigger 应通过距离检查（距离 ≈ 70px < 200px） */
-      /* 可能因冷却时间返回 false，但不应因距离返回 false */
-      const result = family.interaction.canTrigger();
-      /* 如果返回 false，是因为冷却时间而非距离 */
-      assert.strictEqual(typeof result, 'boolean', '返回布尔值');
-    }
+    assert.ok(keys.length >= 2, 'trio 模式应至少 2 只在场');
+    /* mock getBoundingClientRect 近距离（≈70px < 200px） */
+    instances[keys[0]].el.getBoundingClientRect = () => ({ left: 100, top: 100, width: 32, height: 32, right: 132, bottom: 132 });
+    instances[keys[1]].el.getBoundingClientRect = () => ({ left: 150, top: 150, width: 32, height: 32, right: 182, bottom: 182 });
+    /* 重置冷却/播放态：此时 canTrigger 应真实通过全部检查 */
+    family.interaction.lastAt = 0;
+    family.interaction.playing = false;
+    family.interaction.dragging = false;
+    assert.strictEqual(family.interaction.canTrigger(), true, '近距离且无其他阻塞时 canTrigger=true');
   } finally {
     family.destroy();
   }
@@ -1452,16 +1460,17 @@ test('desktop-pet: _tick 视线追踪平滑插值', () => {
 });
 
 test('desktop-pet: _doBlink 切换 dp-eyes-closed 类名', async () => {
-  const { window } = boot();
-  const C = window.DesktopPetCore;
-  const pet = new C.Pet({ character: C.CHARACTERS.xiaomo, container: window.document.body });
+  const h = require('./harness.js');
+  const hh = h.boot();
+  const C = hh.window.DesktopPetCore;
+  const pet = new C.Pet({ character: C.CHARACTERS.xiaomo, container: hh.window.document.body });
   pet._build();
   assert.ok(pet.el, '构建后 el 存在');
   assert.ok(!pet.el.classList.contains('dp-eyes-closed'), '初始无 dp-eyes-closed');
   pet._doBlink();
   assert.ok(pet.el.classList.contains('dp-eyes-closed'), '_doBlink 添加 dp-eyes-closed');
-  /* 等待眨眼结束（150ms） */
-  await new Promise(function (resolve) { setTimeout(resolve, 200); });
+  /* 轮询等待眨眼结束（160ms 恢复定时器；固定等待在慢机器上 flaky） */
+  await h.waitFor(() => !pet.el.classList.contains('dp-eyes-closed'), '眨眼恢复', 2000);
   assert.ok(!pet.el.classList.contains('dp-eyes-closed'), '眨眼结束后移除 dp-eyes-closed');
   pet.destroy();
 });
