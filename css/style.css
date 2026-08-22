@@ -948,6 +948,12 @@ input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border-radius
   .hbar input, .hbar select, .hbar .tool { flex: 1; min-width: 0; font-size: 16px; }
   .field input, .field select, .field textarea { font-size: 16px; }
 
+  /* P4: 七模块移动端适配——卡片收紧/标签值堆叠/stat行换行 */
+  .card { padding: 14px; }
+  .row > .grow { flex-basis: 100%; }
+  .stat-row { flex-wrap: wrap; }
+  .hbar .btn, .hbar .small-btn { flex: 1 1 auto; text-align: center; }
+
   /* 弹窗在手机端为底部抽屉（覆盖基础居中样式，见块头说明） */
   .modal { width: 100%; max-height: 82vh; max-height: 82dvh; }
   .overlay { padding: 10px; align-items: flex-end; }
