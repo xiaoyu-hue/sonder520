@@ -515,6 +515,7 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
    * 防止旧客户端把新密文当明文解析、normalize 清空数据后明文覆盖（不可逆丢失）。
    * 轻量探测：本站密文 payload 恒以 {"e":1 开头（store._encSave 固定格式），正则判定避免全量 JSON.parse。
    * 只对已知集合 key 逐个探测，不依赖 localStorage 遍历 API（内存存储/测试环境兼容）。 */
+  /* ==================== TrustLayer: 加密探测 ==================== */
   Store.prototype._hasEncSnapshot = function () {
     if (!this._storage) return false;
     try {
@@ -571,6 +572,8 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
    * 加密盐/壁纸等一次性关键 setItem 保持同步（正确性优先，非热路径）。
    * map = {集合id: 序列化串}（明文或密文原样落盘）；key 需先于 _meta 刷新调用。 */
   /** @this {{ _storage: any, state: any, _meta: any, _pendingLocalCols: any, _localFlushHandle: any, _doLocalFlush: Function, _storeWrite: Function }} */
+  /* ==================== TrustLayer: 持久化核心 ==================== */
+  /* --- LS 副本层 --- */
   Store.prototype._persistLocal = function (map) {
     if (!this._storage || !map) return;
     this._meta = nowISO();
@@ -720,6 +723,7 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
    * undefined/null/空 map 一律跳过——绝不回退到内存 state 序列化：锁定态下内存是明文空
    * defaultState，回退写盘会把明文空数据写进 IDB，破坏密文主快照（loadIdb 空 IDB 回填路径）。 */
   /** @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _idbWriteCols: any, _colJson: any, _rev: number, _idbFailed: boolean, _statusReason: string }} */
+  /* --- IDB 主快照层 --- */
   Store.prototype._idbWriteCols = function (map, extra) {
     if (!idbAvailable() || !map) return;
     var meta = this._meta || nowISO();
@@ -778,6 +782,7 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
   };
 
   /** @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _storeWrite: Function, _idbWriteCols: any, _colJson: any, _rev: number, _encKey: any, _collectAll: Function, _encSave: Function, needsUnlock: Function }} */
+  /* --- 写入协调 --- */
   Store.prototype.save = function () {
     var map = this._collectAll();
     if (!map) return; /* 全集合与最近落盘一致：零序列化零 IO */
@@ -830,6 +835,7 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
    * 落盘前经 _storeWrite 走写锁让位协议（同明文 _storeWrite，ADR-007）。
    * map = {集合id: 明文串}；返回 Promise（失败由调用方捕获，存储停留在上次成功版本）。 */
   /** @this {{ _encKey: any, _encChain: Promise<any>, _storeWrite: Function, _encSaltExtra: Function, _statusReason: string, _storage: any }} */
+  /* ==================== TrustLayer: 加密落盘 ==================== */
   Store.prototype._encSave = function (map) {
     var self = this;
     if (!this._encKey || !Crypto) return Promise.resolve();
@@ -882,6 +888,7 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
    * @returns {Promise<boolean>} true=已落盘 false=已让位吸收
    * 无锁环境：顺序直执行各相位并 resolve(true)（保持既有同步语义兼容）。 */
   /** @this {{ _storage: any, _lastSeenMeta: any, _pendingLocalCols: any, _meta: any, _localFlushHandle: any, _absorbNewer: Function, _persistLocal: Function, _doLocalFlush: Function, _idbWriteCols: Function }} */
+  /* ==================== TrustLayer: 写锁收口（ADR-013）==================== */
   Store.prototype._storeWrite = function (map, opts) {
     var self = this;
     opts = opts || {};
@@ -941,6 +948,7 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
    * 返回 Promise<是否采用持久化数据需重绘>：IDB 数据被采用（任一集合来自 IDB 且 state 变更）→ true；
    * 仅 LS 数据（构造期已同步合并）→ false（等价旧行为：不重绘）。 */
   /** @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _idbWriteCols: any, _colJson: any, _rev: number, save: Function, _encKey: any, _decryptParse: Function, _idbEncLocked: boolean, flushPersist: Function, _emitChange: Function, _migrateLegacyIfNeeded: Function, _loadColsMerge: Function, _backfillCols: Function }} */
+  /* ==================== TrustLayer: IDB 读取与迁移 ==================== */
   Store.prototype.loadIdb = function () {
     var self = this;
     if (!idbAvailable()) return Promise.resolve(false);
@@ -1173,6 +1181,7 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
   };
 
   /* 把存储字符串解析为 state 对象；密文格式（e===1）需已解锁并解密，失败一律返回 null 不动数据 */
+  /* ==================== TrustLayer: 解密解析 ==================== */
   Store.prototype._decryptParse = function (data) {
     var self = this;
     var parsed = null;
@@ -1191,6 +1200,7 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
 
   /* 手动迁移：立即把当前全部数据写入 IndexedDB（只复制不删旧数据，等价旧行为抛去"全量"语义） */
   /** @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _idbWriteCols: any, _encKey: any, _encSave: Function, needsUnlock: Function, _colPayloadJson: Function, _storeWrite: Function }} */
+  /* ==================== TrustLayer: 手动迁移 ==================== */
   Store.prototype.migrateToIdb = function () {
     if (!idbAvailable()) return Promise.resolve(false);
     /* 锁定态守卫：内存是明文空 defaultState，序列化直写会以明文空数据覆盖 IDB 密文主快照 */
@@ -1220,6 +1230,7 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
   /* 当前数据体积（字节）。接近 5MB 上限时前端显示警示条。
    * 以最近一次各集合落盘串长度求和为准（密文模式 _colJson 存密文→天然反映加密体积）；
    * 尚无落盘记录时回退实时序列化兜底。 */
+  /* ==================== TrustLayer: 存储诊断 ==================== */
   Store.prototype.storageUsage = function () {
     var total = 0;
     for (var id in this._colJson) {
@@ -1318,6 +1329,7 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
   }
 
   /* ====== 可选加密（默认关闭；开启后本地快照为密文，需解锁使用） ====== */
+  /* ==================== TrustLayer: 加解密切换 ==================== */
   Store.prototype.encryptionMode = function () {
     return this._encKey ? 'unlocked' : (this.needsUnlock() ? 'locked' : 'off');
   };
@@ -1444,6 +1456,7 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
    * 并 _encSave(collectAllRaw) 回写，会用空数据覆盖全部存储的该集合——不可逆丢失。
    * 故 unlock 前必须整体验证；代价是解锁时多一轮解密（用户手动低频路径，可接受）。 */
   /** @this {{ _collectSnapshotRaw: Function }} */
+  /* ==================== TrustLayer: 快照读取 ==================== */
   Store.prototype._verifySnapshotIntegrity = function (key) {
     if (!Crypto) return Promise.resolve(true);
     return this._collectSnapshotRaw().then(function (raws) {
@@ -1649,6 +1662,7 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
   };
 
   /* ====== 通用 ====== */
+  /* ==================== TrustLayer: 导出/导入/清空 ==================== */
   Store.prototype.clearAll = function () {
     this.state = defaultState();
     this.save();
