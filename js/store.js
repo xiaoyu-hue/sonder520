@@ -406,7 +406,7 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
   }
 
   /* ---------- Store ---------- */
-  /** @constructor @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _lockedIdbWrite: Function, _idbWriteCols: any, _colJson: any, _rev: number, _encKey: any, _hasEncSnapshot: Function, _hasLegacySnapshot: Function, _readLocalColsRaw: Function, _idbEncLocked: boolean, _undo: any[], _pendingLocalCols: any, _localFlushHandle: any, _bus: any, _emitChange: Function, _persistFailed: boolean, _idbFailed: boolean, _lastPersistError: any, _statusReason: string, _lastSeenMeta: any, _bindStorageWatch: Function }} */
+  /** @constructor @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _storeWrite: Function, _idbWriteCols: any, _colJson: any, _rev: number, _encKey: any, _hasEncSnapshot: Function, _hasLegacySnapshot: Function, _readLocalColsRaw: Function, _idbEncLocked: boolean, _undo: any[], _pendingLocalCols: any, _localFlushHandle: any, _bus: any, _emitChange: Function, _persistFailed: boolean, _idbFailed: boolean, _lastPersistError: any, _statusReason: string, _lastSeenMeta: any, _bindStorageWatch: Function }} */
   function Store(storage) {
     this._storage = storage || (typeof localStorage !== 'undefined' ? localStorage : null);
     /* SonderBus 数据变更广播总线（浏览器 window.SonderBus / 测试注入；缺省静默） */
@@ -570,7 +570,7 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
    * （Node/测试/旧浏览器）同步落盘，保证存储一致性。
    * 加密盐/壁纸等一次性关键 setItem 保持同步（正确性优先，非热路径）。
    * map = {集合id: 序列化串}（明文或密文原样落盘）；key 需先于 _meta 刷新调用。 */
-  /** @this {{ _storage: any, state: any, _meta: any, _pendingLocalCols: any, _localFlushHandle: any, _doLocalFlush: Function, _lockedLocalFlush: Function }} */
+  /** @this {{ _storage: any, state: any, _meta: any, _pendingLocalCols: any, _localFlushHandle: any, _doLocalFlush: Function, _storeWrite: Function }} */
   Store.prototype._persistLocal = function (map) {
     if (!this._storage || !map) return;
     this._meta = nowISO();
@@ -583,19 +583,13 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     if (typeof globalThis.requestIdleCallback === 'function') {
       this._localFlushHandle = globalThis.requestIdleCallback(function () {
         self._localFlushHandle = null;
-        self._lockedLocalFlush();
+        self._storeWrite(null, { ls: 'immediate', idb: 'skip' });
       }, { timeout: 900 });
     } else {
       this._doLocalFlush(); /* 无 idle API：同步落盘 */
     }
   };
 
-  /* Web Locks 多标签写锁：navigator.locks 可用时（Chrome 69+/FF 96+/Safari 15.4+）
-   * 防抖落盘点在本标签持锁回调内执行；拿锁失败/环境不支持 → 降级直接落盘（等价旧行为）。
-   * ADR-013：实现已收口至 _storeWrite，本方法仅为既有调用方保留的薄壳。 */
-  Store.prototype._lockedLocalFlush = function () {
-    return this._storeWrite(null, { ls: 'immediate', idb: 'skip' });
-  };
 
   /* 让位：放弃本次旧快照覆盖，改为吸收 localStorage 中的最新 LS 快照（其他标签已写更新）。
    * 与被动收敛（_bindStorageWatch）共用 _absorbLocalSnapshot 核心；
@@ -783,7 +777,7 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     return map;
   };
 
-  /** @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _lockedIdbWrite: Function, _idbWriteCols: any, _colJson: any, _rev: number, _encKey: any, _collectAll: Function, _encSave: Function, needsUnlock: Function }} */
+  /** @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _storeWrite: Function, _idbWriteCols: any, _colJson: any, _rev: number, _encKey: any, _collectAll: Function, _encSave: Function, needsUnlock: Function }} */
   Store.prototype.save = function () {
     var map = this._collectAll();
     if (!map) return; /* 全集合与最近落盘一致：零序列化零 IO */
@@ -799,18 +793,18 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
       return;
     }
     /* 双写：LS 副本先同步刷新 meta（版本时间戳基线，IDB 主快照用同一 savedAt），
-     * IDB 主快照经写锁让位检查后异步落盘（_lockedIdbWrite，与加密路径同协议）。
+     * IDB 主快照经写锁让位检查后异步落盘（_storeWrite，与加密路径同协议）。
      * 顺序不可交换：IDB 写依赖 _persistLocal 已设置的 _meta，
      * 否则 IDB savedAt 恒旧于 LS，读取时永远误判"LS 更新"（④ 主写转换，见 ADR 说明）。
      * 读取路径按版本取新（loadIdb），任一侧失败另一侧即兜底，数据安全不依赖写序。 */
     this._persistLocal(map);
-    this._lockedIdbWrite(map);
+    this._storeWrite(map, { ls: 'skip', idb: 'write' });
   };
 
   /* 集合级变更收口（ADR-009 决策 7 的写路径唯一入口之一）：
    * 只序列化+落盘指定集合；非法集合 id 回落全量 save（防呆兜底——绝不丢数据）。
    * 与 save() 等价语义：内容未变 → 零 IO；锁定态拒绝明文落盘。 */
-  /** @this {{ _storage: any, _rev: number, _colPayloadJson: Function, needsUnlock: Function, _encKey: any, _encSave: Function, _persistLocal: Function, _lockedIdbWrite: Function, _idbWriteCols: Function, save: Function }} */
+  /** @this {{ _storage: any, _rev: number, _colPayloadJson: Function, needsUnlock: Function, _encKey: any, _encSave: Function, _persistLocal: Function, _storeWrite: Function, _idbWriteCols: Function, save: Function }} */
   Store.prototype._commit = function (col) {
     if (typeof col !== 'string' || COLLECTIONS.indexOf(col) < 0) {
       this.save(); /* 未收口集合：全量兜底（性能退化，绝不丢数据） */
@@ -829,15 +823,15 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
       return;
     }
     this._persistLocal(map);
-    this._lockedIdbWrite(map);
+    this._storeWrite(map, { ls: 'skip', idb: 'write' });
   };
 
   /* 加密落盘：AES-GCM 异步（微任务级，用户操作间隙完成），逐集合独立 bundle（每集合新 iv）。
    * 串行队列保证加密按调用顺序落盘：encryptText 为异步，连续多次并发保存
    * 若不排队，后发起的加密可能先完成并覆盖落盘 → 旧状态覆盖新状态（丢最新变更）。
-   * 落盘前经 _lockedEncWrite 走写锁让位协议（同明文 _lockedLocalFlush，ADR-007）。
+   * 落盘前经 _storeWrite 走写锁让位协议（同明文 _storeWrite，ADR-007）。
    * map = {集合id: 明文串}；返回 Promise（失败由调用方捕获，存储停留在上次成功版本）。 */
-  /** @this {{ _encKey: any, _persistLocal: any, _idbWriteCols: any, _encChain: Promise, flushPersist: Function, _lockedEncWrite: Function, _statusReason: string, _storage: any }} */
+  /** @this {{ _encKey: any, _encChain: Promise<any>, _storeWrite: Function, _encSaltExtra: Function, _statusReason: string, _storage: any }} */
   Store.prototype._encSave = function (map) {
     var self = this;
     if (!this._encKey || !Crypto) return Promise.resolve();
@@ -855,7 +849,7 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
         var encMap = {};
         results.forEach(function (r) { encMap[r.col] = r.payload; });
         /* ADR-013：LS+IDB 双相位由收口点在锁内一次完成（旧实现 IDB 在锁外） */
-        return self._lockedEncWrite(encMap).then(function (written) {
+        return self._storeWrite(encMap, { ls: 'immediate', idb: 'write', extra: self._encSaltExtra() }).then(function (written) {
           if (!written) return; /* 让位：本次密文不落盘，新快照吸收后由后续 save 跟进 */
         });
       });
@@ -867,17 +861,6 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     return self._encChain;
   };
 
-  /* 加密落盘的写锁封装：与明文 _lockedLocalFlush 同一让位协议（ADR-007）。
-   * 锁内写前检查 meta——另一标签已写更新快照 → 让位不覆盖（吸收新快照），
-   * resolve(false) 表示本次密文未落盘；一致 → 立即落盘并 resolve(true)。
-   * Promise 化保证 enableEncryption 的回读验证在锁回调完成后才执行；
-   * 无锁环境降级直接落盘（等价旧行为）。 */
-  /** @this {{ _storeWrite: Function, _encSaltExtra: Function }} */
-  Store.prototype._lockedEncWrite = function (encMap) {
-    /* ADR-013：收口委托。LS+IDB 两相位同锁完成（旧实现 IDB 在锁外，
-     * 锁释放与 put 之间存在竞态窗——本壳随调用方迁移后删除）。 */
-    return this._storeWrite(encMap, { ls: 'immediate', idb: 'write', extra: this._encSaltExtra() });
-  };
 
   /* 密文 entry 附带盐（IDB extra）；盐缺失返回空对象 */
   /** @this {{ _storage: any }} */
@@ -952,12 +935,6 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     });
   };
 
-  /* 明文 IDB 主快照写的让位封装（ADR-007 → ADR-013 收口薄壳）：
-   * 历史：修复"明文路径 IDB 无条件立即执行绕过让位检查"。现由收口点统一提供协议。 */
-  /** @this {{ _storeWrite: Function }} */
-  Store.prototype._lockedIdbWrite = function (map) {
-    return this._storeWrite(map, { ls: 'skip', idb: 'write' });
-  };
 
   /* 启动时调用：优先从 IndexedDB 恢复（逐集合按 savedAt 取新，LS meta 为版本基线）。
    * 集合级读路径：对每个注册集合比较 LS 原文与 IDB entry（LS 存在且 (IDB 缺 或 LS meta 更新) → 取 LS；
@@ -1207,9 +1184,8 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
   };
 
   /* 手动迁移：立即把当前全部数据写入 IndexedDB（只复制不删旧数据，等价旧行为抛去"全量"语义） */
-  /** @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _idbWriteCols: any, _encKey: any, _encSave: Function, needsUnlock: Function, _colPayloadJson: Function, _persistLocalColsSync: Function }} */
+  /** @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _idbWriteCols: any, _encKey: any, _encSave: Function, needsUnlock: Function, _colPayloadJson: Function, _storeWrite: Function }} */
   Store.prototype.migrateToIdb = function () {
-    var self = this;
     if (!idbAvailable()) return Promise.resolve(false);
     /* 锁定态守卫：内存是明文空 defaultState，序列化直写会以明文空数据覆盖 IDB 密文主快照 */
     if (this.needsUnlock()) return Promise.resolve(false);
@@ -1230,13 +1206,9 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
       /* 加密态：IDB 主快照必须与 LS 副本同为密文（走 _encSave 双写），不得写入内存明文 */
       return this._encSave(map).then(function () { return true; }).catch(function () { return false; });
     }
-    return this._persistLocalColsSync(map).then(function () {
-      return openIdb().then(function (db) {
-        var jobs = [];
-        for (var id in map) jobs.push(idbPut(db, id, { savedAt: self._meta, data: map[id] }));
-        return Promise.all(jobs).then(function () { return true; });
-      }).catch(function () { return false; });
-    }).catch(function () { return false; });
+    /* ADR-013：明文迁移经收口点（旧实现自开 idbPut 事务绕过串行队列与让位协议）。
+     * 让位语义：他标签已写更新快照时返回 false——迁移不得以陈旧全量覆盖新数据。 */
+    return this._storeWrite(map, { ls: 'immediate', idb: 'write' }).then(function (w) { return !!w; }).catch(function () { return false; });
   };
 
   /* 当前数据体积（字节）。接近 5MB 上限时前端显示警示条。
@@ -1392,11 +1364,9 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
       if (self._storage) {
         try { self._storage.removeItem(STORAGE_SALT_KEY); } catch (e) { /* 忽略 */ }
       }
-      /* 兜底：把内存明文快照写回双存（若密文已部分落盘则覆盖为明文） */
-      var fallback = self._collectAllRaw();
-      self._persistLocal(fallback);
-      self.flushPersist(); /* 兜底明文必须立即可见，避免异常后停留半密文状态 */
-      self._idbWriteCols(fallback);
+      /* 兜底：把内存明文快照写回双存（若密文已部分落盘则覆盖为明文）。
+       * ADR-013：经收口点——他标签已写更新时让位而非覆盖 */
+      self._storeWrite(self._collectAllRaw(), { ls: 'immediate', idb: 'write' });
       throw err;
     });
   };
@@ -1451,13 +1421,13 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
           if (self._storage) {
             try { self._storage.removeItem(STORAGE_SALT_KEY); } catch (e) { /* 忽略 */ }
           }
-          /* 显式转明文：直接双写绕过 save 的锁定态守卫（此时 LS 仍是密文） */
+          /* 显式转明文（ADR-013 经收口点）：他标签已写更新密文时让位
+           * （written=false 仅不覆盖，切换照常完成——基线已由吸收同步）。 */
           var plain = self._collectAllRaw();
-          self._persistLocal(plain);
-          self.flushPersist(); /* 密文→明文切换必须即时完成 */
-          self._idbWriteCols(plain);
-          self._emitChange('all'); /* 加解密切换：全页重绘反映加密状态 */
-          return true;
+          return self._storeWrite(plain, { ls: 'immediate', idb: 'write' }).then(function () {
+            self._emitChange('all'); /* 加解密切换：全页重绘反映加密状态 */
+            return true;
+          });
         });
       });
     });
