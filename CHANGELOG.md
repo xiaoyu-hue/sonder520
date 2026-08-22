@@ -7,6 +7,7 @@
 
 ### 已实施
 
+- **ADR-014 Phase ④ IndexedDB 真源反转（v6.0 核心遗留项落地）**：稳态载入冲突消解反转为 IDB 优先（savedAt 同刻/更新即胜出，LS 仅严格更新或 IDB 缺失/损坏时接管）；`_storeWrite` 物理写序反转（盖 meta → IDB 主快照先落 → LS 副本随后，同批同戳）；跨标签信号通道与写锁基线维持 LS meta（LS=信号+副本层，IDB=载入真源，符合规范 Metadata 定位）；引导期豁免——刚完成 legacy 拆分的那次合并平局仍取 LS，首次安装不误报重绘。测试 +3（idb-primary.test.js：rawLS 注入构造纯冲突平局断言/LS 严格新回归/物理写序），695 全绿。数据格式零变化、零迁移，单文件可回滚。
 - **ADR-013 写路径统一收口（Phase ④ 前置工程）**：新增唯一落盘点 `_storeWrite`（锁内固定序列：meta 让位检查 → LS 相位 → IDB 相位，返回 true=落盘/false=让位）；全部 6 种落盘形态迁入，4 处绕过点（_encSave 锁外写 IDB 竞态窗/enableEncryption 兜底/disableEncryption/migrateToIdb 自开事务）补齐让位协议；三个旧 wrapper 删除净删约 120 行锁样板；LS 相位区分带内容与纯 flush 保住"LS meta == IDB savedAt 同批配对"语义；静态清点门禁测试永久防绕过（`_idbWriteCols` 直调只许存在于收口体内）。测试 +7（收口单元×4/门禁×1/让位集成×2），692 全绿。为 Phase ④ 铺平：改相位顺序不再触碰调用方。
 - **P0 部署一致性急救 + SW 指纹门禁**：修复 c36cba3 起的 ASSET_SIG 过期脱节（重算指纹与 sw.js 存值不符——回访老用户 SW 永不更新、永久停留旧版）；`sync-sw` 新增 `--check` 只读校验模式（清单/指纹不一致 exit 1），deploy.yml test job 接入为 CI 硬门禁，杜绝"改文件忘升版"复发；指纹算法行尾归一化（`\r\n→\n` 后哈希），防 `core.autocrlf` 在 Windows/Linux 检出差异导致平台间指纹漂移；新增回归测试 ×3（--check 功能性运行/参数解析/归一化存在性）。
 - 离线缓存升版 v57 → v58。

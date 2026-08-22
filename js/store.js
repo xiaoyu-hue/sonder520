@@ -792,11 +792,9 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
       });
       return;
     }
-    /* 双写：LS 副本先同步刷新 meta（版本时间戳基线，IDB 主快照用同一 savedAt），
-     * IDB 主快照经写锁让位检查后异步落盘（_storeWrite，与加密路径同协议）。
-     * 顺序不可交换：IDB 写依赖 _persistLocal 已设置的 _meta，
-     * 否则 IDB savedAt 恒旧于 LS，读取时永远误判"LS 更新"（④ 主写转换，见 ADR 说明）。
-     * 读取路径按版本取新（loadIdb），任一侧失败另一侧即兜底，数据安全不依赖写序。 */
+    /* 双写（ADR-014 真源反转）：_persistLocal 先合并待写并盖 _meta（版本基线），
+     * 随后 _storeWrite 以同一 savedAt 落 IDB 主快照；LS 副本由 idle 防抖消费
+     * （物理顺序：IDB 先、LS 后——真源先行，副本兜底，任一侧失败另一侧兜底）。 */
     this._persistLocal(map);
     this._storeWrite(map, { ls: 'skip', idb: 'write' });
   };
@@ -890,20 +888,20 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     var doLS = opts.ls === 'immediate';
     var doIDB = opts.idb === 'write';
     function runPhases() {
-      if (doLS) {
-        /* 有内容：并入待写 + 设定 _meta 基线并作废已调度 idle（立即相位）；
-         * 空调用（纯 flush 场景）：只消费既有待写，不重盖时间戳——保住
-         * "LS meta == IDB savedAt 同批落盘"的配对语义。 */
-        if (map && Object.keys(map).length > 0) {
-          self._persistLocal(map);
-          if (self._localFlushHandle !== null && typeof globalThis.cancelIdleCallback === 'function') {
-            globalThis.cancelIdleCallback(self._localFlushHandle);
-          }
-          self._localFlushHandle = null;
+      /* Phase ④（ADR-014）物理写序反转：主快照 IDB 先行，LS 副本随后。
+       * 两相位共用同一 _meta（同批同戳），真源先落、副本兜底。 */
+      var hasContent = map && Object.keys(map).length > 0;
+      if (doLS && hasContent) {
+        /* 并入待写 + 设定 _meta 基线并作废已调度 idle（立即相位，仅合并不落盘） */
+        self._persistLocal(map);
+        if (self._localFlushHandle !== null && typeof globalThis.cancelIdleCallback === 'function') {
+          globalThis.cancelIdleCallback(self._localFlushHandle);
         }
-        self._doLocalFlush();
+        self._localFlushHandle = null;
       }
       if (doIDB) self._idbWriteCols(map || {}, opts.extra);
+      /* 空调用（纯 flush 场景）：只消费既有待写，不重盖时间戳 */
+      if (doLS) self._doLocalFlush();
     }
 
     var locks = (typeof navigator !== 'undefined' && navigator.locks && typeof navigator.locks.request === 'function')
@@ -947,8 +945,11 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     var self = this;
     if (!idbAvailable()) return Promise.resolve(false);
     return openIdb().then(function (db) {
-      return self._migrateLegacyIfNeeded(db).then(function () {
-        return self._loadColsMerge(db).then(function (merged) {
+      return self._migrateLegacyIfNeeded(db).then(function (justSplit) {
+        /* ADR-014 引导期豁免：刚完成 legacy 拆分的这一次合并，平局仍取 LS——
+         * split 回声两侧内容恒等，且首次安装不应误报"采用 IDB"触发全量重绘。
+         * 稳态（非本次拆分）冲突一律 IDB 优先。 */
+        return self._loadColsMerge(db, justSplit === true).then(function (merged) {
           if (!merged) return false; /* 全新库：两端均无集合级数据 */
           self.state = normalize(merged.state);
           self._colJson = {};
@@ -973,14 +974,14 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     if (this._storage) {
       try { flag = !!this._storage.getItem(GRANULAR_FLAG); } catch (e) { flag = false; }
     }
-    if (flag) return Promise.resolve();
+    if (flag) return Promise.resolve(false);
     var lsRaw = null;
     if (this._storage) {
       try { lsRaw = this._storage.getItem(STORAGE_KEY); } catch (e) { lsRaw = null; }
     }
     return idbGet(db, IDB_KEY).then(function (entry) {
-      if (!lsRaw && !entry) return; /* 无 legacy 来源 */
-      return self._splitLegacy(lsRaw, entry);
+      if (!lsRaw && !entry) return false; /* 无 legacy 来源 */
+      return self._splitLegacy(lsRaw, entry).then(function () { return true; });
     });
   };
   /* 拆分整份 legacy（lsRaw / idbEntry 至多其一非空；两者都有时取更新者——LS meta 更新取 LS，否则 IDB）。
@@ -996,7 +997,10 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
         var idbSavedAt = (idbEntry && typeof idbEntry === 'object' && !Array.isArray(idbEntry)) ? idbEntry.savedAt : '';
         var lsMeta = null;
         try { lsMeta = this._storage ? this._storage.getItem(STORAGE_META_KEY) : null; } catch (e) { lsMeta = null; }
-        /* 取更新者：仅当 IDB savedAt 严格大于 LS meta 才用 IDB（相等/缺 meta → LS，同毫秒双写不误判） */
+        /* 取更新者：仅当 IDB savedAt 严格大于 LS meta 才用 IDB（相等/缺 meta → LS）。
+         * ADR-014 注：此处为构造期一次性 legacy 引导，刻意维持保守平局规则——
+         * 引导期两侧同源且存在异步时序窗；真源反转（平局取 IDB）只适用于
+         * 稳态集合级合并 _loadColsMerge。 */
         if (!(idbSavedAt && lsMeta && idbSavedAt > lsMeta)) useRaw = lsRaw;
       }
     }
@@ -1062,7 +1066,7 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
    * {state, fromIdb, lsRaw, idbRaw}（lsRaw/idbRaw 为回填用原文映射）。
    * 解密失败/密文未解锁的集合：不合并（保底空）、不落盘、不覆盖（数据留在原处）。
    * 密文集合探测到锁定 → _idbEncLocked = true。 */
-  Store.prototype._loadColsMerge = function (db) {
+  Store.prototype._loadColsMerge = function (db, tiePreferLS) {
     var self = this;
     var lsMeta = null;
     if (this._storage) {
@@ -1082,18 +1086,20 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
          * 密文 bundle 交由解密路径判定（未解锁≠损坏，绝不在此侧淘汰）。 */
         var lsBad = lsRaw !== null && lsRaw !== undefined && !plainJsonOk(lsRaw);
         var idbBad = idbRaw !== null && idbRaw !== undefined && !plainJsonOk(idbRaw);
-        /* LS 优先：仅当 IDB 明确更新（savedAt 严格大于 LS meta）才换 IDB。
-         * 双写同批落盘时 LS meta 与 IDB savedAt 相同——相等必须取 LS（构造期已同步吸收），
-         * 否则迁移/回填的同毫秒双写会被误判为"IDB 新"→ 无谓地触发全量重绘。
-         * 损坏例外：LS 原文无效而 IDB 有效 → 无条件取 IDB（修复优先于新旧）。 */
-        if (!lsBad && idbBad) {
-          useRaw = lsRaw;
-        } else if (lsBad && !idbBad && idbRaw !== null && idbRaw !== undefined) {
+        /* Phase ④ 真源反转：IDB = Primary。两侧有效时 IDB 在"同刻或更新"即胜出
+         * （>= 而非旧的 >），LS 仅在严格更新或 IDB 缺失/损坏时接管。
+         * 同批双写两侧内容一致，平局取 IDB 无数据差异；LS 仍承担跨标签信号通道
+         * （storage 事件/写锁基线）与降级副本角色（ADR-014）。 */
+        
+        var idbPreferred = !!idbSavedAt && (!lsMeta || (tiePreferLS ? idbSavedAt > lsMeta : idbSavedAt >= lsMeta));
+        if (lsBad && !idbBad && idbRaw !== null && idbRaw !== undefined) {
           useRaw = idbRaw;
           fromIdb = true;
-        } else if (lsRaw !== null && lsRaw !== undefined && (idbRaw === null || idbRaw === undefined || !(idbSavedAt && lsMeta && idbSavedAt > lsMeta))) {
+        } else if (!lsBad && idbBad) {
           useRaw = lsRaw;
-        } else if (idbRaw !== null && idbRaw !== undefined) {
+        } else if (!idbPreferred && lsRaw !== null && lsRaw !== undefined) {
+          useRaw = lsRaw;
+        } else if ((idbPreferred || lsRaw === null || lsRaw === undefined) && idbRaw !== null && idbRaw !== undefined) {
           useRaw = idbRaw;
           fromIdb = true;
         }
