@@ -64,7 +64,7 @@ test('PWA：旧版本缓存会被自动清理', () => {
 });
 
 test('PWA：全部静态资源列入预缓存清单', () => {
-  ['index.html', 'css/style.css', 'img/wallpaper.jpg', 'assets/icon.svg'].forEach(p => {
+  ['index.html', 'css/style-base.css', 'css/style-responsive.css', 'css/style-animations.css', 'css/style-modules.css', 'img/wallpaper.jpg', 'assets/icon.svg'].forEach(p => {
     assert.ok(sw.includes("'./" + p + "'"), '预缓存清单缺 ' + p);
   });
   const jsFiles = fs.readdirSync(path.join(root, 'js')).filter(f => f.endsWith('.js'));

@@ -1,0 +1,115 @@
+   微动态交互：水墨入画感
+   入场 = 淡入上浮；图表 = 墨液流出(scaleX)；卡片悬停 = 微抬+朱印
+   触摸即缩放反馈；尊重 prefers-reduced-motion
+   ============================================================= */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes popIn {
+  from { opacity: 0; transform: translateY(14px) scale(.97); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes toastIn {
+  from { opacity: 0; transform: translateX(24px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes barsGrow {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+@keyframes inkBreathe {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-6px) scale(1.05); }
+}
+@keyframes dotPulse {
+  0%, 100% { box-shadow: 0 0 0 0 var(--accent-soft); }
+  50% { box-shadow: 0 0 0 8px transparent; }
+}
+@keyframes donutGlow {
+  0%, 100% { box-shadow: var(--shadow); }
+  50% { box-shadow: var(--shadow), 0 0 0 6px var(--accent-soft); }
+}
+
+/* 页面入场：内容区整体淡入，卡片轻微上浮 */
+.content > * {
+  animation: fadeUp .32s var(--ease) both;
+}
+.content > *:nth-child(2) { animation-delay: .025s; }
+.content > *:nth-child(3) { animation-delay: .05s; }
+.content > *:nth-child(4) { animation-delay: .075s; }
+
+/* 图表 "墨液蔓延"：进度条/条形图从 0 滋开到目标值 */
+.progress > i, .st-bar > i {
+  transform-origin: left center;
+  animation: barsGrow .65s var(--ease) both;
+}
+.rd-donut { animation: fadeIn .6s var(--ease) both, donutGlow 4s ease-in-out 1s infinite; }
+.rd-donut-legend, .st-legend { animation: fadeIn .5s var(--ease) both; }
+
+/* 弹窗层级 */
+.overlay { animation: fadeIn .18s var(--ease); }
+.overlay .modal { animation: popIn .3s var(--ease); }
+
+/* Toast 滑入 */
+.toast { animation: toastIn .3s var(--ease); }
+
+/* 空状态喘气（墨晕呼吸） */
+.empty .big { display: inline-block; animation: inkBreathe 3.6s var(--ease) infinite; }
+
+/* 品牌印章脉动 */
+.brand .dot { animation: dotPulse 3.2s var(--ease) infinite; }
+
+/* 尊重系统减少动效设置 */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .001s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001s !important;
+  }
+}
+
+/* ---------- 动态交互层：墨点涟漪 / 页面墨染过渡 / 统计卡光泽 ----------
+ * 由 js/motion.js 驱动注入与门控（reduced-motion / data-frame=60 下 JS 侧静默降级，
+ * CSS 侧 [data-frame="60"] 全局覆盖亦将其压至瞬态，双保险）
+ * 涟漪与过渡遮罩均 pointer-events: none，不拦截任何交互 */
+@keyframes inkRipple {
+  0% { transform: scale(.2); opacity: .9; }
+  100% { transform: scale(14); opacity: 0; }
+}
+.ink-ripple {
+  position: fixed; width: 14px; height: 14px; margin: -7px 0 0 -7px;
+  border-radius: 50%; pointer-events: none; z-index: 9999;
+  background: radial-gradient(circle at 50% 50%, var(--ink-ripple), transparent 66%);
+  animation: inkRipple .55s var(--ease) forwards;
+}
+@keyframes inkTransit {
+  0% { opacity: 0; }
+  35% { opacity: 1; }
+  100% { opacity: 0; }
+}
+.ink-transit {
+  position: fixed; inset: 0; pointer-events: none; z-index: 80;
+  background: radial-gradient(560px 400px at 50% 42%, rgba(50, 40, 30, 0.20), transparent 68%);
+  animation: inkTransit .3s var(--ease) forwards;
+}
+[data-theme="dark"] .ink-transit {
+  background: radial-gradient(560px 400px at 50% 42%, rgba(232, 226, 216, 0.10), transparent 68%);
+}
+@keyframes sheenSweep {
+  from { transform: translateX(-130%); }
+  to { transform: translateX(130%); }
+}
+.rank-card::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit;
+  pointer-events: none; overflow: hidden;
+  background: linear-gradient(115deg, transparent 32%, var(--sheen) 50%, transparent 68%);
+  transform: translateX(-130%);
+}
+.rank-card:hover::after { animation: sheenSweep .8s var(--ease); }
+
+/* =============================================================
