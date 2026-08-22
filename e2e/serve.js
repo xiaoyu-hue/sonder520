@@ -28,4 +28,6 @@ http.createServer(function (req, res) {
     res.writeHead(200, { 'Content-Type': MIME[path.extname(file)] || 'application/octet-stream' });
     res.end(buf);
   });
-}).listen(process.env.PORT || 4173);
+}).listen(process.env.PORT || 4173, function () {
+  console.log('Listening on http://127.0.0.1:' + (process.env.PORT || 4173));
+});
