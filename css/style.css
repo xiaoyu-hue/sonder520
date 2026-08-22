@@ -938,9 +938,11 @@ input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border-radius
     background: linear-gradient(180deg, var(--accent-soft), rgba(194, 59, 46, 0.05));
     box-shadow: inset 0 -3px 0 var(--accent), inset 0 1px 0 var(--border-hi), 0 6px 18px rgba(194, 59, 46, 0.16);
   }
-  .topbar { min-height: 54px; padding: 0 14px; }
+  .topbar { min-height: 54px; padding: env(safe-area-inset-top) 14px 0 14px; }
   .topbar .date { display: none; }
   .topbar .btn { padding: 6px 12px; }
+  .btn, .small-btn { min-height: 44px; }
+  .topbar .btn { min-height: 44px; }
 
   .hbar { gap: 8px; }
   .hbar input, .hbar select, .hbar .tool { flex: 1; min-width: 0; font-size: 16px; }
@@ -974,7 +976,7 @@ input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border-radius
   .nav button .ico { font-size: 18px; }
   .topbar .btn { padding: 6px 9px; font-size: 12px; }
   .modal .body, .modal .foot { padding-left: 14px; padding-right: 14px; }
-  .hbar input, .hbar select, .hbar .tool { font-size: 15px; }
+  .hbar input, .hbar select, .hbar .tool { font-size: 16px; }
 }
 
 /* 手机横屏：压缩高度相关布局 */
@@ -983,5 +985,6 @@ input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border-radius
   .topbar { min-height: 46px; }
   .sidebar { padding: 4px 8px calc(4px + env(safe-area-inset-bottom)); }
   .nav button { min-height: 38px; padding: 6px 10px; }
+  .btn, .small-btn { min-height: auto; }
   .nav button .ico { font-size: 17px; }
 }
