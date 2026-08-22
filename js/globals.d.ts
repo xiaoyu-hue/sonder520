@@ -487,6 +487,7 @@ interface Window {
   __sonderErrors: { list: SonderErrorEntry[]; readonly total: number; clear(): void; report(errOrMsg: string | Error, type?: string): void };
   __desktopPetFamily: any;
   DesktopPetCore: any;
+  DesktopPetData: { QUOTES: any; CHARACTERS: any; SNACKS: any; ACHIEVEMENTS: any; DIALOGUES: any };
   __gamesDbg: any;
   __readingDbg: any;
   __todayDbg: any;

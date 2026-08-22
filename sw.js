@@ -4,7 +4,7 @@
  * 内容变了而版本没升说明部署流程漏跑 sync-sw。 */
 'use strict';
 
-var CACHE = 'sonder-v75';
+var CACHE = 'sonder-v76';
 
 var ASSETS = [
   './',
@@ -42,6 +42,7 @@ var ASSETS = [
   './js/games-mini.js',
   './js/games-battle.js',
   './js/games.js',
+  './js/desktop-pet-data.js',
   './js/desktop-pet.js',
   './js/desktop-pet-page.js',
   './js/settings.js',
@@ -56,7 +57,7 @@ var ASSETS = [
   './assets/apple-touch-icon.png',
   './js/game-worker.js'
 ];
-var ASSET_SIG = 'fe809a002f18';
+var ASSET_SIG = '44f810cc899f';
 
 /* install：预缓存全部资源，立即接管。
  * Request(cache:'reload') 绕过 HTTP 缓存直取网络——GH Pages max-age=600 下
