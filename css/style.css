@@ -5,6 +5,10 @@
    不支持 backdrop-filter 时自动退化为实底（@supports fallback）
    ============================================================= */
 
+/* =============================================================
+   断点契约（唯一真源，改断点须过 tests/responsive.test.js 白名单）：
+   ≤360 超小屏 | 361–720 手机 | 721–960 平板 | 961–1240 桌面 | >1240 限宽居中
+   ============================================================= */
 :root {
   color-scheme: light;
   /* 浅色 · 宣纸水墨 */
@@ -239,8 +243,8 @@ body::after {
 .grid.cols-4 { grid-template-columns: repeat(4, 1fr); }
 .grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
 .grid.cols-2 { grid-template-columns: repeat(2, 1fr); }
-@media (max-width: 1000px) { .grid.cols-7, .grid.cols-6, .grid.cols-4, .grid.cols-3 { grid-template-columns: repeat(2, 1fr); } }
-@media (max-width: 640px) {
+@media (max-width: 960px) { .grid.cols-7, .grid.cols-6, .grid.cols-4, .grid.cols-3 { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 720px) {
   .grid.cols-7, .grid.cols-6, .grid.cols-4, .grid.cols-3, .grid.cols-2 { grid-template-columns: 1fr; }
 }
 
@@ -455,7 +459,6 @@ input, select, textarea, button { font-size: 16px; }
 .st-bar { flex: 1; height: 14px; background: var(--glass-sober); border: 1px solid var(--border); border-radius: 5px; overflow: hidden; }
 .st-bar > i { display: block; height: 100%; }
 .st-val { font-size: 12px; color: var(--muted); min-width: 38px; text-align: right; }
-@media (max-width: 640px) { .st-row { grid-template-columns: 1fr; } .st-title { margin-bottom: 4px; } }
 
 /* ---------- 阅读统计 ---------- */
 .rd-grid { display: grid; grid-template-columns: 220px 1fr; gap: 22px; align-items: start; }
@@ -465,7 +468,6 @@ input, select, textarea, button { font-size: 16px; }
 .rd-legend i { width: 12px; height: 12px; border-radius: 3px; }
 .rd-brow { display: grid; grid-template-columns: 120px 1fr 30px; gap: 8px; align-items: center; padding: 5px 0; }
 .rd-blabel { font-size: 13px; color: var(--muted); }
-@media (max-width: 640px) { .rd-grid { grid-template-columns: 1fr; } }
 
 /* ---------- 表单滑块 ---------- */
 input[type="range"] { -webkit-appearance: none; appearance: none; height: 6px; border-radius: 10px; background: var(--glass-sober); border: 1px solid var(--border); }

@@ -609,7 +609,7 @@
 }
 
 /* 移动端（<640px）：单只尺寸 64px、半透明 0.8，避免遮挡 */
-@media (max-width: 639px) {
+@media (max-width: 720px) {
   .dp-pet {
     width: 64px;
     height: 64px;

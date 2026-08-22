@@ -18,8 +18,8 @@ test('响应式：手机底栏导航（≤720px）', () => {
 });
 
 test('响应式：网格在各断点降列', () => {
-  assert.ok(/@media \(max-width:\s*1000px\)\s*\{[^@]*?repeat\(2,\s*1fr\)/s.test(CSS), '≤1000px 网格两列');
-  assert.ok(/@media \(max-width:\s*640px\)\s*\{[^@]*?grid-template-columns:\s*1fr/s.test(CSS), '≤640px 网格单列');
+  assert.ok(/@media \(max-width:\s*960px\)\s*\{[^@]*?repeat\(2,\s*1fr\)/s.test(CSS), '≤960px 网格两列');
+  assert.ok(/@media \(max-width:\s*720px\)\s*\{[^@]*?grid-template-columns:\s*1fr/s.test(CSS), '≤720px 网格单列');
 });
 
 test('响应式：平板图标栏（721-960px）', () => {
@@ -46,4 +46,23 @@ test('响应式：媒体特性细节（触控字号/减弱动效）', () => {
   assert.ok(/@media \(hover:\s*hover\) and \(pointer:\s*fine\)/, '桌面端字号还原');
   assert.ok(/input,\s*select,\s*textarea,\s*button\s*\{\s*font-size:\s*16px/, '触屏防聚焦缩放字号');
   assert.ok(/@media \(prefers-reduced-motion:\s*reduce\)/, '尊重减少动效');
+});
+test('响应式：断点白名单契约（防魔法数回潮）', () => {
+  /* 允许的宽度值：360 超小屏 / 720 手机 / 721 平板下界 / 900 横屏(配 max-height:480) / 960 平板上界 / 1240 限宽阈值 */
+  const ALLOWED = new Set(['360', '720', '721', '900', '960', '1240']);
+  const offenders = [];
+  for (const rel of ['css/style.css', 'css/desktop-pet.css']) {
+    const text = fs.readFileSync(path.join(__dirname, '..', rel), 'utf8');
+    const re = /@media[^{]+/g;
+    let m;
+    while ((m = re.exec(text)) !== null) {
+      const q = m[0];
+      /* 特性查询豁免（非宽度断点）：prefers-reduced-motion / hover / pointer */
+      if (/prefers-reduced-motion|hover:\s*hover|pointer:\s*fine/.test(q)) continue;
+      for (const w of [...q.matchAll(/(?:max|min)-width:\s*(\d+)px/g)].map(x => x[1])) {
+        if (!ALLOWED.has(w)) offenders.push(`${rel}: ${q.trim().replace(/\s+/g, ' ')}`);
+      }
+    }
+  }
+  assert.deepStrictEqual(offenders, [], '存在白名单外宽度断点: ' + offenders.join(' | '));
 });
