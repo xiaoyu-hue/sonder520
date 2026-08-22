@@ -15,6 +15,13 @@
   - `enableEncryption` 锁定态守卫（最后一个无守卫写路径：锁定时内存为空 defaultState，旧验证两侧同为 0 恒通过）+ 回读验证升级为逐集合长度校验（防空/残缺快照被静默采纳）。
   - 新增契约测试 ×7（store-data-safety.test.js）：明文 IDB 让位/meta 一致正常写/锁异常降级直写/损坏 bundle 拒解锁且原密文原样/完好快照解锁不误伤/锁定态启用拒绝/正常启用不误伤；write-lock 测试断言随双锁请求语义更新。
 - 离线缓存升版 v58 → v59。
+- **XSS 攻击链切断（导入信任边界 + CSP 收敛）**：
+  - normalize 层 id 白名单收口（`sanitizeStateIds` 递归含嵌套集合）：SAFE_ID_RE（字母/数字/连字符/下划线 1-80 位）校验全部记录 id，非法（含引号/尖括号/空白的属性逃逸串）一律 `uid()` 重生，数字 id 不受影响——全应用 24 处 `data-*` 属性位裸插值的安全前提改由存储层根上保证，恶意备份文件的存储型 XSS 注入面清零。
+  - 导入书籍 progress 数值夹紧 [0,100]（补齐读取侧，写入侧原有），`style="width:…%"` 逃逸面关闭。
+  - SW 注册脚本自 index.html 内联外置为 `js/sw-register.js`（置于 app.js 之前保持"app.js 最后加载"顺序契约），删除静态 nonce → CSP `script-src` 收敛为纯 `'self'`，内联脚本执行通道归零。
+  - `sanitizeUrl` 黑名单改真白名单（http/https/mailto + 站内相对路径，先剥控制字符防 `java\tscript:` 解析绕过，`//` 协议相对外链拒绝）；注释与实现语义一致化。
+  - 测试：新增 import-trust.test.js ×4（恶意 id 重生+合法保留+嵌套收口+端到端渲染无逃逸/progress 夹紧三态）、sanitizeUrl 控制字符绕过用例 ×1；scripts/pwa 测试随 CSP 与外置注册更新；innerhtml 白名单理由同步新不变量。
+- 离线缓存升版 v59 → v62（sw-register.js 新增入清单，ASSETS 43→44 项）。
 
 - **桌面玩偶 v6.0 全面升级——阶段 1-3（动画/交互/自动触发）**：
   - 阶段 1 动画系统：Pet animationFrame 完整实现（idle/walk/sleep 状态机 SVG 变换 + blink 定时 + idle 随机语录 + 呼吸/眨眼/身体缩放参数差异化）；`PetFamily.autoInit()` 移入 `idbReady.then()` 回调保证 IndexedDB 可用。

@@ -4,7 +4,7 @@
  * 内容变了而版本没升说明部署流程漏跑 sync-sw。 */
 'use strict';
 
-var CACHE = 'sonder-v59';
+var CACHE = 'sonder-v62';
 
 var ASSETS = [
   './',
@@ -45,13 +45,14 @@ var ASSETS = [
   './js/desktop-pet.js',
   './js/desktop-pet-page.js',
   './js/settings.js',
+  './js/sw-register.js',
   './js/app.js',
   './manifest.json',
   './img/wallpaper.jpg',
   './assets/icon.svg',
   './js/game-worker.js'
 ];
-var ASSET_SIG = '2f50fa995fd0';;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+var ASSET_SIG = '791ceac21bd3';;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 /* install：预缓存全部资源，立即接管 */
 self.addEventListener('install', function (e) {

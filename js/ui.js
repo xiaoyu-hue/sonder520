@@ -19,15 +19,28 @@
   }
 
   /* 通用净化函数：所有用户输入展示前统一走这里，杜绝 XSS。
-   * sanitize(text)：转义 < > & " '；sanitizeUrl(url)：仅放行安全协议，拦截 javascript:/data: 等。 */
+   * sanitize(text)：转义 < > & " '；sanitizeUrl(url)：协议白名单（http/https/mailto/相对路径），
+   * 其余一律拒绝返回空串。 */
   function sanitize(s) {
     return esc(s);
   }
 
   function sanitizeUrl(u) {
-    var s = String(u === null || u === undefined ? '' : u).trim();
-    if (!s) return s;
-    if (/^javascript:|^data:|^vbscript:|^file:/i.test(s)) return '';
+    var s = String(u === null || u === undefined ? '' : u);
+    /* 先剥控制字符：浏览器解析 href 会剥离 \t\r\n 等控制字符，不剥离则黑名单可被 java\tscript: 绕过
+     * （以字符码过滤实现，规避 no-control-regex） */
+    s = s.split('').filter(function (ch) {
+      var c = ch.charCodeAt(0);
+      return c > 31 && c !== 127;
+    }).join('').trim();
+    if (!s) return '';
+    /* 白名单放行（与注释一致的真白名单，替代旧黑名单）：
+     * ① http/https/mailto 绝对地址；② 站内相对路径（/开头非//、./ ../、或完全无 scheme）。 */
+    var hasScheme = /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(s);
+    var allowed = /^https?:/i.test(s) || /^mailto:/i.test(s)
+      || (s.charAt(0) === '/' && s.charAt(1) !== '/')
+      || (!hasScheme && !/^\/\//.test(s));
+    if (!allowed) return '';
     /* 返回值用于拼进 HTML 属性（href），必须转义引号与 &，防属性闭合注入（如 " onmouseover="） */
     return s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }

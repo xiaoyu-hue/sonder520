@@ -269,6 +269,9 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
       if (typeof b.author !== 'string') b.author = '';
       if (!Array.isArray(b.notes)) b.notes = [];
       b.readingMinutes = num0(b.readingMinutes);
+      /* 进度数值夹紧（P1 安全修复）：导入路径原样保留任意类型 progress，
+       * 消费点 `style="width:…%"` 裸插值可被属性逃逸（写入侧已夹紧，此处补齐读取侧） */
+      b.progress = Math.max(0, Math.min(100, num0(b.progress)));
       if (!Array.isArray(b.readingLog)) b.readingLog = [];
       if (typeof b.finishedAt !== 'string') b.finishedAt = null;
       if (typeof b.createdAt !== 'string') b.createdAt = nowISO();
@@ -304,7 +307,29 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     out.designs.forEach(function (x) {
       if (typeof x.title !== 'string') x.title = '';
     });
+    /* 导入信任边界收口（P1 安全修复）：id 白名单校验 + 非法重生、书籍进度数值夹紧。
+     * 背景：normalize 原样拷贝持久化/导入数据的任意字符串 id，而全应用 data-* 属性位
+     * 裸插值建立在"id 恒为 uid() 生成（无引号/尖括号/空白）"的不变量上；恶意备份文件
+     * 可借属性逃逸注入 DOM。此处统一重生非法 id，数字 id 不受影响。 */
+    sanitizeStateIds(out);
     return out;
+  }
+
+  /* id 白名单：字母/数字/连字符/下划线，1-80 位（uid() 输出与历史合法 id 全兼容；
+   * 引号/尖括号/空白/= & 等属性逃逸字符一律命中不了白名单）。 */
+  var SAFE_ID_RE = /^[A-Za-z0-9_-]{1,80}$/;
+  function sanitizeId(id) {
+    return (typeof id === 'string' && SAFE_ID_RE.test(id)) ? id : uid();
+  }
+  /* 深度遍历 state，逐记录收口 id 字段（含 devProjects.tasks / clients.projects 等嵌套集合） */
+  function sanitizeStateIds(node) {
+    if (Array.isArray(node)) {
+      for (var i = 0; i < node.length; i++) sanitizeStateIds(node[i]);
+      return;
+    }
+    if (!isPlainObject(node)) return;
+    if ('id' in node) node.id = sanitizeId(node.id);
+    for (var k in node) sanitizeStateIds(node[k]);
   }
 
   /* ---------- 桌面玩偶深合并迁移（自包含，store.js 加载先于 desktop-pet.js） ---------- */

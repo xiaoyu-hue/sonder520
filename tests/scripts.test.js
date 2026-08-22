@@ -104,7 +104,10 @@ test('scripts: CSP meta 存在且与当前资源形态兼容', () => {
   const csp = /<meta http-equiv="Content-Security-Policy" content="([^"]+)"/.exec(INDEX);
   assert.ok(csp, 'index.html 应含 CSP meta');
   assert.ok(csp[1].includes("default-src 'self'"), 'default-src 应为 self');
-  assert.ok(csp[1].includes("script-src 'self' 'nonce-sw'"), 'script-src 应允许 self + nonce-sw');
+  /* Commit 3 安全加固：SW 注册外置后无任何内联脚本，script-src 收敛为纯 'self'
+   * （静态 nonce "sw" 随仓库公开形同虚设，已移除） */
+  assert.ok(csp[1].includes("script-src 'self'"), 'script-src 应为 self');
+  assert.ok(!csp[1].includes('nonce'), '不得再保留静态 nonce（公开仓库可猜）');
   assert.ok(csp[1].includes("style-src 'self' 'unsafe-inline'"), 'style-src 应含 unsafe-inline（UI 内联 style 属性）');
   assert.ok(csp[1].includes("img-src 'self' data: blob:"), 'img-src 应允许 data/blob（favicon/预览）');
   assert.ok(csp[1].includes("object-src 'none'"), '应禁 object/embed');
@@ -118,14 +121,13 @@ test('scripts: 已部署响应头 _headers（CF Pages 生效，GH Pages 无害�
   assert.ok(h.includes('Referrer-Policy: strict-origin-when-cross-origin'), '应限制 Referrer 泄露');
 });
 
-test('scripts: 外部脚本统一 defer，内联脚本统一带 nonce', () => {
+test('scripts: 外部脚本统一 defer 且 index.html 零内联脚本（CSP 收敛前提）', () => {
   const tags = INDEX.match(/<script[^>]*>/g) || [];
   assert.ok(tags.length >= 16, '应有足够数量的 script 标签');
   tags.forEach(t => {
-    if (/src="js\//.test(t)) {
-      assert.ok(/defer/.test(t), '外部脚本应 defer: ' + t);
-    } else {
-      assert.ok(/nonce="sw"/.test(t), '内联脚本应带 nonce="sw": ' + t);
-    }
+    assert.ok(/src="js\//.test(t), '所有脚本均须外置（不得内联）: ' + t);
+    assert.ok(/defer/.test(t), '外部脚本应 defer: ' + t);
   });
+  /* sw-register.js 为 SW 注册外置文件（原 nonce="sw" 内联脚本，Commit 3 移除） */
+  assert.ok(INDEX.includes('js/sw-register.js'), 'SW 注册脚本应外置加载');
 });

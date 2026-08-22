@@ -14,18 +14,21 @@ const path = require('node:path');
 
 const JS_DIR = path.join(__dirname, '..', 'js');
 
-/* 文件:行号 -> 人工审查结论（插值安全性说明） */
+/* 文件:行号 -> 人工审查结论（插值安全性说明）
+ * 注：id 类插值的安全前提自 Commit 3 起由 normalize 层保证——
+ * store.js sanitizeStateIds 对全部记录 id 做 SAFE_ID_RE 白名单校验、非法一律 uid() 重生，
+ * 导入路径不再能注入含引号/尖括号/空白的 id。 */
 const MANUAL_REVIEW = {
-  'consulting.js:105': 'renderProjects：pr.name/note/stage 均过 UI.esc，pr.id 为 uid() 生成',
-  'consulting.js:118': 'renderFollowups：f.note/date 均过 UI.esc，f.id 为 uid() 生成',
-  'consulting.js:131': 'renderIncomes：amount 经 Number()||0 归一为数字，i.date/note 过 UI.esc，i.id 为 uid() 生成',
+  'consulting.js:105': 'renderProjects：pr.name/note/stage 均过 UI.esc，pr.id 经 normalize 白名单收口',
+  'consulting.js:118': 'renderFollowups：f.note/date 均过 UI.esc，f.id 经 normalize 白名单收口',
+  'consulting.js:131': 'renderIncomes：amount 经 Number()||0 归一为数字，i.date/note 过 UI.esc，i.id 经 normalize 白名单收口',
   'dev.js:258': '纯字面量（暂无任务占位）',
-  'dev.js:260': 'projectCard 任务列表：t.title 过 UI.esc（同类行内），t.id 为 uid() 生成',
+  'dev.js:260': 'projectCard 任务列表：t.title 过 UI.esc（同类行内），t.id 经 normalize 白名单收口',
   'home.js:49': '多行数组拼接：greeting()/lastMemo/quoteHtml/rankCard 插值均过 UI.esc，汇总数字为数值型',
   'search.js:129': 'html 变量在 renderGroup 内构建：label/text/sub 均过 UI.esc，module 为内部注册表常量',
   'selfmedia.js:307': '多行拼接：p.title 过 UI.esc，pills/legend/rows 均为数值与常量色值，miniLine 只输出数字',
-  'today.js:129': 'html 由 section() 构建：t.title/note/priority 与 pr.label 均过 esc，t.id 为 uid() 生成',
-  'ui.js:38': 'UI.el 框架入口（innerHTML 接收调用方已转义字符串），调用方由本清单约束'
+  'today.js:129': 'html 由 section() 构建：t.title/note/priority 与 pr.label 均过 esc，t.id 经 normalize 白名单收口',
+  'ui.js:51': 'UI.el 框架入口（innerHTML 接收调用方已转义字符串），调用方由本清单约束'
 };
 
 test('innerHTML 契约：全部赋值点清空或已转义，其余在人工审查白名单内', () => {

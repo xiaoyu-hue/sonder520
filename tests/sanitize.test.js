@@ -121,3 +121,23 @@ test('sanitizeUrl：属性闭合 payload 被转义', () => {
   assert.equal(U.sanitizeUrl('https://x.com/" onmouseover="alert(1)'), 'https://x.com/&quot; onmouseover=&quot;alert(1)', '双引号应转义为实体');
   assert.equal(U.sanitizeUrl('https://x.com/?a=1&b=2'), 'https://x.com/?a=1&amp;b=2', '& 应转义为实体');
 });
+
+test('sanitizeUrl：控制字符绕过与白名单语义（Commit 3 加固）', () => {
+  const h = boot();
+  const U = h.window.UI;
+  /* 浏览器解析 href 会剥离 \t\r\n —— 黑名单式旧实现可被 java\tscript: 绕过 */
+  assert.equal(U.sanitizeUrl('java\tscript:alert(1)'), '', 'tab 分隔的 javascript: 必须拦截');
+  assert.equal(U.sanitizeUrl('java\r\nscript:x'), '', 'CRLF 分隔同理');
+  assert.equal(U.sanitizeUrl('\u0000javascript:x'), '', 'NUL 前缀拦截');
+  assert.equal(U.sanitizeUrl('DATA:text/html,<script>'), '', '大小写变体拒绝');
+  assert.equal(U.sanitizeUrl('vbscript:x'.replace('v','V')), '', 'Vbscript 变体拒绝');
+  /* 协议相对与未知协议 */
+  assert.equal(U.sanitizeUrl('//evil.com/x'), '', '// 开头的协议相对外链不放行');
+  assert.equal(U.sanitizeUrl('ftp://f.com/file'), '', '非白名单协议拒绝');
+  assert.equal(U.sanitizeUrl('tel:+8613800000000'), '', 'tel: 不在白名单（当前应用无用例）');
+  /* 相对路径形态放行 */
+  assert.equal(U.sanitizeUrl('./page.html'), './page.html', './ 相对路径放行');
+  assert.equal(U.sanitizeUrl('../up/x'), '../up/x', '../ 放行');
+  assert.equal(U.sanitizeUrl('#anchor'), '#anchor', '锚点放行');
+  assert.equal(U.sanitizeUrl('plain/path?q=1'), 'plain/path?q=1', '无 scheme 视作站内相对路径');
+});

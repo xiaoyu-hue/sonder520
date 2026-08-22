@@ -7,6 +7,7 @@ const root = path.join(__dirname, '..');
 
 const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const sw = fs.readFileSync(path.join(root, 'sw.js'), 'utf8');
+const swRegister = fs.readFileSync(path.join(root, 'js', 'sw-register.js'), 'utf8');
 const manifest = JSON.parse(fs.readFileSync(path.join(root, 'manifest.json'), 'utf8'));
 
 function exists(p) { return fs.existsSync(path.join(root, p)); }
@@ -25,7 +26,10 @@ test('PWA：manifest.json 配置正确（应用名/主题色/图标）', () => {
 
 test('PWA：首页引用 manifest 并注册 Service Worker（相对路径）', () => {
   assert.ok(/<link[^>]*rel="manifest"[^>]*href="manifest\.json"/.test(html), '应引用本地 manifest.json');
-  assert.ok(/serviceWorker\.register\(['"]\.\/sw\.js['"]\)/.test(html), '应注册 sw.js（相对路径）');
+  /* Commit 3 安全加固：注册脚本自 index.html 内联外置为 js/sw-register.js（CSP 收敛 script-src 'self'） */
+  assert.ok(/serviceWorker\.register\(['"]\.\/sw\.js['"]\)/.test(swRegister), 'sw-register.js 应注册 sw.js（相对路径）');
+  assert.ok(html.includes('js/sw-register.js'), 'index.html 应加载外置注册脚本');
+  assert.ok(!/<script[^>]*>(?!\s*<)/.test(html.replace(/<script[^>]*><\/script>/g, '')), 'index.html 不得残留内联脚本内容');
   assert.ok(exists('sw.js'), 'sw.js 文件必须存在');
 });
 
