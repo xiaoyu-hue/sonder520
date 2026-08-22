@@ -89,7 +89,9 @@ test('写锁：有 navigator.locks 时防抖落盘经 sonder-writer 锁执行', 
     s.addMemo('第一条');
     assert.equal(queued.filter(Boolean).length, 1, '调度一次 idle 落盘');
     runQueued();
-    assert.deepEqual(locks.requests, ['sonder-writer'], '应请求 sonder-writer 锁');
+    /* 明文路径现为双锁请求：IDB 主快照写（_lockedIdbWrite，让位协议覆盖主快照）+ LS 防抖落盘 */
+    assert.equal(locks.requests.length, 2, 'IDB 让位写 + LS 防抖落盘各请求一次');
+    assert.ok(locks.requests.every(r => r === 'sonder-writer'), '均经 sonder-writer 锁');
     const raw = JSON.parse(storage.getItem(COL('memos')));
     assert.equal(raw.length, 1, '锁内正常落盘');
     assert.ok(storage.getItem(S.STORAGE_META_KEY), 'meta 一并写入');

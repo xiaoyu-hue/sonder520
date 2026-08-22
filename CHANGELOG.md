@@ -9,6 +9,12 @@
 
 - **P0 部署一致性急救 + SW 指纹门禁**：修复 c36cba3 起的 ASSET_SIG 过期脱节（重算指纹与 sw.js 存值不符——回访老用户 SW 永不更新、永久停留旧版）；`sync-sw` 新增 `--check` 只读校验模式（清单/指纹不一致 exit 1），deploy.yml test job 接入为 CI 硬门禁，杜绝"改文件忘升版"复发；指纹算法行尾归一化（`\r\n→\n` 后哈希），防 `core.autocrlf` 在 Windows/Linux 检出差异导致平台间指纹漂移；新增回归测试 ×3（--check 功能性运行/参数解析/归一化存在性）。
 - 离线缓存升版 v57 → v58。
+- **存储层数据安全三连修复**：
+  - 明文 IDB 主快照写纳入让位协议（新增 `_lockedIdbWrite`，与加密路径 `_lockedEncWrite` 同一 ADR-007 协议）——修复多标签同集合并发编辑时，让位检查只保护 LS 副本、陈旧集合带最新 savedAt 覆盖 IDB 主快照导致赢家标签编辑被永久判负的丢数据缺陷。
+  - unlock 前快照完整性预检（`_verifySnapshotIntegrity`）：任一密文 bundle 解密失败即整体拒绝解锁（`_statusReason='snapshot_corrupted'`），绝不采纳"残缺 base"回写覆盖全部存储——堵死"单 bundle 损坏+密码正确→解锁成功→损坏集合被空数据不可逆覆盖"路径；原密文一字不动保留。
+  - `enableEncryption` 锁定态守卫（最后一个无守卫写路径：锁定时内存为空 defaultState，旧验证两侧同为 0 恒通过）+ 回读验证升级为逐集合长度校验（防空/残缺快照被静默采纳）。
+  - 新增契约测试 ×7（store-data-safety.test.js）：明文 IDB 让位/meta 一致正常写/锁异常降级直写/损坏 bundle 拒解锁且原密文原样/完好快照解锁不误伤/锁定态启用拒绝/正常启用不误伤；write-lock 测试断言随双锁请求语义更新。
+- 离线缓存升版 v58 → v59。
 
 - **桌面玩偶 v6.0 全面升级——阶段 1-3（动画/交互/自动触发）**：
   - 阶段 1 动画系统：Pet animationFrame 完整实现（idle/walk/sleep 状态机 SVG 变换 + blink 定时 + idle 随机语录 + 呼吸/眨眼/身体缩放参数差异化）；`PetFamily.autoInit()` 移入 `idbReady.then()` 回调保证 IndexedDB 可用。

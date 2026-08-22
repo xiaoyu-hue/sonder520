@@ -760,7 +760,7 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     return map;
   };
 
-  /** @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _idbWriteCols: any, _colJson: any, _rev: number, _encKey: any, _collectAll: Function, _encSave: Function, needsUnlock: Function }} */
+  /** @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _lockedIdbWrite: Function, _idbWriteCols: any, _colJson: any, _rev: number, _encKey: any, _collectAll: Function, _encSave: Function, needsUnlock: Function }} */
   Store.prototype.save = function () {
     var map = this._collectAll();
     if (!map) return; /* 全集合与最近落盘一致：零序列化零 IO */
@@ -776,17 +776,18 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
       return;
     }
     /* 双写：LS 副本先同步刷新 meta（版本时间戳基线，IDB 主快照用同一 savedAt），
-     * IDB 主快照紧随异步落盘。顺序不可交换：_idbWriteCols 依赖 _persistLocal 已设置的 _meta，
+     * IDB 主快照经写锁让位检查后异步落盘（_lockedIdbWrite，与加密路径同协议）。
+     * 顺序不可交换：IDB 写依赖 _persistLocal 已设置的 _meta，
      * 否则 IDB savedAt 恒旧于 LS，读取时永远误判"LS 更新"（④ 主写转换，见 ADR 说明）。
      * 读取路径按版本取新（loadIdb），任一侧失败另一侧即兜底，数据安全不依赖写序。 */
     this._persistLocal(map);
-    this._idbWriteCols(map);
+    this._lockedIdbWrite(map);
   };
 
   /* 集合级变更收口（ADR-009 决策 7 的写路径唯一入口之一）：
    * 只序列化+落盘指定集合；非法集合 id 回落全量 save（防呆兜底——绝不丢数据）。
    * 与 save() 等价语义：内容未变 → 零 IO；锁定态拒绝明文落盘。 */
-  /** @this {{ _storage: any, _rev: number, _colPayloadJson: Function, needsUnlock: Function, _encKey: any, _encSave: Function, _persistLocal: Function, _idbWriteCols: Function, save: Function }} */
+  /** @this {{ _storage: any, _rev: number, _colPayloadJson: Function, needsUnlock: Function, _encKey: any, _encSave: Function, _persistLocal: Function, _lockedIdbWrite: Function, _idbWriteCols: Function, save: Function }} */
   Store.prototype._commit = function (col) {
     if (typeof col !== 'string' || COLLECTIONS.indexOf(col) < 0) {
       this.save(); /* 未收口集合：全量兜底（性能退化，绝不丢数据） */
@@ -805,7 +806,7 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
       return;
     }
     this._persistLocal(map);
-    this._idbWriteCols(map);
+    this._lockedIdbWrite(map);
   };
 
   /* 加密落盘：AES-GCM 异步（微任务级，用户操作间隙完成），逐集合独立 bundle（每集合新 iv）。
@@ -880,6 +881,40 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
         if (p && typeof p.catch === 'function') p.catch(fallback);
       } catch (e) { fallback(); }
     });
+  };
+
+  /* 明文 IDB 主快照写的让位封装（与 _lockedEncWrite 同一协议，ADR-007）：
+   * 修复"明文路径 _idbWriteCols 无条件立即执行、绕过让位检查"——多标签并发时
+   * 本标签基于旧内存 state 的陈旧集合会带最新 savedAt 覆盖 IDB，
+   * 让位 toast 只保护了 LS 副本、管不住已写入的主快照（赢家标签编辑被永久判负）。
+   * 锁内写前 meta 检查：另一标签已写更新快照 → 让位吸收、本次不写 IDB；
+   * 一致 → 正常落盘。无锁环境/锁异常降级直接写（等价旧行为）。 */
+  /** @this {{ _storage: any, _lastSeenMeta: any, _absorbNewer: Function, _idbWriteCols: Function }} */
+  Store.prototype._lockedIdbWrite = function (map) {
+    var self = this;
+    var locks = (typeof navigator !== 'undefined' && navigator.locks && typeof navigator.locks.request === 'function')
+      ? navigator.locks : null;
+    if (!locks) { self._idbWriteCols(map); return; }
+    var done = false;
+    var fallback = function () { if (done) return; done = true; self._idbWriteCols(map); };
+    var p = null;
+    try {
+      p = locks.request('sonder-writer', function () {
+        if (self._storage) {
+          var curMeta = null;
+          try { curMeta = self._storage.getItem(STORAGE_META_KEY); } catch (e) { curMeta = null; }
+          /* LS 快照 meta 与本实例基线不一致（另一标签已写/外部变更）→ 让位不覆盖 */
+          if (curMeta && curMeta !== self._lastSeenMeta) {
+            done = true;
+            self._absorbNewer();
+            return;
+          }
+        }
+        done = true;
+        self._idbWriteCols(map);
+      });
+      if (p && typeof p.catch === 'function') p.catch(fallback);
+    } catch (e) { fallback(); }
   };
 
   /* 启动时调用：优先从 IndexedDB 恢复（逐集合按 savedAt 取新，LS meta 为版本基线）。
@@ -1246,12 +1281,15 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     this._emitChange('all'); /* 锁定：全页重绘进入解锁界面 */
   };
   /* 启用加密：自检锁 → 派生密钥 → 全量密文落盘 → 回读验证。
-   * 任何一步失败即中止，旧明文快照与内存数据原样保留。 */
+   * 任何一步失败即中止，旧明文快照与内存数据原样保留。
+   * 锁定态守卫（P1 修复）：锁定时内存是空 defaultState，若放行会用新盐加密空数据
+   * 覆盖全部真密文且旧验证"两侧同为空恒通过"——唯一漏网的无守卫写路径。 */
   Store.prototype.enableEncryption = function (password) {
     var self = this;
     if (!cryptoReady()) return Promise.reject(new Error('当前环境不支持 Web Crypto'));
     if (typeof password !== 'string' || password.length < 4) return Promise.reject(new Error('密码至少 4 位'));
     if (this._encKey) return Promise.reject(new Error('已处于加密模式'));
+    if (this.needsUnlock()) return Promise.reject(new Error('锁定状态下禁止启用加密：请先解锁'));
     var salt = Crypto.saltBytes();
     return Crypto.selfTest(password, salt).then(function (ok) {
       if (!ok) throw new Error('加密引擎自检异常，已中断启用');
@@ -1263,10 +1301,21 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
       }
       self._rev++;
       return self._encSave(self._collectAllRaw()).then(function () {
-        /* 回读验证：密文必须能解回并保留关键数据 */
+        /* 回读验证：密文必须能解回并保留关键数据。
+         * 逐集合长度校验（P1 加固）：任一数组集合回读数量与内存不符即中止——
+         * 防"空/残缺快照被静默采纳"（旧验证仅比 tasks 长度，锁定态两侧同为 0 恒通过）。 */
         return self.readSnapshot('local').then(function (dec) {
           if (!dec || !dec.settings || !isPlainObject(dec.settings)) throw new Error('加密回读验证失败');
-          if (dec.tasks.length !== self.state.tasks.length) throw new Error('加密回读数据不一致，已中止');
+          for (var ci = 0; ci < COLLECTIONS.length; ci++) {
+            var cid = COLLECTIONS[ci];
+            if (cid === 'settings') continue; /* 对象集合：上方 isPlainObject 已验 */
+            var memArr = self.state[cid];
+            var decArr = dec[cid];
+            if (!Array.isArray(memArr)) continue;
+            if (!Array.isArray(decArr) || decArr.length !== memArr.length) {
+              throw new Error('加密回读数据不一致（' + cid + '），已中止');
+            }
+          }
           self._emitChange('all'); /* 加密状态切换：全页重绘 */
           return true;
         });
@@ -1285,6 +1334,8 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     });
   };
   /* 解锁：用密码派生密钥并解密持久化快照（localStorage 优先，缺则 IndexedDB）；
+   * 解锁前先做快照完整性预检（_verifySnapshotIntegrity）——任一密文 bundle 损坏即整体拒绝
+   * （返回 false + _statusReason 标记），绝不采纳残缺快照回写覆盖存储（防不可逆丢失）。
    * 成功进入可用状态并复位锁定标记，失败状态原样 */
   Store.prototype.unlock = function (password) {
     var self = this;
@@ -1293,18 +1344,26 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     return this._encSaltAsync().then(function (salt) {
       if (!salt) return false;
       return Crypto.deriveKey(password, salt).then(function (key) {
-        self._encKey = key;
-        return self.readSnapshot('any').then(function (dec) {
-          if (!dec) { self._encKey = null; return false; }
-          self.state = normalize(dec);
-          self._rev++;
-          self._idbEncLocked = false;
-          /* 回填双存：解锁即保证 localStorage 与 IDB 都是最新密文快照（全量集合级密文，含 legacy 迁移） */
-          return self._encSave(self._collectAllRaw()).then(function () {
-            self._emitChange('all'); /* 解锁完成：全页重绘 */
-            return true;
-          });
-        }).catch(function () { self._encKey = null; return false; });
+        /* 完整性预检：损坏 bundle → 拒绝解锁，原密文原样保留（可换环境再试/引导导出其余数据） */
+        return self._verifySnapshotIntegrity(key).then(function (intact) {
+          if (!intact) {
+            self._statusReason = 'snapshot_corrupted';
+            try { console.error('[Sonder] 快照完整性预检失败：存在解密失败的加密集合，已拒绝解锁以保护原始数据'); } catch (e) { /* 忽略 */ }
+            return false;
+          }
+          self._encKey = key;
+          return self.readSnapshot('any').then(function (dec) {
+            if (!dec) { self._encKey = null; return false; }
+            self.state = normalize(dec);
+            self._rev++;
+            self._idbEncLocked = false;
+            /* 回填双存：解锁即保证 localStorage 与 IDB 都是最新密文快照（全量集合级密文，含 legacy 迁移） */
+            return self._encSave(self._collectAllRaw()).then(function () {
+              self._emitChange('all'); /* 解锁完成：全页重绘 */
+              return true;
+            });
+          }).catch(function () { self._encKey = null; return false; });
+        });
       }).catch(function () { self._encKey = null; return false; });
     });
   };
@@ -1334,6 +1393,35 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
           return true;
         });
       });
+    });
+  };
+  /* 快照完整性预检（unlock 专用）：用派生密钥逐集合解密所有密文 raw，
+   * 任一加密 bundle 解密失败 → false（bundle 损坏）。全部通过或无密文 → true。
+   * 背景：readSnapshot 对部分失败返回"残缺 base（损坏集合=空数组）"，若 unlock 直接采纳
+   * 并 _encSave(collectAllRaw) 回写，会用空数据覆盖全部存储的该集合——不可逆丢失。
+   * 故 unlock 前必须整体验证；代价是解锁时多一轮解密（用户手动低频路径，可接受）。 */
+  /** @this {{ _collectSnapshotRaw: Function }} */
+  Store.prototype._verifySnapshotIntegrity = function (key) {
+    if (!Crypto) return Promise.resolve(true);
+    return this._collectSnapshotRaw().then(function (raws) {
+      var jobs = [];
+      var hasEnc = false;
+      for (var id in raws) {
+        var parsed = null;
+        try { parsed = JSON.parse(raws[id]); } catch (e) { parsed = null; }
+        /* 只验密文 bundle（{e:1}）；明文/legacy 明文无需验证 */
+        if (!(parsed && typeof parsed === 'object' && parsed.e === 1)) continue;
+        hasEnc = true;
+        if (parsed.v !== ENC_FORMAT) return Promise.resolve(false); /* 格式不识别 = 视同损坏 */
+        jobs.push(Crypto.decryptBundle(parsed, key));
+      }
+      if (!hasEnc) return Promise.resolve(true);
+      return Promise.all(jobs).then(function (results) {
+        for (var i = 0; i < results.length; i++) {
+          if (!results[i]) return false; /* 任一 bundle 解密失败 → 整体拒绝 */
+        }
+        return true;
+      }).catch(function () { return false; });
     });
   };
   /* 用给定密钥解密持久化快照（集合级：LS 优先，IDB 补缺；无集合级 → legacy 整份回落），失败一律 null。
