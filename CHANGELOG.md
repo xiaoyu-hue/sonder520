@@ -22,6 +22,15 @@
   - `sanitizeUrl` 黑名单改真白名单（http/https/mailto + 站内相对路径，先剥控制字符防 `java\tscript:` 解析绕过，`//` 协议相对外链拒绝）；注释与实现语义一致化。
   - 测试：新增 import-trust.test.js ×4（恶意 id 重生+合法保留+嵌套收口+端到端渲染无逃逸/progress 夹紧三态）、sanitizeUrl 控制字符绕过用例 ×1；scripts/pwa 测试随 CSP 与外置注册更新；innerhtml 白名单理由同步新不变量。
 - 离线缓存升版 v59 → v62（sw-register.js 新增入清单，ASSETS 43→44 项）。
+- **P2 批次：多标签收敛 / 导入落盘契约 / 损坏自愈 / PWA 资产补全**：
+  - SW install 预缓存改 `Request(cache:'reload')`——GH Pages max-age=600 下默认 fetch 会把 HTTP 陈旧副本固化进新 CACHE 版本（升版白升）。
+  - 跨标签被动收敛：store 构造器挂 `storage` 事件监听（meta key 过滤），本标签**无待写内容**时静默吸收外部更新并广播重绘（`_absorbLocalSnapshot` 核心，与让位路径共用、但不发"修改已放弃"toast——无输入可弃）；有待写内容仍交由让位协议裁决，绝不无声丢输入。
+  - 明文 importBackup 对齐加密路径契约：flushPersist + 等待 `_idbPromise` 完成后才 resolve（原实现导入后立即刷新两侧皆失）。
+  - 损坏集合自愈（P2-3 根治）：loadIdb 选择逻辑加明文 JSON 有效性探测，LS 原文损坏而 IDB 有效时无条件取 IDB（修复优先于新旧）；回填升级为"缺失或损坏"双向覆盖修复（损坏侧不可作修复源）——历史配额满半写导致的"集合显示为空且永不自愈"根治。
+  - sync-sw 指纹正则吞尾分号归一（修复每次运行追加一个 `;` 的累积缺陷）；games-mini legacy 键迁移逐一 typeof 白名单收口。
+  - PWA 资产补全：零依赖生成 PNG 图标（192/512/maskable-512/apple-touch-icon 180），manifest 补 maskable 与位图条目；manifest 主题/背景色统一宣纸 `#f2efe6`（与 meta theme-color 一致，消除安装态闪屏割裂）；index.html 补 apple-touch-icon 引用；_headers 补 `Content-Security-Policy: frame-ancestors 'none'`（GH Pages 不读 _headers 的残余风险记录于 CHANGELOG 待 ADR）。
+  - sessionStorage 会话免密密码驻留风险：维持功能现状（用户显式勾选的功能性取舍），代码处加风险注记，后续评估内存态方案。
+- 离线缓存升版 v62 → v66。
 
 - **桌面玩偶 v6.0 全面升级——阶段 1-3（动画/交互/自动触发）**：
   - 阶段 1 动画系统：Pet animationFrame 完整实现（idle/walk/sleep 状态机 SVG 变换 + blink 定时 + idle 随机语录 + 呼吸/眨眼/身体缩放参数差异化）；`PetFamily.autoInit()` 移入 `idbReady.then()` 回调保证 IndexedDB 可用。

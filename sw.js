@@ -4,7 +4,7 @@
  * 内容变了而版本没升说明部署流程漏跑 sync-sw。 */
 'use strict';
 
-var CACHE = 'sonder-v64';
+var CACHE = 'sonder-v66';
 
 var ASSETS = [
   './',
@@ -50,15 +50,21 @@ var ASSETS = [
   './manifest.json',
   './img/wallpaper.jpg',
   './assets/icon.svg',
+  './assets/icon-192.png',
+  './assets/icon-512.png',
+  './assets/icon-maskable-512.png',
+  './assets/apple-touch-icon.png',
   './js/game-worker.js'
 ];
-var ASSET_SIG = 'fa6480bcad11';;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+var ASSET_SIG = 'd8d4124f5a28';
 
-/* install：预缓存全部资源，立即接管 */
+/* install：预缓存全部资源，立即接管。
+ * Request(cache:'reload') 绕过 HTTP 缓存直取网络——GH Pages max-age=600 下
+ * 默认 fetch 会把陈旧副本固化进新 CACHE 版本（升版白升，混合新旧资源）。 */
 self.addEventListener('install', function (e) {
   e.waitUntil(
     caches.open(CACHE)
-      .then(function (c) { return c.addAll(ASSETS); })
+      .then(function (c) { return c.addAll(ASSETS.map(function (u) { return new Request(u, { cache: 'reload' }); })); })
       .then(function () { return self.skipWaiting(); })
   );
 });

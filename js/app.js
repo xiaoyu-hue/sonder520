@@ -279,6 +279,10 @@
           return;
         }
         if (lockRememberEl.checked) {
+          /* 已知风险（审计 P2-12，用户显式勾选"本标签免密"的功能性取舍）：
+           * 明文密码驻留 sessionStorage，同源脚本/恶意扩展可读。
+           * 缓解现状：CSP 已收敛 'self' 无内联通道、导入 id 白名单收口；
+           * 后续可评估改为内存态 + pagehide 清空（牺牲刷新免密）——见 CHANGELOG 决策记录。 */
           try { sessionStorage.setItem('sonder_session_pwd', pwd); } catch (e) { /* 隐私模式忽略 */ }
         }
         /* 内联 display:flex 会覆盖 UA 的 [hidden] 规则，必须直接改 display */

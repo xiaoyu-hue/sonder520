@@ -28,7 +28,8 @@ function parseAssets() {
   const re = /(?:href="(css\/[^"]+\.css)"|<script src="([^"]+)"[^>]*>)/g;
   let m;
   while ((m = re.exec(html))) files.push('./' + (m[2] || m[1]));
-  files.push('./manifest.json', './img/wallpaper.jpg', './assets/icon.svg');
+  files.push('./manifest.json', './img/wallpaper.jpg', './assets/icon.svg',
+    './assets/icon-192.png', './assets/icon-512.png', './assets/icon-maskable-512.png', './assets/apple-touch-icon.png');
   EXTRA.forEach(f => files.push(f));
   return [...new Set(files)];
 }
@@ -64,7 +65,8 @@ if (start < 0 || end < 0) {
 const curBlock = sw.slice(start, end + 2);
 const newBlock = 'var ASSETS = [\n' + list.map(f => "  '" + f + "'").join(',\n') + '\n];';
 
-const sigRe = /var ASSET_SIG = '([0-9a-f]*)'/;
+/* 注意正则须吞掉历史行尾分号（旧版本实现每跑一次追加一个 ';'，此处归一收敛） */
+const sigRe = /var ASSET_SIG = '([0-9a-f]*)';*/;
 const curSigMatch = sigRe.exec(sw);
 const curSig = curSigMatch ? curSigMatch[1] : '';
 const sigLine = "var ASSET_SIG = '" + sig + "';";

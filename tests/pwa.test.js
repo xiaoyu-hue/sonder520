@@ -15,13 +15,23 @@ function exists(p) { return fs.existsSync(path.join(root, p)); }
 test('PWA：manifest.json 配置正确（应用名/主题色/图标）', () => {
   assert.equal(manifest.name, 'Sonder');
   assert.equal(manifest.short_name, 'Sonder');
-  assert.equal(manifest.theme_color, '#2b1a10', '主题色应为墨色系');
-  assert.equal(manifest.background_color, '#2b1a10', '背景色应为墨色系');
+  /* Commit 5 统一：manifest 主题/背景与 meta theme-color（宣纸 #f2efe6）一致，
+   * 消除"浏览器内宣纸浅色 vs 安装态深棕闪屏"割裂 */
+  assert.equal(manifest.theme_color, '#f2efe6', '主题色应与页面 meta theme-color 一致（宣纸）');
+  assert.equal(manifest.background_color, '#f2efe6', '背景色应为宣纸系');
   assert.equal(manifest.display, 'standalone');
   assert.ok(Array.isArray(manifest.icons) && manifest.icons.length > 0, '应有图标');
   manifest.icons.forEach(icon => {
     assert.ok(exists(icon.src), '图标文件必须存在: ' + icon.src);
   });
+  const purposes = manifest.icons.map(i => i.purpose);
+  assert.ok(purposes.includes('maskable'), '应含 maskable 图标（Android 自适应防裁切）');
+  assert.ok(purposes.includes('any') && manifest.icons.some(i => String(i.src).endsWith('.png')), '应含 PNG 位图图标（部分启动器不支持 SVG）');
+});
+
+test('PWA：iOS apple-touch-icon 存在且被引用', () => {
+  assert.ok(/<link[^>]*rel="apple-touch-icon"[^>]*href="assets\/apple-touch-icon\.png"/.test(html), 'index.html 应引用 apple-touch-icon');
+  assert.ok(exists('assets/apple-touch-icon.png'), 'apple-touch-icon 文件必须存在');
 });
 
 test('PWA：首页引用 manifest 并注册 Service Worker（相对路径）', () => {

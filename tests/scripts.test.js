@@ -36,7 +36,8 @@ test('scripts: sw.js ASSETS 与 index.html 静态资源一致（无新增无移�
   const re = /(?:href="(css\/[^"]+\.css)"|<script src="([^"]+)"[^>]*>)/g;
   let m;
   while ((m = re.exec(INDEX))) expect.push('./' + (m[2] || m[1]));
-  expect.push('./manifest.json', './img/wallpaper.jpg', './assets/icon.svg');
+  expect.push('./manifest.json', './img/wallpaper.jpg', './assets/icon.svg',
+    './assets/icon-192.png', './assets/icon-512.png', './assets/icon-maskable-512.png', './assets/apple-touch-icon.png');
   /* 与 scripts/sync-sw.js 的 EXTRA 保持一致的拷贝（运行时按需加载、不进 index.html 的资产） */
   expect.push('./js/game-worker.js');
   const expectUnique = [...new Set(expect)];

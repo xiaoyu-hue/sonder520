@@ -53,9 +53,18 @@
       MINI_KINDS.forEach(function (kind) {
         var raw = window.localStorage.getItem('sonder_games_' + kind);
         if (!raw) return;
-        var o = JSON.parse(raw);
-        if (o && typeof o === 'object') {
-          ctx.store.updateMiniRecord(kind, o);
+        var o = null;
+        try { o = JSON.parse(raw); } catch (e) { o = null; }
+        /* 字段逐一 typeof 收口：legacy 键为历史手写数据，结构不可信；
+         * 只放行白名单字段且值型合法，防脏数据入库污染统计 */
+        if (o && typeof o === 'object' && !Array.isArray(o)) {
+          var clean = {};
+          if (typeof o.best === 'number') clean.best = o.best;
+          if (typeof o.wins === 'number') clean.wins = o.wins;
+          if (typeof o.losses === 'number') clean.losses = o.losses;
+          if (typeof o.right === 'number') clean.right = o.right;
+          if (typeof o.wrong === 'number') clean.wrong = o.wrong;
+          if (Object.keys(clean).length > 0) ctx.store.updateMiniRecord(kind, clean);
         }
         window.localStorage.removeItem('sonder_games_' + kind);
       });

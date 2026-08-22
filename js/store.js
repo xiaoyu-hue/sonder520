@@ -406,7 +406,7 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
   }
 
   /* ---------- Store ---------- */
-  /** @constructor @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _idbWriteCols: any, _colJson: any, _rev: number, _encKey: any, _hasEncSnapshot: Function, _hasLegacySnapshot: Function, _readLocalColsRaw: Function, _idbEncLocked: boolean, _undo: any[], _pendingLocalCols: any, _localFlushHandle: any, _bus: any, _emitChange: Function, _persistFailed: boolean, _idbFailed: boolean, _lastPersistError: any, _statusReason: string, _lastSeenMeta: any }} */
+  /** @constructor @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _lockedIdbWrite: Function, _idbWriteCols: any, _colJson: any, _rev: number, _encKey: any, _hasEncSnapshot: Function, _hasLegacySnapshot: Function, _readLocalColsRaw: Function, _idbEncLocked: boolean, _undo: any[], _pendingLocalCols: any, _localFlushHandle: any, _bus: any, _emitChange: Function, _persistFailed: boolean, _idbFailed: boolean, _lastPersistError: any, _statusReason: string, _lastSeenMeta: any, _bindStorageWatch: Function }} */
   function Store(storage) {
     this._storage = storage || (typeof localStorage !== 'undefined' ? localStorage : null);
     /* SonderBus 数据变更广播总线（浏览器 window.SonderBus / 测试注入；缺省静默） */
@@ -451,6 +451,7 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     this._idbFailed = false;        /* IndexedDB 主快照最近一次写入失败 */
     this._lastPersistError = null;  /* 最近一次持久化错误（诊断用） */
     this._statusReason = null;      /* 最近一次持久化失败的原因分类（quota 等，结构化状态派生用） */
+    this._bindStorageWatch(); /* 跨标签被动收敛（P2）：空闲标签吸收外部更新 */
   }
 
   /* 逐注册集合读 LS 原始串（缺失 key 不进入 map）；密文/明文原样返回 */
@@ -624,14 +625,19 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
   };
 
   /* 让位：放弃本次旧快照覆盖，改为吸收 localStorage 中的最新 LS 快照（其他标签已写更新）。
-   * 集合级：逐集合读 LS 集合 key（解密失败/密文未解锁的集合保持内存现状，不覆盖不清空）；
-   * legacy 态（无集合级 key）回落整份读取（等价旧行为）。
-   * 重载后重置内存基线并广播全量重绘；无论吸收结果如何（含解析失败保持现状），
-   * 先广播让位事件——另一标签已接管，本标签未保存的输入已被放弃，UI 应即时提示用户。 */
-  /** @this {{ _storage: any, state: any, _colJson: any, _rev: number, _lastSeenMeta: any, _readLocalColsRaw: Function, _emitChange: Function, _decryptParse: Function, _pendingLocalCols: any, _bus: any }} */
+   * 与被动收敛（_bindStorageWatch）共用 _absorbLocalSnapshot 核心；
+   * 差异仅在：让位需先广播 /store/yielded（UI 弹"未保存修改已被放弃"提示）。 */
+  /** @this {{ _bus: any, _pendingLocalCols: any, _absorbLocalSnapshot: Function }} */
   Store.prototype._absorbNewer = function () {
     if (this._bus) this._bus.emit(dataEvent('yielded'));
     this._pendingLocalCols = null;
+    this._absorbLocalSnapshot();
+  };
+
+  /* 吸收核心：逐集合读 LS 快照覆盖内存（解密失败集合保持现状），刷新基线并全量重绘。
+   * legacy 态（无集合级 key）回落整份读取（等价旧行为）。 */
+  /** @this {{ _storage: any, state: any, _colJson: any, _rev: number, _lastSeenMeta: any, _readLocalColsRaw: Function, _emitChange: Function, _decryptParse: Function }} */
+  Store.prototype._absorbLocalSnapshot = function () {
     var self = this;
     var map = null;
     if (this._storage) {
@@ -681,6 +687,25 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
       }
       self._emitChange('all'); /* 采纳新快照：全量重绘 */
     });
+  };
+
+  /* 跨标签被动收敛（P2）：另一标签写盘触发本标签 storage 事件。
+   * 仅当本标签无待写内容时静默吸收（无未保存输入可丢），空闲后台标签不再无限期显示
+   * 陈旧数据、放大让位丢失面；有待写内容则不吸收，交由下次 flush 的让位协议裁决。 */
+  /** @this {{ _storage: any, _lastSeenMeta: any, _pendingLocalCols: any, needsUnlock: Function, _absorbLocalSnapshot: Function, _boundStorageWatch: any }} */
+  Store.prototype._bindStorageWatch = function () {
+    var self = this;
+    if (typeof window === 'undefined' || typeof window.addEventListener !== 'function') return;
+    this._boundStorageWatch = function (e) {
+      try {
+        if (!e || e.key !== STORAGE_META_KEY || e.newValue === null) return;
+        if (self._pendingLocalCols) return; /* 本标签有未落盘编辑：让位协议裁决，不静默吸收 */
+        if (self.needsUnlock()) return;     /* 锁定态：走解锁 UI 流程 */
+        var cur = self._storage ? self._storage.getItem(STORAGE_META_KEY) : null;
+        if (cur && cur !== self._lastSeenMeta) self._absorbLocalSnapshot();
+      } catch (err) { /* 收敛失败保持现状：下次写入路径仍会让位兜底 */ }
+    };
+    window.addEventListener('storage', this._boundStorageWatch);
   };
 
   /* 实际写 localStorage（降级后备副本；写满只停副本停更，IndexedDB 主快照不受影响）。
@@ -1084,26 +1109,37 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
         var idbSavedAt = (entry && typeof entry === 'object' && !Array.isArray(entry)) ? entry.savedAt : '';
         var useRaw = null;
         var fromIdb = false;
+        /* 损坏探测（P2 自愈）：明文 JSON 解析失败 = 该侧原文无效。
+         * 密文 bundle 交由解密路径判定（未解锁≠损坏，绝不在此侧淘汰）。 */
+        var lsBad = lsRaw !== null && lsRaw !== undefined && !plainJsonOk(lsRaw);
+        var idbBad = idbRaw !== null && idbRaw !== undefined && !plainJsonOk(idbRaw);
         /* LS 优先：仅当 IDB 明确更新（savedAt 严格大于 LS meta）才换 IDB。
          * 双写同批落盘时 LS meta 与 IDB savedAt 相同——相等必须取 LS（构造期已同步吸收），
-         * 否则迁移/回填的同毫秒双写会被误判为"IDB 新"→ 无谓地触发全量重绘。 */
-        if (lsRaw !== null && lsRaw !== undefined && (idbRaw === null || idbRaw === undefined || !(idbSavedAt && lsMeta && idbSavedAt > lsMeta))) {
+         * 否则迁移/回填的同毫秒双写会被误判为"IDB 新"→ 无谓地触发全量重绘。
+         * 损坏例外：LS 原文无效而 IDB 有效 → 无条件取 IDB（修复优先于新旧）。 */
+        if (!lsBad && idbBad) {
+          useRaw = lsRaw;
+        } else if (lsBad && !idbBad && idbRaw !== null && idbRaw !== undefined) {
+          useRaw = idbRaw;
+          fromIdb = true;
+        } else if (lsRaw !== null && lsRaw !== undefined && (idbRaw === null || idbRaw === undefined || !(idbSavedAt && lsMeta && idbSavedAt > lsMeta))) {
           useRaw = lsRaw;
         } else if (idbRaw !== null && idbRaw !== undefined) {
           useRaw = idbRaw;
           fromIdb = true;
         }
-        return { id: id, useRaw: useRaw, fromIdb: fromIdb, lsRaw: lsRaw, idbRaw: idbRaw };
+        return { id: id, useRaw: useRaw, fromIdb: fromIdb, lsRaw: lsRaw, idbRaw: idbRaw, lsBad: lsBad, idbBad: idbBad };
       });
     });
     return Promise.all(jobs).then(function (results) {
       var base = defaultState();
       var lsRaw = {}, idbRaw = {};
+      var corruptLs = {}, corruptIdb = {};
       var any = false, anyFromIdb = false, anyLocked = false, hasExtra = false;
       var decJobs = [];
       results.forEach(function (r) {
-        if (r.lsRaw !== null && r.lsRaw !== undefined) lsRaw[r.id] = r.lsRaw;
-        if (r.idbRaw !== null && r.idbRaw !== undefined) idbRaw[r.id] = r.idbRaw;
+        if (r.lsRaw !== null && r.lsRaw !== undefined) { lsRaw[r.id] = r.lsRaw; if (r.lsBad) corruptLs[r.id] = true; }
+        if (r.idbRaw !== null && r.idbRaw !== undefined) { idbRaw[r.id] = r.idbRaw; if (r.idbBad) corruptIdb[r.id] = true; }
         if (EXTRA_COLLECTIONS.indexOf(r.id) >= 0 && (r.lsRaw !== null || r.idbRaw !== null)) hasExtra = true;
         if (r.useRaw === null || r.useRaw === undefined) return;
         any = true;
@@ -1124,23 +1160,37 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
         if (anyLocked) self._idbEncLocked = true;
         /* locked 供 loadIdb 判定：存在未解锁密文集合 → 不得报告"已采用 IDB 数据"
          * （采用语义是"数据已入内存可用"；未解锁需走锁屏流，needsUnlock 兜底） */
-        return { state: base, fromIdb: anyFromIdb, lsRaw: lsRaw, idbRaw: idbRaw, hasExtra: hasExtra, locked: anyLocked };
+        return { state: base, fromIdb: anyFromIdb, lsRaw: lsRaw, idbRaw: idbRaw, hasExtra: hasExtra, locked: anyLocked, corruptLs: corruptLs, corruptIdb: corruptIdb };
       });
     });
   };
-  /* 缺口回填：LS 缺的集合 ← IDB 原文；IDB 缺的集合 ← LS 原文（明文/密文原样，不转换不解密） */
+  /* 明文 JSON 有效性探测（损坏自愈用）：解析失败或非对象 = 无效原文。
+   * 密文 bundle（e:1）不在此判定——未解锁/解密失败由解密路径处理，不视为明文损坏。 */
+  function plainJsonOk(raw) {
+    if (typeof raw !== 'string') return false;
+    try {
+      var p = JSON.parse(raw);
+      return p !== null && typeof p === 'object';
+    } catch (e) { return false; }
+  }
+  /* 缺口回填：LS 缺/损坏的集合 ← IDB 原文；IDB 缺/损坏的集合 ← LS 原文
+   * （明文/密文原样复制，不转换不解密）。损坏侧覆盖修复 = 集合"显示为空且永不自愈"的根治。 */
   Store.prototype._backfillCols = function (db, merged) {
     var self = this;
+    var cl = merged.corruptLs || {};
+    var ci = merged.corruptIdb || {};
     if (this._storage) {
       for (var id in merged.idbRaw) {
-        if (!merged.lsRaw[id]) {
+        if (ci[id]) continue; /* IDB 侧自身损坏：不可作为修复源 */
+        if (!merged.lsRaw[id] || cl[id]) {
           try { this._storage.setItem(colLsKey(id), merged.idbRaw[id]); } catch (e) { /* LS 回填失败：IDB 仍在 */ }
         }
       }
     }
     var idbJobs = [];
     for (var id2 in merged.lsRaw) {
-      if (!merged.idbRaw[id2]) {
+      if (cl[id2]) continue; /* LS 侧自身损坏：不可作为修复源 */
+      if (!merged.idbRaw[id2] || ci[id2]) {
         idbJobs.push(idbPut(db, id2, { savedAt: self._meta || nowISO(), data: merged.lsRaw[id2] }));
       }
     }
@@ -1676,9 +1726,16 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
         return { ok: true };
       });
     }
+    /* 明文路径同样必须等待落盘完成（对齐加密路径契约）：
+     * save 的 LS 写挂在 idle 防抖上、IDB 走让位锁——直接 resolve 后调用方
+     * 立即刷新/页面关闭会两侧皆失。flushPersist 立即落 LS，再等 IDB 链。 */
     this.save();
-    this._emitChange('all'); /* 导入覆盖全量数据：各页重绘 */
-    return Promise.resolve({ ok: true });
+    this.flushPersist();
+    var selfPlain = this;
+    return (this._idbPromise || Promise.resolve()).then(function () {
+      selfPlain._emitChange('all'); /* 导入覆盖全量数据：各页重绘 */
+      return { ok: true };
+    });
   };
   Store.prototype._importEncBackup = function (pkg, password) {
     var self = this;
@@ -1703,9 +1760,13 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
             return { ok: true };
           });
         } else {
+          /* 明文回落路径：同 importBackup 主路径，等待落盘后再 resolve */
           self.save();
-          self._emitChange('all'); /* 导入覆盖全量数据：各页重绘 */
-          return Promise.resolve({ ok: true });
+          self.flushPersist();
+          return (self._idbPromise || Promise.resolve()).then(function () {
+            self._emitChange('all'); /* 导入覆盖全量数据：各页重绘 */
+            return { ok: true };
+          });
         }
       }).catch(function () {
         return { ok: false, error: '密码错误或备份已损坏，导入中止（原数据未动）' };
