@@ -1,11 +1,12 @@
 'use strict';
 const { test } = require('node:test');
+const { readAllCss } = require('./css-helper');
 const assert = require('node:assert');
-const fs = require('node:fs');
 const path = require('node:path');
 const { boot } = require('./harness.js');
 
-const CSS = fs.readFileSync(path.join(__dirname, '..', 'css', 'style.css'), 'utf8');
+const root = path.join(__dirname, '..');
+const CSS = readAllCss(root);
 
 test('扫雷移动端：棋盘容器可横向滚动，格子保持触控尺寸', () => {
   assert.ok(/\.ms-board-wrap\s*\{[^}]*overflow-x:\s*auto/s.test(CSS), '棋盘外层滚动容器');

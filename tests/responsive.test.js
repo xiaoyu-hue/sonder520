@@ -1,10 +1,12 @@
 'use strict';
 const { test } = require('node:test');
+const { readAllCss } = require('./css-helper');
 const assert = require('node:assert');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const CSS = fs.readFileSync(path.join(__dirname, '..', 'css', 'style.css'), 'utf8');
+const root = path.join(__dirname, '..');
+const CSS = readAllCss(root);
 
 test('响应式：桌面超宽屏内容限宽居中', () => {
   assert.ok(/\.content > \* \{[^}]*max-width:\s*1240px/s.test(CSS), '内容区限宽 1240px');
@@ -51,7 +53,7 @@ test('响应式：断点白名单契约（防魔法数回潮）', () => {
   /* 允许的宽度值：360 超小屏 / 720 手机 / 721 平板下界 / 900 横屏(配 max-height:480) / 960 平板上界 / 1240 限宽阈值 */
   const ALLOWED = new Set(['360', '720', '721', '900', '960', '1240']);
   const offenders = [];
-  for (const rel of ['css/style.css', 'css/desktop-pet.css']) {
+  for (const rel of ['css/style-base.css', 'css/desktop-pet.css']) {
     const text = fs.readFileSync(path.join(__dirname, '..', rel), 'utf8');
     const re = /@media[^{]+/g;
     let m;

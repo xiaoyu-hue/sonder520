@@ -2,12 +2,12 @@
 /* P4a 对比度契约：浅色/暗色主题文字色对背景须达 WCAG AA 普通文本 ≥4.5:1
  * 读取 css/style.css 中的变量定义与关键硬编码色，用标准相对亮度公式计算 */
 const { test } = require('node:test');
+const { readAllCss } = require('./css-helper');
 const assert = require('node:assert');
-const fs = require('node:fs');
 const path = require('node:path');
 
-const root = path.join(__dirname, '..');
-const css = fs.readFileSync(path.join(root, 'css', 'style.css'), 'utf8');
+const root = path.join(__dirname, '..')
+const css = readAllCss(root);
 
 function hexToRgb(hex) {
   const m = /^#([0-9a-f]{6})$/i.exec(hex.trim());

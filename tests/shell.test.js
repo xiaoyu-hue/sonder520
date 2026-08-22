@@ -1,9 +1,10 @@
 'use strict';
 const { test } = require('node:test');
+const { readAllCss } = require('./css-helper');
 const assert = require('node:assert');
 const fs = require('node:fs');
 const path = require('node:path');
-const root = path.join(__dirname, '..');
+const root = path.join(__dirname, '..')
 
 const jsDir = path.join(root, 'js');
 const files = fs.readdirSync(jsDir).filter(f => f.endsWith('.js'));
@@ -53,7 +54,7 @@ test('开源合规：页脚 GitHub 链接与社区文件齐备（Netlify 声明�
   assert.ok(html.includes('https://github.com/xiaoyu-hue/sonder520'), '缺 GitHub 仓库链接');
   /* Commit 6：实际部署为 CF Pages + GH Pages，Netlify 开源计划归属声明已过时移除 */
   assert.ok(!html.includes('netlify.com'), '陈旧 Netlify 声明不应残留');
-  const css = fs.readFileSync(path.join(root, 'css', 'style.css'), 'utf8');
+  const css = readAllCss(root);
   assert.ok(css.includes('.site-footer'), '缺页脚样式');
   assert.ok(fs.existsSync(path.join(root, 'LICENSE')), '仓库缺 LICENSE');
   assert.ok(fs.existsSync(path.join(root, 'CODE_OF_CONDUCT.md')), '仓库缺 CODE_OF_CONDUCT.md');

@@ -1,12 +1,13 @@
 'use strict';
 const { test } = require('node:test');
+const { readAllCss } = require('./css-helper');
 const assert = require('node:assert');
 const fs = require('node:fs');
 const path = require('node:path');
-const root = path.join(__dirname, '..');
+const root = path.join(__dirname, '..')
 
 const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
-const css = fs.readFileSync(path.join(root, 'css', 'style.css'), 'utf8');
+const css = readAllCss(root);
 
 test('性能：壁纸预加载 + 站点图标内联（首次绘制提速，无 404）', () => {
   assert.ok(html.includes('<link rel="preload" as="image" href="img/wallpaper.jpg">'), '应预加载壁纸');

@@ -1,4 +1,5 @@
 'use strict';
+const path = require('node:path');
 const { test } = require('node:test');
 const assert = require('node:assert');
 const { boot, waitFor } = require('./harness.js');
@@ -127,7 +128,8 @@ test('今日页：四档优先级任务各渲染对应颜色圆点与中文标�
   ['p1', 'p2', 'p3', 'p4'].forEach(p => {
     assert.ok(h.window.document.querySelector('.prio-dot[data-p="' + p + '"]'), '缺少圆点 ' + p);
   });
-  const css = require('node:fs').readFileSync(require('node:path').join(require('node:path').dirname(__dirname), 'css', 'style.css'), 'utf8');
+  const { readAllCss } = require('./css-helper');
+const css = readAllCss(path.join(__dirname, '..'));
   assert.ok(/\.prio-dot\[data-p="p1"\]\s*\{\s*background:\s*var\(--accent\)/.test(css), 'p1 圆点应为朱砂红变量色');
   const tags = Array.from(h.window.document.querySelectorAll('.prio-tag')).map(x => x.textContent.trim());
   assert.ok(tags.includes('紧急重要'), '应显示标签 紧急重要');

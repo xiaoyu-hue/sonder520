@@ -1,11 +1,12 @@
 'use strict';
 const { test } = require('node:test');
+const { readAllCss } = require('./css-helper');
 const assert = require('node:assert');
-const fs = require('node:fs');
 const path = require('node:path');
 const { boot } = require('./harness.js');
 
-const css = fs.readFileSync(path.join(__dirname, '..', 'css', 'style.css'), 'utf8');
+const root = path.join(__dirname, '..');
+const css = readAllCss(root);
 
 test('帧率：默认 120，旧数据缺字段时归一化补默认', () => {
   const h = boot();

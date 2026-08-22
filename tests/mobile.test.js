@@ -1,12 +1,13 @@
 'use strict';
 const { test } = require('node:test');
+const { readAllCss } = require('./css-helper');
 const assert = require('node:assert');
 const fs = require('node:fs');
 const path = require('node:path');
-const root = path.join(__dirname, '..');
+const root = path.join(__dirname, '..')
 
 const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
-const css = fs.readFileSync(path.join(root, 'css', 'style.css'), 'utf8');
+const css = readAllCss(root);
 
 /* 手机适配块位于文件末尾（所有基础规则之后，保证同特异性覆盖生效）。
  * 取最后一个 720px 块（早期 gsearch 等模块另有局部 720px 块，不可混淆）。 */

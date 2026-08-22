@@ -1,11 +1,11 @@
 'use strict';
 const { test } = require('node:test');
+const { readAllCss } = require('./css-helper');
 const assert = require('node:assert');
-const fs = require('node:fs');
 const path = require('node:path');
 const { boot, waitFor } = require('./harness.js');
 
-const root = path.join(__dirname, '..');
+const root = path.join(__dirname, '..')
 const S = require(path.join(root, 'js', 'store.js'));
 const wait = ms => new Promise(r => setTimeout(r, ms));
 
@@ -193,7 +193,7 @@ test('QA：标签选项已转义（防属性注入）', () => {
 });
 
 test('QA：棋盘格子在不支持 aspect-ratio 的旧浏览器有最小高度回退', () => {
-  const css = fs.readFileSync(path.join(root, 'css', 'style.css'), 'utf8');
+  const css = readAllCss(root);
   const block = css.slice(css.indexOf('.cell {'), css.indexOf('.cell:hover'));
   assert.ok(block.includes('aspect-ratio: 1/1'), '应有 aspect-ratio');
   assert.ok(block.includes('min-height'), '应有高度回退');

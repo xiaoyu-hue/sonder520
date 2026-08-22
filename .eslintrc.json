@@ -10,6 +10,7 @@
     "sourceType": "script"
   },
   "extends": ["eslint:recommended"],
+  "plugins": ["jsdoc"],
   "ignorePatterns": ["node_modules/", "js/globals.d.ts"],
   "globals": {
     "SonderStore": "readonly",
@@ -22,6 +23,13 @@
   },
   "rules": {
     "no-console": "off",
-    "no-unused-vars": ["warn", { "args": "none", "varsIgnorePattern": "^_" }]
+    "no-unused-vars": ["warn", { "args": "none", "varsIgnorePattern": "^_" }],
+    "no-implicit-globals": "error",
+    "eqeqeq": ["warn", "smart"],
+    "no-throw-literal": "error",
+    "no-self-compare": "error",
+    "jsdoc/require-jsdoc": "off",
+    "jsdoc/check-param-names": "warn",
+    "jsdoc/check-types": "warn"
   }
 }

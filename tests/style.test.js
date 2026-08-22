@@ -1,11 +1,12 @@
 'use strict';
 const { test } = require('node:test');
+const { readAllCss } = require('./css-helper');
 const assert = require('node:assert');
 const fs = require('node:fs');
 const path = require('node:path');
-const root = path.join(__dirname, '..');
+const root = path.join(__dirname, '..')
 
-const css = fs.readFileSync(path.join(root, 'css', 'style.css'), 'utf8');
+const css = readAllCss(root);
 const storeStatsJs = fs.readFileSync(path.join(root, 'js', 'store-stats.js'), 'utf8');
 const selfmediaJs = fs.readFileSync(path.join(root, 'js', 'selfmedia.js'), 'utf8');
 

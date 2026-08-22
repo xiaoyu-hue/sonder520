@@ -158,7 +158,7 @@
   };
 
   /** @constructor
-   * @this {{ container: any, size: number, character: any, color: Object, position: any, enabled: boolean,
+   * @this {{ container: any, size: number, character: any, color: object, position: any, enabled: boolean,
    *   autoIntegrate: boolean, emotion: string, targetEmotion: string, emotionStart: number, emotionDuration: number,
    *   breathe: number, breatheScale: number, blink: any, lookX: number, lookY: number, bounceY: number, wobble: number,
    *   blushOpacity: number, _targetLookX: number, _targetLookY: number,
@@ -1524,8 +1524,8 @@
 
   /* 显示管理器：按模式管理实例数量、串门状态机、布局与拖拽 */
   /** @constructor
-   * @this {{ family: any, instances: Object, visitorRole: any, _visitTimer: any, _leaveTimer: any,
-   *   _exitTimer: any, _exitRole: any, _cooldowns: Object, _boundResize: any, _resizeT: any,
+   * @this {{ family: any, instances: object, visitorRole: any, _visitTimer: any, _leaveTimer: any,
+   *   _exitTimer: any, _exitRole: any, _cooldowns: object, _boundResize: any, _resizeT: any,
    *   _orderedIds: Function, syncInstances: Function, _createInstance: Function, _destroyInstance: Function,
    *   _unbindDrag: Function, get: Function, layout: Function, _bindResize: Function, _bindDrag: Function,
    *   _persistPosition: Function, _clearVisit: Function, _teardownVisitor: Function,
@@ -2020,7 +2020,7 @@
      ============================================================ */
 
   /** @constructor
-   * @this {{ store: any, bus: any, settings: any, _listeners: Object, _container: any, loop: any,
+   * @this {{ store: any, bus: any, settings: any, _listeners: object, _container: any, loop: any,
    *   display: any, interaction: any, _pageMode: boolean,
    *   _sessionCoins: number, _sessionCoinCap: number, _interactionTimer: any,
    *   _unsubTasks: any, _onTaskChangeBound: Function, _onTaskChange: Function,

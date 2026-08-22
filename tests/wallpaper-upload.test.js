@@ -1,6 +1,7 @@
 'use strict';
 /* Step 3 v2.5：上传自定义壁纸（base64 持久化 / 缩略图 / 恢复默认 / 大小限制） */
 const { test } = require('node:test');
+const { readAllCss } = require('./css-helper');
 const assert = require('node:assert');
 const S = require('../js/store.js');
 const { boot } = require('./harness.js');
@@ -179,10 +180,10 @@ test('同一文件可重复上传（输入框已重置，change 再次触发）'
 });
 
 test('CSS：壁纸层元素化适配所有机型——cover 铺满 / 居中 / 不拉伸变形', () => {
-  const { root } = require('./harness.js');
   const fs = require('node:fs');
   const path = require('node:path');
-  const css = fs.readFileSync(path.join(root, 'css', 'style.css'), 'utf8');
+  const root = path.join(__dirname, '..');
+  const css = readAllCss(root);
   assert.ok(css.includes('#wallpaperLayer'), '应有独立壁纸层元素样式');
   const blk = css.split('#wallpaperLayer img')[1].split('}')[0];
   assert.ok(/object-fit:\s*cover/.test(blk), 'img 应以 cover 铺满不拉伸');

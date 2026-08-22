@@ -1,5 +1,6 @@
 'use strict';
 const { test } = require('node:test');
+const { readAllCss } = require('./css-helper');
 const assert = require('node:assert');
 const { boot, waitFor } = require('./harness.js');
 const LG = require('../js/games-logic.js');
@@ -178,7 +179,6 @@ test('游戏：回上一页后重进保留进行中的对局', async () => {
 
 /* ---------- 第 1 轮：棋盘不震动 + 重新开局必须彻底清盘 ---------- */
 
-const fs = require('node:fs');
 const path = require('node:path');
 
 function emptyBoardHelper(h) {
@@ -192,7 +192,8 @@ function emptyBoardHelper(h) {
 }
 
 test('游戏：落子动画零位移（棋盘不震动）', () => {
-  const css = fs.readFileSync(path.join(__dirname, '..', 'css', 'style.css'), 'utf8');
+  const root = path.join(__dirname, '..');
+const css = readAllCss(root);
   const m = css.match(/\.cell\.last \{ animation: ([^;]+);/);
   assert.ok(m && m[1].trim(), '应有 .cell.last 落子动画');
   const name = m[1].split(/\s+/)[0];

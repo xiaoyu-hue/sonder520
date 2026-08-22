@@ -1,11 +1,12 @@
 ﻿'use strict';
 const { test } = require('node:test');
+const { readAllCss } = require('./css-helper');
 const assert = require('node:assert');
-const fs = require('node:fs');
 const path = require('node:path');
 const { boot } = require('./harness.js');
 
-const CSS = fs.readFileSync(path.join(__dirname, '..', 'css', 'style.css'), 'utf8');
+const root = path.join(__dirname, '..');
+const CSS = readAllCss(root);
 
 test('扫雷视觉：css 中格子使用实底色而非未定义变量', () => {
   assert.ok(CSS.includes('--ms-unopened:'), '浅色主题定义未翻开格底色');

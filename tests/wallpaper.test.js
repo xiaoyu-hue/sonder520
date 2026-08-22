@@ -55,7 +55,7 @@ test('UI：设置页有透明度滑块，拖动更新存储与 CSS 变量', () =
 });
 
 test('CSS：壁纸层覆盖视口且透明度走 var(--wallpaper-opacity) 默认 0.4', () => {
-  const css = fs.readFileSync(path.join(root, 'css', 'style.css'), 'utf8');
+  const css = fs.readFileSync(path.join(root, 'css', 'style-base.css'), 'utf8');
   const app = fs.readFileSync(path.join(root, 'js', 'app.js'), 'utf8');
   assert.ok(app.includes("'img/wallpaper.jpg'") || app.includes('"img/wallpaper.jpg"'), '默认壁纸应引用 img/wallpaper.jpg');
   const layer = css.split('#wallpaperLayer img')[1].split('}')[0];
