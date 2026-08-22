@@ -7,6 +7,9 @@
 
 ### 已实施
 
+- **P0 部署一致性急救 + SW 指纹门禁**：修复 c36cba3 起的 ASSET_SIG 过期脱节（重算指纹与 sw.js 存值不符——回访老用户 SW 永不更新、永久停留旧版）；`sync-sw` 新增 `--check` 只读校验模式（清单/指纹不一致 exit 1），deploy.yml test job 接入为 CI 硬门禁，杜绝"改文件忘升版"复发；指纹算法行尾归一化（`\r\n→\n` 后哈希），防 `core.autocrlf` 在 Windows/Linux 检出差异导致平台间指纹漂移；新增回归测试 ×3（--check 功能性运行/参数解析/归一化存在性）。
+- 离线缓存升版 v57 → v58。
+
 - **桌面玩偶 v6.0 全面升级——阶段 1-3（动画/交互/自动触发）**：
   - 阶段 1 动画系统：Pet animationFrame 完整实现（idle/walk/sleep 状态机 SVG 变换 + blink 定时 + idle 随机语录 + 呼吸/眨眼/身体缩放参数差异化）；`PetFamily.autoInit()` 移入 `idbReady.then()` 回调保证 IndexedDB 可用。
   - 阶段 2 交互系统：`isTouchDevice` 检测（`matchMedia('(hover: none)')`）；单击触发表情+语录（2s 冷却防连击）；双击喂食（从库存取第一个零食）；右键菜单（glass morphism 样式：摸摸头/喂食/商店/隐藏）；长按商店（移动端 500ms）；`_family` backref 确保右键操作可达 PetFamily；destroy 完整清理 6 个新监听器+长按定时器+菜单。

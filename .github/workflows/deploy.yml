@@ -20,6 +20,8 @@ jobs:
       - run: npm test
       - run: npm run typecheck
       - run: npm run lint
+      - name: SW 缓存一致性门禁（改动文件后必须 sync-sw）
+        run: node scripts/sync-sw.js --check
 
   e2e:
     name: E2E Smoke (Chromium)

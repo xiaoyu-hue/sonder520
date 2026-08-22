@@ -73,6 +73,19 @@ test('scripts: sync-sw 支持 --force 强制递增（清单未变时也可刷新
   assert.ok(src.includes('listChanged || sigChanged || force'), '--force 应在无变化时也递增 CACHE 版本');
 });
 
+test('scripts: sync-sw --check 只读校验当前仓库一致性（CI 门禁依赖）', () => {
+  const src = read('scripts/sync-sw.js');
+  assert.ok(src.includes("'--check'"), 'sync-sw 应解析 --check 参数');
+  const { execFileSync } = require('node:child_process');
+  const out = execFileSync(process.execPath, [path.join(root, 'scripts', 'sync-sw.js'), '--check'], { encoding: 'utf8' });
+  assert.match(out, /校验通过/, '当前仓库应通过 --check（改动文件后请运行 npm run sync-sw）');
+});
+
+test('scripts: 指纹计算行尾归一化（防 autocrlf 平台间漂移）', () => {
+  const src = read('scripts/sync-sw.js');
+  assert.ok(src.includes("replace(/\\r\\n/g, '\\n')"), 'computeSig 应将 \\r\\n 归一为 \\n 再哈希');
+});
+
 test('scripts: sw.js 含内容指纹 ASSET_SIG（sha256 前 12 位）', () => {
   const m = /var ASSET_SIG = '([0-9a-f]{12})'/.exec(SW);
   assert.ok(m, 'sw.js 应含 12 位十六进制 ASSET_SIG（改动后请运行 npm run sync-sw）');
