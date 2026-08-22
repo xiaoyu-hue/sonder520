@@ -592,36 +592,9 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
 
   /* Web Locks 多标签写锁：navigator.locks 可用时（Chrome 69+/FF 96+/Safari 15.4+）
    * 防抖落盘点在本标签持锁回调内执行；拿锁失败/环境不支持 → 降级直接落盘（等价旧行为）。
-   * 跨标签竞态防护见 _lockedLocalFlush 内写前 meta 检查（另一标签已写更新快照时让位不覆盖）。 */
+   * ADR-013：实现已收口至 _storeWrite，本方法仅为既有调用方保留的薄壳。 */
   Store.prototype._lockedLocalFlush = function () {
-    var self = this;
-    var locks = (typeof navigator !== 'undefined' && navigator.locks && typeof navigator.locks.request === 'function')
-      ? navigator.locks : null;
-    if (!locks) { this._doLocalFlush(); return; }
-    var done = false;
-    var fallback = function () { if (done) return; done = true; self._doLocalFlush(); };
-    var p = null;
-    try {
-      p = locks.request('sonder-writer', function () {
-        /* 锁内：写前检查 LS 快照是否已被其他标签更新（meta 版本比较）。
-         * 本实例自上次确认后未见过的更新 meta → 本次待写基于旧内存 state，
-         * 直接覆盖会丢新数据（LWW 丢数据场景）→ 让位：吸收新快照、不覆盖。
-         * 相同/更旧 meta → 正常落盘。 */
-        if (self._storage) {
-          var curMeta = null;
-          try { curMeta = self._storage.getItem(STORAGE_META_KEY); } catch (e) { curMeta = null; }
-          /* LS 快照 meta 与本实例基线不一致（另一标签已写/外部变更）→ 让位不覆盖 */
-          if (curMeta && curMeta !== self._lastSeenMeta) {
-            done = true;
-            self._absorbNewer();
-            return;
-          }
-        }
-        done = true;
-        self._doLocalFlush();
-      });
-      if (p && typeof p.catch === 'function') p.catch(fallback);
-    } catch (e) { fallback(); }
+    return this._storeWrite(null, { ls: 'immediate', idb: 'skip' });
   };
 
   /* 让位：放弃本次旧快照覆盖，改为吸收 localStorage 中的最新 LS 快照（其他标签已写更新）。
@@ -881,10 +854,9 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
       return Promise.all(jobs).then(function (results) {
         var encMap = {};
         results.forEach(function (r) { encMap[r.col] = r.payload; });
+        /* ADR-013：LS+IDB 双相位由收口点在锁内一次完成（旧实现 IDB 在锁外） */
         return self._lockedEncWrite(encMap).then(function (written) {
           if (!written) return; /* 让位：本次密文不落盘，新快照吸收后由后续 save 跟进 */
-          var salt = self._storage ? self._storage.getItem(STORAGE_SALT_KEY) : null;
-          self._idbWriteCols(encMap, salt ? { salt: salt } : {});
         });
       });
     }).catch(function (err) {
@@ -900,22 +872,70 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
    * resolve(false) 表示本次密文未落盘；一致 → 立即落盘并 resolve(true)。
    * Promise 化保证 enableEncryption 的回读验证在锁回调完成后才执行；
    * 无锁环境降级直接落盘（等价旧行为）。 */
-  /** @this {{ _storage: any, _lastSeenMeta: any, _absorbNewer: Function, _persistLocal: Function, flushPersist: Function }} */
+  /** @this {{ _storeWrite: Function, _encSaltExtra: Function }} */
   Store.prototype._lockedEncWrite = function (encMap) {
+    /* ADR-013：收口委托。LS+IDB 两相位同锁完成（旧实现 IDB 在锁外，
+     * 锁释放与 put 之间存在竞态窗——本壳随调用方迁移后删除）。 */
+    return this._storeWrite(encMap, { ls: 'immediate', idb: 'write', extra: this._encSaltExtra() });
+  };
+
+  /* 密文 entry 附带盐（IDB extra）；盐缺失返回空对象 */
+  /** @this {{ _storage: any }} */
+  Store.prototype._encSaltExtra = function () {
+    if (!this._storage) return {};
+    try {
+      var salt = this._storage.getItem(STORAGE_SALT_KEY);
+      return salt ? { salt: salt } : {};
+    } catch (e) { return {}; }
+  };
+
+  /* ====== 唯一落盘收口点（ADR-013）======
+   * 锁内固定序列：① meta 让位检查 → ② LS 相位 → ③ IDB 相位。
+   * 全部写路径（save/_commit 防抖flush、_encSave 密文、模式切换、迁移、导入）
+   * 一律经此函数；协议参与由结构保证，不再靠调用方自觉。
+   *
+   * @param map {{集合id: 串}} 明文或密文原样（LS 与 IDB 同内容同序）
+   * @param opts {{ls?: 'immediate'|'skip', idb?: 'write'|'skip', extra?: Object}}
+   *   ls='immediate'：把 map 并入待写后立即 _doLocalFlush（去重/配额分类/基线刷新全复用）
+   *   idb='write'：锁内写 IDB 主快照（extra 如盐随 entry 落盘）
+   * @returns {Promise<boolean>} true=已落盘 false=已让位吸收
+   * 无锁环境：顺序直执行各相位并 resolve(true)（保持既有同步语义兼容）。 */
+  /** @this {{ _storage: any, _lastSeenMeta: any, _pendingLocalCols: any, _meta: any, _localFlushHandle: any, _absorbNewer: Function, _persistLocal: Function, _doLocalFlush: Function, _idbWriteCols: Function }} */
+  Store.prototype._storeWrite = function (map, opts) {
     var self = this;
+    opts = opts || {};
+    var doLS = opts.ls === 'immediate';
+    var doIDB = opts.idb === 'write';
+    function runPhases() {
+      if (doLS) {
+        /* 有内容：并入待写 + 设定 _meta 基线并作废已调度 idle（立即相位）；
+         * 空调用（纯 flush 场景）：只消费既有待写，不重盖时间戳——保住
+         * "LS meta == IDB savedAt 同批落盘"的配对语义。 */
+        if (map && Object.keys(map).length > 0) {
+          self._persistLocal(map);
+          if (self._localFlushHandle !== null && typeof globalThis.cancelIdleCallback === 'function') {
+            globalThis.cancelIdleCallback(self._localFlushHandle);
+          }
+          self._localFlushHandle = null;
+        }
+        self._doLocalFlush();
+      }
+      if (doIDB) self._idbWriteCols(map || {}, opts.extra);
+    }
+
     var locks = (typeof navigator !== 'undefined' && navigator.locks && typeof navigator.locks.request === 'function')
       ? navigator.locks : null;
-    if (!locks) { self._persistLocal(encMap); self.flushPersist(); return Promise.resolve(true); }
+    if (!locks) { runPhases(); return Promise.resolve(true); }
     return new Promise(function (resolve) {
       var done = false;
-      var fallback = function () { if (done) return; done = true; self._persistLocal(encMap); self.flushPersist(); resolve(true); };
+      var fallback = function () { if (done) return; done = true; runPhases(); resolve(true); };
       var p = null;
       try {
         p = locks.request('sonder-writer', function () {
           if (self._storage) {
             var curMeta = null;
             try { curMeta = self._storage.getItem(STORAGE_META_KEY); } catch (e) { curMeta = null; }
-            /* LS 快照 meta 与本实例基线不一致（另一标签已写/外部变更）→ 让位不覆盖 */
+            /* 他标签已写更新快照：让位吸收，两相位全跳过 */
             if (curMeta && curMeta !== self._lastSeenMeta) {
               done = true;
               self._absorbNewer();
@@ -924,8 +944,7 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
             }
           }
           done = true;
-          self._persistLocal(encMap);
-          self.flushPersist();
+          runPhases();
           resolve(true);
         });
         if (p && typeof p.catch === 'function') p.catch(fallback);
@@ -933,38 +952,11 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     });
   };
 
-  /* 明文 IDB 主快照写的让位封装（与 _lockedEncWrite 同一协议，ADR-007）：
-   * 修复"明文路径 _idbWriteCols 无条件立即执行、绕过让位检查"——多标签并发时
-   * 本标签基于旧内存 state 的陈旧集合会带最新 savedAt 覆盖 IDB，
-   * 让位 toast 只保护了 LS 副本、管不住已写入的主快照（赢家标签编辑被永久判负）。
-   * 锁内写前 meta 检查：另一标签已写更新快照 → 让位吸收、本次不写 IDB；
-   * 一致 → 正常落盘。无锁环境/锁异常降级直接写（等价旧行为）。 */
-  /** @this {{ _storage: any, _lastSeenMeta: any, _absorbNewer: Function, _idbWriteCols: Function }} */
+  /* 明文 IDB 主快照写的让位封装（ADR-007 → ADR-013 收口薄壳）：
+   * 历史：修复"明文路径 IDB 无条件立即执行绕过让位检查"。现由收口点统一提供协议。 */
+  /** @this {{ _storeWrite: Function }} */
   Store.prototype._lockedIdbWrite = function (map) {
-    var self = this;
-    var locks = (typeof navigator !== 'undefined' && navigator.locks && typeof navigator.locks.request === 'function')
-      ? navigator.locks : null;
-    if (!locks) { self._idbWriteCols(map); return; }
-    var done = false;
-    var fallback = function () { if (done) return; done = true; self._idbWriteCols(map); };
-    var p = null;
-    try {
-      p = locks.request('sonder-writer', function () {
-        if (self._storage) {
-          var curMeta = null;
-          try { curMeta = self._storage.getItem(STORAGE_META_KEY); } catch (e) { curMeta = null; }
-          /* LS 快照 meta 与本实例基线不一致（另一标签已写/外部变更）→ 让位不覆盖 */
-          if (curMeta && curMeta !== self._lastSeenMeta) {
-            done = true;
-            self._absorbNewer();
-            return;
-          }
-        }
-        done = true;
-        self._idbWriteCols(map);
-      });
-      if (p && typeof p.catch === 'function') p.catch(fallback);
-    } catch (e) { fallback(); }
+    return this._storeWrite(map, { ls: 'skip', idb: 'write' });
   };
 
   /* 启动时调用：优先从 IndexedDB 恢复（逐集合按 savedAt 取新，LS meta 为版本基线）。
