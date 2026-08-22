@@ -66,5 +66,6 @@ test('离线指示：切换不影响其他页脚元素', () => {
   const footerAfter = h.window.document.querySelector('.site-footer').textContent;
   assert.ok(footerBefore.includes('Sonder 开源'), '页脚应有品牌文案');
   assert.ok(footerAfter.includes('Sonder 开源'), '切换后品牌文案不应丢失');
-  assert.ok(footerAfter.includes('Netlify'), 'Netlify 链接不应受影响');
+  /* Commit 6：陈旧第三方文案"powered by Netlify"已删除（实际部署为 CF Pages + GH Pages） */
+  assert.ok(!footerAfter.includes('Netlify'), 'Netlify 文案应已移除');
 });

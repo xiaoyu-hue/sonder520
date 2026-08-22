@@ -31,6 +31,11 @@
   - PWA 资产补全：零依赖生成 PNG 图标（192/512/maskable-512/apple-touch-icon 180），manifest 补 maskable 与位图条目；manifest 主题/背景色统一宣纸 `#f2efe6`（与 meta theme-color 一致，消除安装态闪屏割裂）；index.html 补 apple-touch-icon 引用；_headers 补 `Content-Security-Policy: frame-ancestors 'none'`（GH Pages 不读 _headers 的残余风险记录于 CHANGELOG 待 ADR）。
   - sessionStorage 会话免密密码驻留风险：维持功能现状（用户显式勾选的功能性取舍），代码处加风险注记，后续评估内存态方案。
 - 离线缓存升版 v62 → v66。
+- **P3 打磨 + 测试盲区补强（收尾）**：
+  - sw.js 删除非导航分支内永假的 navigate 死代码；静态资源回源遇非 ok 响应时以缓存首页兜底（瞬时 5xx 不再直接透传白屏）。
+  - 页脚移除陈旧 "powered by Netlify" 归属声明（实际部署 CF Pages + GH Pages，Netlify 开源计划要求随迁移失效）；offline-indicator/shell 合规测试同步新现实。
+  - 测试盲区补齐：新增 blind-spots.test.js ×5——setDesktopPet 持久化网关（白名单拒绝/浅合并/落盘可见，desktopPet 唯一写入口此前零直测）、games-view 纯函数契约冒烟、games-battle 挂载冒烟。
+- 离线缓存升版 v66 → v67。**测试基线 641 → 685。**
 
 - **桌面玩偶 v6.0 全面升级——阶段 1-3（动画/交互/自动触发）**：
   - 阶段 1 动画系统：Pet animationFrame 完整实现（idle/walk/sleep 状态机 SVG 变换 + blink 定时 + idle 随机语录 + 呼吸/眨眼/身体缩放参数差异化）；`PetFamily.autoInit()` 移入 `idbReady.then()` 回调保证 IndexedDB 可用。

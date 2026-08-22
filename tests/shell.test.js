@@ -48,11 +48,11 @@ test('index.html 包含外壳结构元素', () => {
   });
 });
 
-test('开源合规：页脚含 Netlify 与 GitHub 链接（Netlify 开源计划要求）', () => {
+test('开源合规：页脚 GitHub 链接与社区文件齐备（Netlify 声明随迁移 CF Pages/GH Pages 移除）', () => {
   const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
-  assert.ok(html.includes('This site is powered by Netlify'), '缺 Netlify 托管声明');
-  assert.ok(html.includes('https://www.netlify.com'), 'Netlify 链接应指向 netlify.com');
   assert.ok(html.includes('https://github.com/xiaoyu-hue/sonder520'), '缺 GitHub 仓库链接');
+  /* Commit 6：实际部署为 CF Pages + GH Pages，Netlify 开源计划归属声明已过时移除 */
+  assert.ok(!html.includes('netlify.com'), '陈旧 Netlify 声明不应残留');
   const css = fs.readFileSync(path.join(root, 'css', 'style.css'), 'utf8');
   assert.ok(css.includes('.site-footer'), '缺页脚样式');
   assert.ok(fs.existsSync(path.join(root, 'LICENSE')), '仓库缺 LICENSE');

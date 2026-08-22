@@ -4,7 +4,7 @@
  * 内容变了而版本没升说明部署流程漏跑 sync-sw。 */
 'use strict';
 
-var CACHE = 'sonder-v66';
+var CACHE = 'sonder-v67';
 
 var ASSETS = [
   './',
@@ -56,7 +56,7 @@ var ASSETS = [
   './assets/apple-touch-icon.png',
   './js/game-worker.js'
 ];
-var ASSET_SIG = 'd8d4124f5a28';
+var ASSET_SIG = '0ff15cd27986';
 
 /* install：预缓存全部资源，立即接管。
  * Request(cache:'reload') 绕过 HTTP 缓存直取网络——GH Pages max-age=600 下
@@ -109,10 +109,14 @@ self.addEventListener('fetch', function (e) {
         if (res && res.ok && new URL(e.request.url).origin === self.location.origin) {
           var copy = res.clone();
           caches.open(CACHE).then(function (c) { c.put(e.request, copy); });
+          return res;
+        }
+        /* 回源拿到非 ok（瞬时 5xx/404）：有缓存副本时兜底返回旧版而非直接透传错误 */
+        if (res && !res.ok) {
+          return caches.match('./index.html').then(function (fallback) { return fallback || res; });
         }
         return res;
       }).catch(function () {
-        if (e.request.mode === 'navigate') return caches.match('./index.html');
         return Response.error();
       });
     })
