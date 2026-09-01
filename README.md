@@ -8,9 +8,12 @@
 
 六款小游戏、番茄专注、可选加密、离线可用、全局搜索，数据 100% 留在本地浏览器。
 
-重要声明！
+
 Important statement!
+
 The local personal work/life management tool made by my 0 programming foundation and AIagent can not be updated and maintained because the equipment is broken. I will continue to maintain and update it when I buy new equipment.
+
+重要声明！
 
 本人0编程基础与AIagent制作的本地个人工作/生活管理工具，由于设备坏了，无法更新维护，等购买新设备，继续维护更新。
 
