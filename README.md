@@ -21,6 +21,19 @@
 
 ---
 
+<div align="center">
+
+![HTML5](https://img.shields.io/badge/HTML5-E34F26?style=flat&logo=html5&logoColor=white)
+![CSS3](https://img.shields.io/badge/CSS3-1572B6?style=flat&logo=css3&logoColor=white)
+![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=flat&logo=javascript&logoColor=black)
+![MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
+![PWA](https://img.shields.io/badge/PWA-Support-green)
+![Zero-Dependency](https://img.shields.io/badge/Zero-Dependency-6B728C)
+
+</div>
+
+---
+
 **[🚀 在线体验](https://sonder520.pages.dev/)** · **[📖 使用文档](#-使用)** · **[🛠️ 技术架构](#-技术架构)** · **[📦 本地运行](#-本地运行)**
 
 ---
