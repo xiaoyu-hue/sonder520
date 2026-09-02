@@ -1,142 +1,133 @@
-# Sonder · 个人工作生活 App
+# 🌸 Sonder · 个人工作生活管理
 
-> **English**: This is a privacy-first personal productivity web app (pure HTML/CSS/vanilla JS, no build tools, no backend). All data stays in your browser. Live sites and full English docs: [README.en.md](README.en.md)
+> **纯前端 · 零依赖 · 本地存储 · 水墨液态玻璃风格**
 
-个人工作/生活管理工具，纯 HTML/CSS/原生 JS，零构建、零依赖。
+一个隐私优先的个人工作/生活管理Web应用，纯HTML/CSS/原生JavaScript实现，无需构建工具，无需后端服务器。所有数据保存在浏览器本地，支持离线使用。
 
-「水墨 × 液态玻璃」视觉风格，支持自定义壁纸上传与透明度调节。
+---
 
-六款小游戏、番茄专注、可选加密、离线可用、全局搜索，数据 100% 留在本地浏览器。
+**[🚀 在线体验](https://sonder520.pages.dev/)** · **[📖 使用文档](#-使用)** · **[🛠️ 技术架构](#-技术架构)**
 
+---
 
-Important statement!
+## ✨ 功能特性
 
-The local personal work/life management tool made by my 0 programming foundation and AIagent can not be updated and maintained because the equipment is broken. I will continue to maintain and update it when I buy new equipment.
+| 功能模块 | 说明 |
+|----------|------|
+| 📋 **今日计划** | 四档优先级、番茄钟专注倒计时、任务增删改查 |
+| 📝 **快速备忘** | 即点即存、历史记录、归档管理 |
+| 📊 **自媒体管理** | 选题规划、月历排期、多平台发布、阅读数据分析 |
+| 💻 **开发工作** | 项目管理、任务清单、技术笔记（Markdown渲染） |
+| 👥 **咨询工作** | 客户档案、项目跟进、收入记录 |
+| 📚 **阅读计划** | 书单管理、阅读计时、书摘记录 |
+| 📰 **新闻收藏** | 资讯收藏、待读/已读分类 |
+| 🎨 **设计计划** | 灵感收集、项目阶段管理 |
+| 🎮 **娱乐游戏** | 井字棋、五子棋（AI对战）、猜数字、扫雷、猜成语 |
+| 🔧 **数据设置** | 主题切换、壁纸上传、透明度调节、加密存储、备份导入导出 |
+| 🔍 **全局搜索** | 全模块内容快速检索 |
+| 📱 **PWA支持** | 离线可用、添加到主屏幕、推送通知 |
 
-重要声明！
+---
 
-本人0编程基础与AIagent制作的本地个人工作/生活管理工具，由于设备坏了，无法更新维护，等购买新设备，继续维护更新。
+## 🎨 视觉与交互
 
-## 在线访问
+- **水墨 × 液态玻璃风格**：宣纸/墨黑双主题背景、磨砂玻璃卡片、朱砂红强调色
+- **自定义壁纸**：支持上传背景图（≤2MB），可调透明度（0-100%）
+- **微动态效果**：页面淡入、图表生长、按钮反馈、Toast滑入
+- **全平台适配**：桌面端侧栏、平板图标栏、手机端底部导航
 
-推荐优先访问以下两个站点（Git 推送自动部署，始终同步最新版）：
+---
 
-- 主站：https://sonder520.pages.dev/
+## 🛠️ 技术架构
 
-- 备用站：https://xiaoyu-hue.github.io/sonder520/
+| 层面 | 技术栈 |
+|------|--------|
+| **前端** | HTML5 + CSS3 + 原生 JavaScript (ES6+) |
+| **样式** | CSS Variables、Flexbox、Grid、Backdrop Filter |
+| **存储** | localStorage + IndexedDB（双写备份） |
+| **安全** | XSS净化、PBKDF2 + AES-GCM-256加密（可选） |
+| **PWA** | Service Worker、Manifest、离线缓存 |
+| **测试** | Playwright E2E测试（696项通过） |
+| **部署** | GitHub Pages / Netlify / Cloudflare Pages |
 
-另外还有历史主站（可能滞后）：
+---
 
-https://sonder520.netlify.app/
+## 🚀 快速开始
 
-（因部署次数限制未同步最新，不推荐使用）。
+### 本地运行
 
-> 数据存于各设备浏览器 localStorage，设备间相互独立；多设备数据迁移请用「数据与设置 → 导出备份 / 导入恢复」。
+直接双击 `index.html` 用浏览器打开即可，推荐 Chrome / Edge。
 
-## 免责声明！！！
+```bash
+# 或使用本地服务器
+npx serve .
+```
 
-本项目遵循 MIT 许可证，允许自由使用、修改和分发，但须保留版权和许可声明，且不提供任何担保。详情请查阅仓库中的 LICENSE 文件。
+### 在线访问
 
-## 开源
+- **主站**: https://sonder520.pages.dev/
+- **备用站**: https://xiaoyu-hue.github.io/sonder520/
 
-源码公开于 GitHub：https://github.com/xiaoyu-hue/sonder520
+---
 
-（公开仓库，无需登录即可浏览）
+## 💾 数据存储
 
-- 纯前端项目，任何访客在浏览器 DevTools 中也可见完整源码，属"天然开源"。
+- **所有数据保存在浏览器本地**（localStorage + IndexedDB）
+- **数据完全私有**，不经过任何服务器
+- **支持加密存储**（可选启用）
+- **定期备份**：数据与设置 → 导出备份
 
-- 数据安全不受影响：数据仅存于访问者各自浏览器，不会经过任何服务器；可选启用加密存储（PBKDF2 + AES-GCM-256）。
+---
 
-## 功能
+## 🧪 开发
 
-- 首页总览：问候语 + 每日金句、完成率环形进度条、今日摘要、快速备忘、各模块概览卡片
+```bash
+# 运行全部测试（696项）
+npm test
 
-- 今日计划：四档优先级、🍅 专注 25 分钟倒计时（到时浏览器通知）、增删改/勾选/排序/分组
+# 类型检查
+npm run typecheck
 
-- 快速备忘：即点即存、历史、归档
+# 代码检查
+npm run lint
 
-- 自媒体：选题、月历视图拖拽排期、发布渠道（公众号/小红书/B 站/抖音）、阅读量/点赞与最近 5 篇折线图、导出 CSV
+# 同步离线缓存
+npm run sync-sw
+```
 
-- 开发工作：项目、任务清单、进度自动统计、技术笔记（Markdown 渲染 + 代码一键复制）
+---
 
-- 咨询工作：客户档案、项目、跟进记录、收入记录
+## 📄 许可证
 
-- 阅读计划：书单、状态、阅读计时（分钟）、「我的书摘」页（按书分组）、进度
+本项目遵循 [MIT 许可证](LICENSE)，允许自由使用、修改和分发。
 
-- 看新闻计划：资讯收藏、待读/已读/收藏、跳转链接
+---
 
-- 设计计划：灵感收集 + 设计项目与阶段
+## 🤝 贡献指南
 
-- 娱乐游戏：井字棋 / 五子棋（AI 对决三档难度与双人对弈；AI 计算走 Web Worker，落子不卡界面）+ 猜数字 / 扫雷 / 猜成语 / 脑筋急转弯（战绩并入对战记录）
+欢迎提交 Issue 和 Pull Request！
 
-- 数据与设置：主题（跟随系统可覆盖）、壁纸上传与透明度、动画帧率（60/90/120）、模块开关、统计、导出/导入备份、加密开关、本周报告一键复制、桌面通知、迁移至 IndexedDB
+请先阅读 [行为准则](CODE_OF_CONDUCT.md) 和 [贡献指南](CONTRIBUTING.md)。
 
-- 可靠性：PWA 离线可用（导航网络优先，刷新即拿新版，离线回退缓存）、存储双写双存（IndexedDB 主快照 + localStorage 副本 + 可选加密）、加密韧性防线（锁定态防明文落盘、未来加密版本密文原样保护）、存储超 4.5MB 顶部警示条、双写后端同时失效时红色危机警示条强制引导导出备份、全局搜索、全模块 XSS 净化（含属性注入）、错误上报与壳层降级（file:// 直开时浏览器对 manifest 等资源的 CORS 限制属环境噪音，仅记录不弹 toast，脚本异常仍照常提示）
+---
 
-## 视觉与交互
+## 📊 项目状态
 
-- 水墨 × 液态玻璃：宣纸/墨黑双主题背景（默认跟随系统）、磨砂玻璃卡片（backdrop-filter + 高光内边）、朱砂红强调、国画颜料色系图表。
+| 指标 | 数值 |
+|------|------|
+| 测试用例 | 696 项全部通过 ✅ |
+| 代码行数 | ~15,000 行 |
+| 模块数量 | 12 个核心模块 |
+| 小游戏 | 6 款 |
 
-- 自定义壁纸：设置页上传背景图（≤2MB），可调透明度（0–100%，默认 40%，实时预览并持久化），可恢复默认。
+---
 
-- 微动态：页面淡入错峰、图表墨液蔓延生长、按钮按压反馈、空状态呼吸、Toast 滑入、弹窗底部抽屉（手机端）。
+## 🙏 致谢
 
-- 双主题文字/强调色对比度全部 ≥4.5:1（WCAG AA，含浅深两套 token 与扫雷数字，测试锁定）。
+- [Playwright](https://playwright.dev/) - E2E测试框架
+- [ESLint](https://eslint.org/) - 代码检查
+- [TypeScript](https://www.typescriptlang.org/) - 类型检查
 
-## 全平台适配
+---
 
-| 设备 | 布局 |
-| --- | --- |
-| 电脑（>960px） | 左侧液态玻璃侧栏 + 多列网格；>1240px 内容限宽居中 |
-| 平板（721–960px） | 侧栏折叠为 70px 图标栏 |
-| 手机竖屏（≤720px） | 底部液态玻璃导航栏（图标横排、可滑动） |
-| 超小屏（≤360px） | 压缩留白，导航不挤爆 |
-| 手机横屏 | 顶栏与导航自动变矮 |
-
-- iOS/安卓：viewport-fit=cover、刘海屏/手势条安全区（env(safe-area-inset-bottom)）、100vh→100dvh 高度回退、触控目标 ≥44px、输入控件 16px 防聚焦缩放。
-
-- 支持「添加到主屏幕」作为 App 图标打开，离线可用。
-
-- 尊重系统 prefers-reduced-motion（减弱动效）。
-
-## 如何运行（本地）
-
-直接用浏览器打开（双击） index.html 即可。推荐 Chrome / Edge。
-
-- 数据保存在浏览器本地存储（localStorage + IndexedDB），刷新、关闭标签、关闭并重启浏览器都不丢失。
-
-- 重要数据请定期在「数据与设置 → 导出备份」下载 JSON 文件保存；需要高级隐私保护可在设置中启用加密存储。
-
-## 如何更新已部署的站点
-
-每次改完代码后，任选其一：
-
-1. 网页拖拽（推荐）：登录 https://app.netlify.com → 打开站点 sonder520 → Deploys（部署记录）页 → 把本目录整个文件夹拖入 Drag and drop deploy area here → 等出现 Published 即可（网址不变）。
-
-   ⚠️ 不要用 app.netlify.com/drop 重复上传——Drop 每次会新建一个新站点。
-
-2. 命令行：npm i -g netlify-cli → netlify login → netlify link → netlify deploy --prod --dir=.
-
-3. Git 自动部署：推到 GitHub 仓库后在 Netlify 里连接该仓库，之后 git push 自动上线。
-
-也可以部署到其他静态托管（全部资源为相对路径，无需构建）：GitHub Pages、Cloudflare Pages、Vercel。
-
-## 开发者
-
-依赖与说明：
-
-- 应用为纯 HTML/CSS/原生 JS，构建/运行零依赖，不需要 npm 安装即可使用。
-
-- 运行全部测试：npm test（当前 696 项全部通过，覆盖存储/加密（含竞态与未来版本韧性）/结构化存储状态（TrustLayer 契约）/集合级持久化（ADR-009 决策 7：逐集合 key 读写/迁移/回填/加密集合独立 bundle）/标准模块工厂（ModuleFactory 契约与行为，含 v0.1.1 prepend/timeField 与 v0.1.2 orderField/move 扩展）/事件总线契约（EventBridge：EVENT 常量表与 payload 契约）/UI/各模块/样式/动效/壁纸/移动端自动适配/性能/游戏引擎/交互质量回归/PWA/搜索/离线状态指示/XSS 净化（含属性注入）/对比度/IndexedDB/通知/Web Worker/持久化危机兜底/动态交互层契约与行为/file:// 直开环境/ESM 试验田双实现一致性/桌面玩偶（三角色+金币+商店+喂养+成就+互动对话））。
-
-- 类型检查（零构建）：npm run typecheck（JSDoc + tsc --noEmit，契约以 globals.d.ts 锁定）。
-
-- 代码检查：npm run lint（eslint@8，无注释空 catch 与死变量禁止）。
-
-- 同步离线缓存：改动脚本/入口后运行 npm run sync-sw（自动同步 sw.js 缓存清单与内容指纹 ASSET_SIG 并递增版本）。
-
-## 文档
-
-- 产品需求：见 PRD.md（含版本历史、视觉设计、数据与操作、验收标准与技术架构说明）。
-
-- 架构决策记录：见 docs/adr/（ADR-001 零构建与脚本顺序契约、ADR-002 本地优先存储分层、ADR-003 契约固化式测试、ADR-004 PWA 缓存版本管理、ADR-005 安全基线、ADR-006 渲染模型与搜索契约、ADR-007 多标签写锁、ADR-008 全局符号契约、ADR-009 标准模块工厂、ADR-010 事件总线契约、ADR-011 试点迁移协议与 memo 入厂、ADR-012 桌面玩偶独立 Specialized 模块架构）——每次重大架构/安全决策落一个 ADR，防"决策只存在于 commit message 里"。
+**Made with ❤️ by AI Agent**
