@@ -31,7 +31,7 @@ https://xiaoyu-hue.github.io/sonder520/
 | v1.1 | 「水墨 × 液态玻璃」视觉语言：宣纸/墨黑双主题、自媒体发布统计、阅读统计、内容制作进度条 |
 | v1.2 | 水墨微动态交互、自定义壁纸背景、侧栏液态玻璃片、全平台移动适配（平板图标栏/超小屏/横屏/dvh 回退） |
 | v1.3 | 手机适配（底部玻璃导航/安全区/触控细节）、每日金句、娱乐游戏模块（井字棋/五子棋）、性能与兼容优化 |
-| v2.0 | 游戏交互质量回归（三项修复）、五子棋移动端棋盘适配、自动化测试深化至 145 项、上线验收全绿 |
+| v2.0 | 游戏交互质量回归（三项修复）、五子棋移动端棋盘适配、自动化测试深化至 145 项、上线验收通过 |
 | v2.1 | 游戏/性能/PWA/安全/存储八项升级：棋盘震动修复、AI 难度分级、帧率档位、离线可用、零构建类型检查、全局搜索、XSS 加固、IndexedDB 双写；测试深化至 184 项 |
 | v3.0 | 可选加密、四款新迷你游戏、阅读计时与书摘、自媒体月历排期与数据图表、专注番茄钟、本周报告、壁纸上传、桌面通知、主题跟随系统、超宽屏适配、性能优化；测试深化至 213 项 |
 | v4.0 | 质量加固体系（23 项）：契约防御（类型/测试/白名单审计）、eslint 防线、错误上报、XSS 属性注入修复、加密 5 项修复、焦点管理与对比度、store 领域拆分、脚本清单收敛；测试深化至 407 项 |
@@ -53,7 +53,7 @@ https://xiaoyu-hue.github.io/sonder520/
 9. **对比度 token 化（review2）**：新增 `--warn-text/--ok-text/--accent-text` 双主题 token（浅色 5 处文本、扫雷数字、深色同步补亮），全部 ≥4.5:1（对照扫雷格子底色实测）。
 10. **壳层健壮性（review2）**：`buildNav` 逐模块 try/catch 降级，单个模块异常不再导致整个外壳崩溃。
 11. **测试 flake 加固（review2）**：AI 应手固定延时等待改轮询（±50ms 余量）；扫雷胜利断言改 `setMineField` 确定性雷位（原随机洪泛可能被静默跳过）；消除 2 处随机格子选择。
-12. **测试基线**：新增 7 项回归（v2 密文韧性/空参守卫/锁定迁移/完成率分母/书摘与战绩索引/对比度 token/扫雷数字），`npm test` 407 → **422 项全部通过**；tsc/lint 0。
+12. **测试基线**：新增 7 项回归（v2 密文韧性/空参守卫/锁定迁移/完成率分母/书摘与战绩索引/对比度 token/扫雷数字），`npm test` 407 → **422 项通过**；tsc/lint 0。
 
 ### v5.0 补丁摘要（P5a，紧随其后）
 
@@ -61,7 +61,7 @@ https://xiaoyu-hue.github.io/sonder520/
 14. **终局认输防重记**：`resign` 返回 null（对局已结束，如幽灵定时器已落子）时不再弹确认框、不追加战绩——消除双重记录。
 15. **AI 应手重入守卫**：`aiThink` 已挂起定时器时直接跳过，render 恢复路径与落子路径不再各自调度出重复应手。
 16. **撤销不顶替当前页**：memo / reading（书摘）/ today 三处撤销 confirm 改为「仍停留在原页才重渲染该页视图，已切页则仅提示已恢复」——修复旧行为「#content 常驻导致撤销整页渲染顶替已切换的页面」。
-17. **测试基线**：新增「终局认输不再追加战绩」回归，`npm test` **423 项全部通过**；tsc/lint 0。
+17. **测试基线**：新增「终局认输不再追加战绩」回归，`npm test` **423 项通过**；tsc/lint 0。
 
 ### v5.1 性能与可靠性补丁摘要（本版）
 
@@ -69,7 +69,7 @@ https://xiaoyu-hue.github.io/sonder520/
 2. **SonderBus 事件总线**：新增 `event-bus.js`，store 数据变更统一发布事件，各页面订阅后自动重绘，替代分散的手工刷新钩子，跨模块数据变更即时可见。
 3. **五子棋 AI 异步化**：AI 计算（含困难档前瞻）移至 `game-worker.js` Web Worker 执行，落子不卡界面；Worker 不可用时自动降级为同步计算；带过期应手丢弃（对局状态已变则旧应手作废）与重入守卫。
 4. **持久化危机兜底**：localStorage 写失败且 IndexedDB 兜底亦失败时进入危机态——红色警示条（`qb-fail`，双主题配色）仅保留「导出备份」入口、隐藏其他操作；「知道了」关闭不持久化（重启后仍提示）；任一侧恢复后警示条自动消除并复位。
-5. **测试基线**：新增 Worker 行为、过期应手、双写失败/恢复、危机态 UI 等回归，`npm test` 423 → **451 项全部通过**；tsc/lint 0；离线缓存同步至 v18。
+5. **测试基线**：新增 Worker 行为、过期应手、双写失败/恢复、危机态 UI 等回归，`npm test` 423 → **451 项通过**；tsc/lint 0；离线缓存同步至 v18。
 
 ### v5.2 工程防线补强与可靠性摘要（本版）
 
@@ -80,22 +80,22 @@ https://xiaoyu-hue.github.io/sonder520/
 5. **死代码清理**：移除 `cloneGame`/`PRIORITY_LIST`/`GAME_KIND.ttt`/`DIFF_LABEL.mid` 及对应 d.ts 声明。
 6. **重复逻辑收敛**：`num0`/`esc`/`hashStr`/`copyText` 收敛为共享实现，消除多文件重复。
 7. **弱覆盖域补测**：新增 home/memo/consulting/news/design 五个页面交互测试（29 项，含删除确认 Promise 时序、任务勾选移出今日列表、收入负数拦截、危险链接 XSS 等）。
-8. **CI 升级**：checkout/setup-node v4 → v5，消除 Node 20 弃用警告（CI 零 annotations）。
+8. **CI 升级**：checkout/setup-node v4 → v5，消除 Node 20 弃用警告。
 9. **PWA 导航 Network First**：导航请求改为网络优先（成功回写缓存、离线回退缓存首页），刷新即拿新版；静态资源保持 Cache First；离线缓存同步至 v19。
-10. **测试基线**：新增回归后 `npm test` 451 → **512 项全部通过**（弱覆盖域 29 项 + 动态交互层契约与行为补测）；tsc/lint 0。
+10. **测试基线**：新增回归后 `npm test` 451 → **512 项通过**（弱覆盖域 29 项 + 动态交互层契约与行为补测）；tsc/lint 0。
 
 ### v5.2 补丁摘要（P5b，紧随其后）
 
-11. **file:// 直开误报解除**：直接用浏览器打开（file://）时，浏览器因 origin 为 null 拦截 manifest 等资源的加载（CORS/安全限制属环境噪音，非应用缺陷）；error-guard 对 file:// 环境下的资源类错误仅记录（`__sonderErrors` + 控制台）不再弹 toast，脚本异常与 Promise 拒绝不受影响仍照常提示；新增 2 项回归，`npm test` 512 → **514 项全部通过**；tsc/lint 0。
+11. **file:// 直开误报解除**：直接用浏览器打开（file://）时，浏览器因 origin 为 null 拦截 manifest 等资源的加载（CORS/安全限制属环境噪音，非应用缺陷）；error-guard 对 file:// 环境下的资源类错误仅记录（`__sonderErrors` + 控制台）不再弹 toast，脚本异常与 Promise 拒绝不受影响仍照常提示；新增 2 项回归，`npm test` 512 → **514 项通过**；tsc/lint 0。
 
 ### v4.0 加固摘要（本版）
 
 1. **契约防御体系**：
-   - `globals.d.ts` 集中声明 Pages / SonderStore（61 个公开方法）/ UI 全局接口，`tsc --noEmit` 全绿（零构建类型检查真正生效）；
+   - `globals.d.ts` 集中声明 Pages / SonderStore（61 个公开方法）/ UI 全局接口，`tsc --noEmit` 通过（零构建类型检查生效）；
    - 新增 24 个领域记录类型 + SonderState/Settings/Summarize/Ctx 等接口，add/update/remove 全签名具体化，并修正 6 处与实现不符的错误签名；
    - `tests/contract.test.js` 守护接口形状与 schema；`tests/behavior.test.js` 12 条参数归一化/更新/删除语义契约；`tests/state.test.js` 5 条状态双轨契约（静态清单/重渲染幂等/变更可见/对局瞬态不残留）；
    - `tests/innerhtml.test.js` 审计全部 24 处 innerHTML 赋值点：12 清空 + 2 自动安全，其余 10 处进入人工审查白名单（逐条注明转义依据），双向校验防幽灵白名单。
-2. **eslint@8 防线**：`npm run lint` 全绿，清理 28 处问题（4 error + 24 未用变量，含页面残留 currentCtx、games.js 死变量、store.js 死代码）。新增静态审计守卫：无注释空 catch 块与空回调禁止。
+2. **eslint@8 防线**：`npm run lint` 通过，清理 28 处问题（4 error + 24 未用变量，含页面残留 currentCtx、games.js 死变量、store.js 死代码）。新增静态审计守卫：无注释空 catch 块与空回调禁止。
 3. **错误上报体系**：`error-guard.js` 捕获未处理脚本错误/Promise 拒绝/资源加载失败，toast（3 秒合并防刷屏）+ 完整堆栈，记录保留于 `__sonderErrors` 供测试调试；store 两处静默 Promise 链升级为带 err 上报。
 4. **XSS 属性注入修复**：`sanitizeUrl` 除协议白名单外转义引号与 &（防 href 属性闭合注入，news/design 两处拼接点自动免疫），新增全链路用例。
 5. **加密 5 项修复**：锁屏致命 bug（内联 display:flex 覆盖 UA 的 [hidden] 规则导致解锁后锁屏永久盖住应用，改 style.display 直控 + 渲染级断言防假绿）；加密保存竞态（`_encChain` 串行队列保证密文按调用顺序落盘）；加密/明文边界四破口（锁定态 save 守卫、IDB 空回填用原始串、迁移走 _encSave 双写密文、锁定态拒绝导入）；未知加密版本密文保护。
@@ -105,7 +105,7 @@ https://xiaoyu-hue.github.io/sonder520/
 9. **对比度达标 AA（≥4.5:1）**：浅色 --muted、pill 中低档、暗色 pill/overdue、配额条链接全部加深/加亮；`tests/contrast.test.js` 用 WCAG 相对亮度公式断言 8 组前景/背景组合。
 10. **细节修复**：壁纸透明度滑块防抖（拖动仅预览、松手才落盘）；小游戏纪录统一并入 store（`miniRecords`，旧独立键一次性迁移）；今日计划日期筛选状态提升（进度卡与列表一致、切页保留）；Ai 越页劫持守卫 + 切回自动续走；切页后阅读时钟冻结修复（时钟链单链自愈）；旧数据缺字段链式崩溃补齐（clients.posts/posts.tags/news.tags/devProjects.tasks 等 9 处迁移）；扫雷首击 NaN 坐标崩溃修复 + 手机端棋盘适配（格子 ≥26px 触控、横向滚动容器）。
 11. **store 领域拆分**：`store.js` 按领域拆出 `store-tasks / store-media / store-content / store-settings` 四个文件（1351 行减至约 960 行），API 静态导出不动，UMD 双环境兼容。
-12. **脚本清单收敛**：index.html 为脚本唯一真源（tests/harness.js 自动解析），新增 `scripts/sync-sw.js`（npm run sync-sw 自动同步 sw 缓存清单并递增缓存版本，当前 v15）。
+12. **脚本清单收敛**：index.html 为脚本主要真源（tests/harness.js 自动解析），新增 `scripts/sync-sw.js`（npm run sync-sw 自动同步 sw 缓存清单并递增缓存版本，当前 v15）。
 
 ---
 
@@ -302,8 +302,8 @@ https://xiaoyu-hue.github.io/sonder520/
 10. 数据与设置：导出/导入/统计（完成率分母=今日到期任务）/清空战绩/主题/模块开关/动画帧率（60/90/120）/数据迁移（IndexedDB）/加密（向导+锁屏+免密会话+韧性防线）/桌面通知/本周报告一键复制/壁纸上传。
 11. 统一交互：弹窗规则、二次确认、Esc 关闭、Toast、确认框防叠、弹层焦点管理（落焦/陷阱/归还）。
 12. 可靠性：PWA 离线可用（缓存 v48 自动同步；导航网络优先，刷新即新版）、存储双写双存（集合级逐 key）、存储超 4.5MB 顶部警示条、双写后端同时失效时红色危机警示条强制引导导出、XSS 全模块净化（含属性注入与表单字段 key 转义）、可选加密、性能优化（单集合增量序列化/搜索索引缓存/AI 剪枝/派生密钥缓存）、错误上报与壳层降级。
-13. 工程防线：eslint 全绿、零构建类型契约（d.ts + tsc）、innerHTML 白名单审计、状态双轨契约、store 领域拆分、脚本清单单一真源。
-14. 自动化测试 603 项全绿（各版本全量验证）。
+13. 工程防线：eslint 通过、零构建类型契约（d.ts + tsc）、innerHTML 白名单审计、状态双轨契约、store 领域拆分、脚本清单主要真源。
+14. 自动化测试 603 项通过（各版本全量验证）。
 
 ---
 
@@ -335,7 +335,7 @@ https://xiaoyu-hue.github.io/sonder520/
 14. 导出 JSON → 修改数据 → 导入恢复，数据与导出时一致（导入前有覆盖提示）。
 15. 持久化：任意数据录入后刷新、关标签、重启浏览器均不丢失。
 16. 手机外链、离线打开本地 index.html 均可用；数据只在本地浏览器中。
-17. 工程验收：npm test（603 项）、npm run typecheck、npm run lint 三绿。
+17. 工程验收：npm test（603 项）、npm run typecheck、npm run lint 均通过。
 
 ---
 
@@ -354,6 +354,6 @@ https://xiaoyu-hue.github.io/sonder520/
 - **主题系统**：CSS 自定义属性 + 深浅双主题；`@supports` 为不支持 `backdrop-filter` 的浏览器降低层级；壁纸独立 img 元素 + `object-fit: cover` + 透明度变量；文字/强调色 token 化并满足 WCAG AA。
 - **数据兼容**：读取时做字段归一化（缺失补默认、非法值夹取 + 9 处旧字段迁移），支持历史版本数据平安迁移；IndexedDB 与 localStorage 双写双存，冲突按保存时间取新；加密开关对旧数据完全兼容（未启用时无感）；未来加密版本密文原样保留不破坏。
 - **移动端棋盘细节**：15 列盘使用 grid；`.game-board.big` 手机断点压缩格距与边距、格子 `min-height: 0` 保持方正 1:1；宽度 `min(97vw, 480px)` 保证不溢屏；扫雷用 `max(100%, 列数×26px)` + 横向滚动容器保证格子 ≥26px；棋盘格子为游戏固有热区（整盘须尽收眼底），其余全部 UI 触控目标 ≥44px。
-- **工程防线**：eslint@8（无注释空 catch 禁止）、零构建 TypeScript 类型检查（JSDoc + tsc --noEmit）、innerHTML 白名单审计（24 处赋值点全部验证）、契约测试（contract/behavior/state/innerhtml）、index.html 脚本单一真源（harness 自动解析）、`scripts/sync-sw.js` 自动同步 SW 清单并递增缓存版本。
-- **自动化测试**：jsdom + `node --test`（glob 全量）+ fake-indexeddb；覆盖存储、加密（含竞态/边界/未来版本韧性/派生缓存）、集合级持久化（逐集合 key 读写/迁移/回填/加密 bundle）、UI、全部模块、样式、动效、壁纸、移动端自动适配、性能、游戏引擎（胜负检测/禁手逻辑/AI 策略/六款游戏/Worker 行为）、交互质量回归（确认弹窗防叠、悔棋语义、终局锁定、棋盘压缩）、PWA、搜索、离线状态指示、XSS 净化（含属性注入）、IndexedDB 双写与容量警示、持久化危机兜底、通知、对比度、CSS 变量契约、周报、本周报告，当前 **603 项全部通过**（`npm test` 全绿）。
+- **工程防线**：eslint@8（无注释空 catch 禁止）、零构建 TypeScript 类型检查（JSDoc + tsc --noEmit）、innerHTML 白名单审计（24 处赋值点全部验证）、契约测试（contract/behavior/state/innerhtml）、index.html 脚本主要真源（harness 自动解析）、`scripts/sync-sw.js` 自动同步 SW 清单并递增缓存版本。
+- **自动化测试**：jsdom + `node --test`（glob 全量）+ fake-indexeddb；覆盖存储、加密（含竞态/边界/未来版本韧性/派生缓存）、集合级持久化（逐集合 key 读写/迁移/回填/加密 bundle）、UI、全部模块、样式、动效、壁纸、移动端自动适配、性能、游戏引擎（胜负检测/禁手逻辑/AI 策略/六款游戏/Worker 行为）、交互质量回归（确认弹窗防叠、悔棋语义、终局锁定、棋盘压缩）、PWA、搜索、离线状态指示、XSS 净化（含属性注入）、IndexedDB 双写与容量警示、持久化危机兜底、通知、对比度、CSS 变量契约、周报、本周报告，当前 **603 项通过**（`npm test` 通过）。
 - **持续质量**：每轮改动后执行源码 `node --check` 语法检查、`npm run typecheck`（零构建类型检查）、`npm run lint` 与全量测试；改动脚本/入口后运行 `npm run sync-sw` 同步离线缓存清单。

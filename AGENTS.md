@@ -5,7 +5,7 @@
 ## 项目本质
 
 - Sonder 是**已稳定、已上线、测试完备**的本地优先个人生产力 Web App：原生 JS、零构建、零运行时依赖。**这不是空白项目，禁止当重写许可。**
-- 现状基线：696 项测试全绿、239 次提交、14 份 ADR（ADR-013 写路径收口 / ADR-014 Phase④ IndexedDB 真源反转已落地）、双站线上（CF Pages + GH Pages，缓存 v74）、IndexedDB 主快照 + localStorage 副本（双写双存，集合级逐 key；IDB=载入真源，LS=跨标签信号+副本）、可选 AES-GCM 加密（逐集合 bundle）、PWA、Web Worker、12 个 hash 路由模块。
+- 现状基线：696 项测试通过、239 次提交、14 份 ADR（ADR-013 写路径收口 / ADR-014 Phase④ IndexedDB 真源反转已落地）、双站线上（CF Pages + GH Pages，缓存 v74）、IndexedDB 主快照 + localStorage 副本（双写双存，集合级逐 key；IDB=载入真源，LS=跨标签信号+副本）、可选 AES-GCM 加密（逐集合 bundle）、PWA、Web Worker、12 个 hash 路由模块。
 - v6.0 方向：Sonder-Frame 内部框架（渐进式），**④ IndexedDB 优先写（LS 降级为 fallback）是核心遗留项**。
 
 ## 第一原则

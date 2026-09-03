@@ -4,7 +4,7 @@
 
 A privacy-first personal work & life management app. Pure HTML/CSS/vanilla JS — zero build steps, zero dependencies, no backend.
 
-"Ink-wash × Liquid Glass" visual style, custom wallpaper upload and opacity, six mini games, Pomodoro focus timer, optional on-device encryption, offline support (PWA), global search. 100% of your data stays in your own browser.
+"Ink-wash × Liquid Glass" visual style, custom wallpaper upload and opacity, six mini games, Pomodoro focus timer, optional on-device encryption, offline support (PWA), global search. Your data stays in your own browser.
 
 ## Live Sites
 
