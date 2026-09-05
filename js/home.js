@@ -91,13 +91,13 @@
       
       '<div class="section-title" style="margin-top:24px">各模块概览</div>',
       '<div class="grid-cards cols-4">',
-        moduleCard('selfmedia', sum.selfmedia.total, '自媒体', '待发布 ' + sum.selfmedia.pending, '📱'),
-        moduleCard('dev', sum.dev.total, '开发工作', '进行中 ' + sum.dev.active, '💻'),
-        moduleCard('consulting', sum.consulting.total, '咨询工作', '待跟进 ' + sum.consulting.followups, '🎯'),
-        moduleCard('reading', sum.reading.total, '阅读计划', '在读 ' + sum.reading.reading, '📚'),
-        moduleCard('news', sum.news.total, '看新闻计划', '待读 ' + sum.news.unread, '📰'),
-        moduleCard('design', sum.design.total, '设计计划', '进行中 ' + sum.design.active, '🎨'),
-        moduleCard('game', sum.game.total, '娱乐游戏', '胜 ' + sum.game.wins + ' · 平 ' + sum.game.draws, '🎮'),
+        moduleCard(UI, 'selfmedia', sum.selfmedia.total, '自媒体', '待发布 ' + sum.selfmedia.pending, '📱'),
+        moduleCard(UI, 'dev', sum.dev.total, '开发工作', '进行中 ' + sum.dev.active, '💻'),
+        moduleCard(UI, 'consulting', sum.consulting.total, '咨询工作', '待跟进 ' + sum.consulting.followups, '🎯'),
+        moduleCard(UI, 'reading', sum.reading.total, '阅读计划', '在读 ' + sum.reading.reading, '📚'),
+        moduleCard(UI, 'news', sum.news.total, '看新闻计划', '待读 ' + sum.news.unread, '📰'),
+        moduleCard(UI, 'design', sum.design.total, '设计计划', '进行中 ' + sum.design.active, '🎨'),
+        moduleCard(UI, 'game', sum.game.total, '娱乐游戏', '胜 ' + sum.game.wins + ' · 平 ' + sum.game.draws, '🎮'),
         '<div class="module-card card-animate-in" data-go="home" style="opacity:0.6;cursor:default">',
           '<div class="module-icon">✨</div>',
           '<div class="module-title">更多功能</div>',
@@ -128,7 +128,7 @@
     });
   }
 
-  function moduleCard(go, num, lab, sub, icon) {
+  function moduleCard(UI, go, num, lab, sub, icon) {
     return '<div class="module-card card-animate-in" data-go="' + go + '">'+
       '<div class="module-icon">' + icon + '</div>'+
       '<div class="module-title">' + UI.esc(lab) + '</div>'+
