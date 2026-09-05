@@ -1,6 +1,6 @@
 # Sonder 项目协作规则（永久记忆）
 
-依据《Sonder-Frame AI 实施规范 v1.1》与《Sonder-Frame 架构原理与实现指南 v1.1》提炼，完整原文位于 `D:\个人作品集\Sonder-frame\`。
+依据《Sonder-Frame AI 实施规范 v1.1》与《Sonder-Frame 架构原理与实现指南 v1.1》提炼。
 
 ## 项目本质
 
