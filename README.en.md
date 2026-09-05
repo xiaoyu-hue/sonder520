@@ -1,127 +1,287 @@
-# Sonder · Personal Productivity App (English README)
+# 🌊 Sonder520
 
-> 中文版：全中文说明见 [README.md](README.md)
+> A personal work & life management tool
+>
+> Pure Frontend · Zero Dependencies · Local-First · Ink-Wash Liquid Glass Style
 
-A privacy-first personal work & life management app. Pure HTML/CSS/vanilla JS — zero build steps, zero dependencies, no backend.
+**One person, one computer, a browser is all you need.** Data is stored locally in your browser. No registration, no internet required, no fees.
 
-"Ink-wash × Liquid Glass" visual style, custom wallpaper upload and opacity, six mini games, Pomodoro focus timer, optional on-device encryption, offline support (PWA), global search. Your data stays in your own browser.
+---
 
-## Live Sites
+<div align="center">
 
-Recommended (auto-deployed from git, always in sync):
+![HTML5](https://img.shields.io/badge/HTML5-E34F26?style=flat&logo=html5&logoColor=white)
+![CSS3](https://img.shields.io/badge/CSS3-1572B6?style=flat&logo=css3&logoColor=white)
+![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=flat&logo=javascript&logoColor=black)
+![MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
+![PWA](https://img.shields.io/badge/PWA-Support-green)
+![Zero-Dependency](https://img.shields.io/badge/Zero-Dependency-6B728C)
 
-- Primary: https://sonder520.pages.dev/
+</div>
 
-- Backup: https://xiaoyu-hue.github.io/sonder520/
+---
 
-A legacy site exists but may be out of date (not recommended): https://sonder520.netlify.app/ (limited deployments).
+**[🚀 Live Demo](https://sonder520.pages.dev/)** · **[📖 Documentation](#-getting-started)** · **[🛠️ Architecture](#-architecture)** · **[📦 Local Run](#-getting-started)**
 
-> Data lives in each device's browser (localStorage + IndexedDB) and is independent between devices. To move data between devices use "Data & Settings → Export Backup / Import Restore".
+---
 
-## License & Disclaimer
+## 🎯 Project Overview
 
-This project is licensed under the MIT License — free to use, modify and distribute, provided the copyright and license notice is retained. No warranty is provided. See the LICENSE file in the repository for details.
+**Sonder520** is a **zero-backend, pure frontend** personal work & life management tool, assisted by AI Agent. The project fuses productivity tools with Eastern aesthetics through an "Ink-Wash × Liquid Glass" visual language.
 
-## Open Source
+### ✨ Core Features
 
-Source code: https://github.com/xiaoyu-hue/sonder520
+| Feature | Description |
+|---------|-------------|
+| 🌐 **Pure Frontend** | HTML/CSS/Vanilla JS, zero build, zero dependencies |
+| 🔒 **Privacy First** | Data stored only in local browser, optional encryption |
+| 🎨 **Ink-Wash Style** | Rice-paper / Ink-black dual themes, liquid glass card design |
+| 📱 **Cross-Platform** | Desktop/Tablet/Phone responsive, PWA offline support |
+| 🎮 **Built-in Games** | Tic-Tac-Toe, Gomoku, Minesweeper, and 3 more mini games |
+| 🧪 **Test Coverage** | 699 tests passing (Unit + Contract + Integration + E2E) |
 
-(Public repository — browse it without any login)
+---
 
-- Pure frontend project: any visitor can view the full source in browser DevTools ("naturally open source").
+## 📋 Features
 
-- Data safety is unaffected: data is stored only in each visitor's own browser and never passes through any server; optional encrypted storage is available (PBKDF2 + AES-GCM-256).
+### 12 Core Modules
 
-## Features
+| Module | Function | Highlights |
+|--------|----------|------------|
+| 🏠 **Home** | Greeting + daily quote + task overview | Completion ring, quick memo |
+| 📅 **Today** | Four-level priority, Pomodoro timer, group management | 25-min focus timer |
+| 📝 **Quick Memo** | Instant recording, history, archive | Quick save, one-click archive |
+| 📱 **Self-Media** | Multi-platform scheduling, publish stats | WeChat / Xiaohongshu / Bilibili / Douyin |
+| 💻 **Dev Work** | Project tasks, tech notes | Markdown rendering, code highlighting |
+| 🤝 **Consulting** | Client management, income records | Phase tracking, income statistics |
+| 📚 **Reading** | Book list, reading timer, excerpts | Progress tracking, reading sharing |
+| 📰 **News** | Article collection, unread management | Link navigation, category sorting |
+| 🎨 **Design** | Inspiration collection, design projects | Phase-based management |
+| 🎮 **Entertainment** | 6 mini games | Tic-Tac-Toe, Gomoku, Minesweeper, etc. |
+| 📊 **Statistics** | Multi-dimensional data visualization | Completion rate, progress charts |
+| ⚙️ **Settings** | Theme, wallpaper, encryption, backup | Personalized customization |
 
-- Home: greeting + daily quote (occasionally your own book excerpts), today's completion ring, task summary, quick memo bar, module overview cards
+---
 
-- Today: four-level priority dots, 🍅 25-min focus timer with browser notification, add/edit/check/order/group tasks
+## 🛠️ Architecture
 
-- Quick memo: type and save instantly, history, archive
+### Sonder-Frame Progressive Framework
 
-- Self-media: topics, calendar view with drag-and-drop scheduling, publish channels (WeChat 公众号 / Xiaohongshu / Bilibili / Douyin), reads/likes and 5-post line chart, CSV export
+```
+Application (Application Layer)
+    ↓
+ModuleFactory (Standard Module Factory)
+    ↓
+VisualEngine + EventBridge (UI Rendering + Event Bus)
+    ↓
+TrustLayer (Security Storage Layer)
+    ↓
+IDB (Primary Storage) + localStorage (Fallback Copy) + Crypto (Encryption)
+```
 
-- Dev work: projects, task lists, auto progress stats, tech notes (Markdown rendering + one-click code copy)
+### Core Tech Stack
 
-- Consulting: client profiles, projects, phases, follow-up logs, income records
+| Technology | Purpose |
+|------------|---------|
+| **HTML5** | Semantic structure |
+| **CSS3** | Liquid glass design, ink-wash style, responsive layout |
+| **Vanilla JS** | Zero dependencies, zero build, high performance |
+| **IndexedDB** | Primary data storage (source of truth) |
+| **localStorage** | Fallback copy + cross-tab signaling |
+| **Crypto API** | PBKDF2 + AES-GCM-256 encryption |
+| **Web Worker** | Gomoku AI async computation |
+| **PWA** | Offline support, installable to desktop |
+| **Playwright** | E2E testing (Desktop/Tablet/Phone) |
 
-- Reading: book list, statuses, reading timer (minutes), "My Quotes" page (grouped by book), progress
+### Quality Assurance
 
-- News watchlist: saved articles, unread/read/favorite, open links
+- ✅ **699 tests** passing (Unit + Contract + Integration + E2E)
+- ✅ **Zero-build** type checking (JSDoc + TypeScript)
+- ✅ **ESLint** code standards
+- ✅ **14 ADRs** Architecture Decision Records
+- ✅ **PWA** offline support + version updates
 
-- Design: inspiration collection + design projects and phases
+---
 
-- Games: Tic-Tac-Toe / Gomoku (AI duel with 3 difficulties, or two-player, undo, resign, auto records; AI moves run in a Web Worker so the board never freezes) + Guess the Number / Minesweeper / Guess the Idiom (中文) / Brain Teasers (中文) — all records merged into match history
+## 🎨 Visual & Interaction
 
-- Data & Settings: theme (follows system, overridable), wallpaper upload/opacity, animation fps (60/90/120), module toggles, stats, export/import backup, encryption switch, weekly report generator, desktop notifications, migrate to IndexedDB
+### Ink-Wash × Liquid Glass Design Language
 
-- Reliability: PWA offline (network-first navigation, new version on refresh, offline cache fallback), dual storage (IndexedDB primary snapshot + localStorage fallback copy + optional encryption), encryption resilience (no plaintext writes while locked, future-version ciphertext preserved untouched), warning bar when storage exceeds 4.5 MB, red crisis bar (export-only) when both storage backends fail, global search, XSS sanitization everywhere (incl. attribute injection), error reporting with graceful shell degradation
+- **Dual Themes**: Rice-paper (light) / Ink-black (dark), follows system by default
+- **Liquid Glass Cards**: `backdrop-filter` frosted glass effect + inner highlight
+- **Cinnabar Red Accent**: Chinese traditional color as accent
+- **Chinese Pigment Palette**: Charts use traditional color spectrum
 
-- Note: Chinese-cultural content (daily quotes, Idiom & Brain Teaser games) intentionally stays in Chinese — translating them would lose the flavor.
+### Micro-Interactions
 
-## Visual & Interaction
+- Staggered fade-in animations
+- Ink-spread chart animations
+- Button press feedback
+- Breathing empty states
+- Sliding toast notifications
+- Bottom-sheet dialogs on mobile
 
-- Ink-wash × Liquid Glass: Rice-paper (light) / Ink-black (dark) themes that follow the system by default, frosted glass cards (backdrop-filter + inner highlight), cinnabar red accent, Chinese-pigment color palette for charts.
+### Contrast Compliance
 
-- Custom wallpaper: upload a background image (≤2 MB) in Settings, adjust opacity (0–100%, default 40%, live preview, persisted), restore default anytime.
+- All text contrast ≥4.5:1 (WCAG AA standard)
+- Minesweeper digits readable in both themes
+- Test-locked contrast tokens
 
-- Micro-interactions: staggered fade-in, ink-spread chart animations, button press feedback, breathing empty states, sliding toasts, bottom-sheet dialogs on mobile.
+---
 
-- Both themes keep text/accent contrast ≥4.5:1 (WCAG AA, incl. light/dark tokens and Minesweeper digits, locked by tests).
-
-## Platform Adaptation
+## 📱 Platform Adaptation
 
 | Device | Layout |
-| --- | --- |
-| Desktop (>960px) | Left liquid-glass sidebar + multi-column grid; content capped at 1240px centered on ultra-wide screens |
-| Tablet (721–960px) | Sidebar collapses to a 70px icon bar |
-| Phone portrait (≤720px) | Bottom liquid-glass nav bar (scrollable icons) |
-| Tiny screens (≤360px) | Compressed spacing, nav never breaks |
-| Phone landscape | Slimmer top bar and nav |
+|--------|--------|
+| **Desktop (>960px)** | Left liquid-glass sidebar + multi-column grid |
+| **Tablet (721–960px)** | Sidebar collapses to 70px icon bar |
+| **Phone Portrait (≤720px)** | Bottom liquid-glass nav bar (scrollable icons) |
+| **Tiny Screens (≤360px)** | Compressed spacing, nav never breaks |
+| **Phone Landscape** | Slimmer top bar and nav |
 
-- iOS/Android: viewport-fit=cover, safe-area inset for notches/gesture bars, 100vh→100dvh fallback, touch targets ≥44px, 16px inputs to prevent iOS focus zoom.
+### Mobile Optimization
 
-- "Add to Home Screen" works like an app (PWA), usable offline.
+- ✅ iOS/Android adaptation
+- ✅ viewport-fit=cover (notch adaptation)
+- ✅ safe-area inset (gesture bar adaptation)
+- ✅ 100vh→100dvh fallback
+- ✅ Touch targets ≥44px
+- ✅ 16px inputs to prevent iOS zoom
 
-- Respects prefers-reduced-motion.
+---
 
-## Run Locally
+## 🚀 Getting Started
 
-Just open (double-click) index.html in a browser. Chrome / Edge recommended.
+### Online Use (Recommended)
 
-- Data is stored in browser local storage (localStorage + IndexedDB) — survives refresh, tab close, and full browser restarts.
+Visit https://sonder520.pages.dev/ to use immediately, no installation needed.
 
-- For important data, regularly download a JSON backup via "Data & Settings → Export Backup"; enable encrypted storage in Settings for extra privacy.
+### Local Run
 
-## Update the Deployed Sites
+1. Clone the repository:
+```bash
+git clone https://github.com/xiaoyu-hue/sonder520.git
+cd sonder520
+```
 
-After changing code, pick one:
+2. Open `index.html` in a browser (double-click)
 
-1. Web drag & drop (recommended): log in at https://app.netlify.com → open site sonder520 → Deploys page → drag this whole folder into "Drag and drop deploy area here" → wait for "Published" (URL stays the same).
+> 💡 Chrome / Edge recommended
 
-   ⚠️ Do not use app.netlify.com/drop repeatedly — each Drop creates a brand new site.
+### Data Management
 
-2. CLI: npm i -g netlify-cli → netlify login → netlify link → netlify deploy --prod --dir=.
+- Data is stored locally in the browser (localStorage + IndexedDB)
+- Regularly download JSON backups via "Data & Settings → Export Backup"
+- Enable encrypted storage in Settings for extra privacy (PBKDF2 + AES-GCM)
 
-3. Git auto-deploy: connect the GitHub repo in Netlify, then git push goes live automatically.
+---
 
-Other static hosts also work (all assets use relative paths, no build needed): GitHub Pages, Cloudflare Pages, Vercel.
+## 📦 Development
 
-## Developers
+### Requirements
 
-Notes:
+- Node.js 18+
+- npm 9+
 
-- Pure HTML/CSS/vanilla JS — zero build/run dependencies, no npm install needed to use the app.
+### Commands
 
-- Run all tests: npm test (currently 603 passing, covering storage/encryption (incl. races & future-version resilience)/structured storage status (TrustLayer contract)/collection-level persistence (ADR-009 decision 7: per-collection keys read/write/migration/backfill/encrypted per-collection bundles)/standard module factory (ModuleFactory contracts & behavior, incl. v0.1.1 prepend/timeField & v0.1.2 orderField/move extensions)/event-bus contract (EventBridge: EVENT constant table & payload contract)/UI/all modules/styles/animations/wallpaper/mobile adaptation/perf/game engines/interaction regressions/PWA/search/offline indicator/XSS (incl. attribute injection)/contrast/IndexedDB/notifications/Web Worker/crisis fallback/motion-layer contracts & behavior).
+```bash
+# Install dependencies
+npm install
 
-- Type check (zero-build): npm run typecheck (JSDoc + tsc --noEmit, contracts locked in globals.d.ts).
+# Run all tests
+npm test
 
-- Lint: npm run lint (eslint@8 — bans empty catch blocks and dead variables).
+# Type check (zero-build)
+npm run typecheck
 
-- Sync offline cache: after changing scripts/entry, run npm run sync-sw (auto-syncs the sw.js cache manifest and bumps its version).
+# Lint
+npm run lint
 
-## Docs
+# E2E tests (Playwright)
+npm run test:e2e
 
-- Product requirements: PRD.md (in Chinese, contains version history, visual design, data & operations, acceptance criteria, architecture).
+# Sync Service Worker cache
+npm run sync-sw
+```
+
+### Test Coverage
+
+- **Unit Tests**: Storage, encryption, TrustLayer
+- **Contract Tests**: ModuleFactory CRUD
+- **Integration Tests**: Factory+TrustLayer, Factory+VisualEngine, Module+EventBridge
+- **E2E Tests**: Playwright three-device (Desktop/Tablet/Phone)
+
+---
+
+## 📚 Documentation
+
+- **[PRD.md](PRD.md)** - Product requirements (Chinese, contains version history, visual design, data specs, acceptance criteria)
+- **[AGENTS.md](AGENTS.md)** - Project collaboration rules (AI Agent development spec)
+- **[CHANGELOG.md](CHANGELOG.md)** - Update log
+- **[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)** - Code of conduct
+- **[LICENSE](LICENSE)** - MIT License
+
+---
+
+## 📈 Changelog
+
+### v6.0 (Current)
+
+- **Sonder-Frame Progressive Framework**
+- **IndexedDB Source-of-Truth Reversal** (IDB primary, LS fallback)
+- **Desktop Pet Module** (3 characters + coins + shop + feeding + achievements)
+- **Offline Status Indicator**
+- **Three-Device Adaptation** (Desktop/Tablet/Phone)
+
+### History
+
+- v5.2 - Engineering defense + reliability improvements
+- v5.1 - Performance & reliability patches
+- v5.0 - Statistics semantic correction + CSV injection protection
+- v4.0 - Quality hardening
+- v3.0 - Optional encryption + 4 new games
+- v2.1 - Games/Performance/PWA/Security/Storage upgrade
+- v2.0 - Game interaction quality regression
+- v1.3 - Mobile adaptation + daily quotes
+- v1.2 - Ink-wash micro-interactions
+- v1.1 - Ink-wash liquid glass visuals
+- v1.0 - Initial release
+
+---
+
+## 🤝 Contributing
+
+Welcome! Please read [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) and [AGENTS.md](AGENTS.md) for project guidelines.
+
+### Contribution Flow
+
+1. Fork this repository
+2. Create a feature branch (`git checkout -b feature/xxx`)
+3. Commit your changes (`git commit -m 'Add xxx feature'`)
+4. Push to the branch (`git push origin feature/xxx`)
+5. Create a Pull Request
+
+---
+
+## 📄 License
+
+This project uses the [MIT License](LICENSE) — free to use, modify, and distribute.
+
+---
+
+## 🙏 Acknowledgments
+
+- **AI Agent**: Project development assisted by AI Agent
+- **Open Source Community**: Thanks to all open source contributors
+- **Users**: Thanks to everyone who uses Sonder520
+
+---
+
+<div align="center">
+
+**Made with 💧 Ink-Wash Style**
+
+> "Everyone is the protagonist of their own story. Sonder520 is the protagonist's tool."
+
+</div>
