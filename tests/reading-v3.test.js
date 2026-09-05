@@ -210,12 +210,12 @@ test('阅读页：笔记行渲染后可经容器委托删除并撤销恢复（�
 test('首页：有摘抄时每日金句位置展示随机书摘（附书名页码），无摘抄保持原金句', () => {
   const h1 = boot();
   h1.goto('home');
-  assert.ok(h1.window.document.querySelector('.quote').textContent.includes('「'), '无摘抄时显示金句库句子');
+  assert.ok(h1.window.document.querySelector('.quote-card').textContent.includes('「'), '无摘抄时显示金句库句子');
   const h2 = boot();
   const a = h2.store.addBook({ title: '活着' });
   h2.store.addExcerpt({ bookId: a.id, text: '人是为活着本身而活着的', page: 15 });
   h2.goto('home');
-  const quote = h2.window.document.querySelector('.quote');
+  const quote = h2.window.document.querySelector('.quote-card');
   assert.ok(quote.textContent.includes('人是为活着本身而活着的'), '应展示摘抄句子');
   assert.ok(quote.textContent.includes('来自《活着》'), '应附书名出处');
   assert.ok(quote.textContent.includes('第15页'), '应附页码');

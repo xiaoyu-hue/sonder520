@@ -97,7 +97,7 @@ test('数字滚数：60 档直接呈现终值（无中间态）', () => {
 test('总线联动：SonderBus 数据变更重绘后数字重新滚数（空窗修复）', async () => {
   const h = boot();
   h.goto('home');
-  const gameNum = () => h.window.document.querySelector('.rank-card[data-go="game"] .num');
+  const gameNum = () => h.window.document.querySelector('.module-card[data-go="game"] .module-stat-num');
   /* goto 的 location.hash 赋值会异步派发 hashchange→onHash→render→滚数；
    * 先等待该噪音完成（滚数结束、数字稳定），否则总线滚动会与 hash 重绘叠加、测试失真 */
   await wait(550);

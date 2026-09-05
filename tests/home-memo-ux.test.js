@@ -14,7 +14,7 @@ test('首页：空数据渲染问候/金句/空态卡片', () => {
   h.goto('home');
   const doc = h.window.document;
   assert.ok(doc.querySelector('.section-title'), '有区块标题');
-  assert.ok(doc.querySelector('.quote'), '有金句区');
+  assert.ok(doc.querySelector('.quote-card'), '有金句区');
   assert.ok(doc.body.textContent.includes('今天暂无待办'), '无任务提示');
   assert.ok(doc.body.textContent.includes('暂无备忘'), '无备忘提示');
   assert.ok(doc.querySelector('#hmSave'), '有快速备忘保存按钮');
@@ -23,7 +23,7 @@ test('首页：空数据渲染问候/金句/空态卡片', () => {
 test('首页：无摘抄时金句来自金句库（quoteOfDay）', () => {
   const h = boot();
   h.goto('home');
-  const q = h.window.document.querySelector('.quote');
+  const q = h.window.document.querySelector('.quote-card');
   assert.ok(q && q.textContent.length > 0, '金句区非空');
   assert.ok(q.textContent.includes('「'), '金句带书名号');
 });
@@ -33,7 +33,7 @@ test('首页：有摘抄时金句区优先展示书摘（含书名页码）', ()
   const b = h.store.addBook({ title: '测试之书' });
   h.store.addExcerpt({ bookId: b.id, text: '今日一句', page: 3 });
   h.goto('home');
-  const q = h.window.document.querySelector('.quote');
+  const q = h.window.document.querySelector('.quote-card');
   assert.ok(q.textContent.includes('今日一句'), '展示书摘文本');
   assert.ok(q.textContent.includes('来自《测试之书》'), '附书名');
   assert.ok(q.textContent.includes('第3页'), '附页码');
@@ -75,10 +75,10 @@ test('首页：今日任务勾选完成 → 落库并从今日列表移除', () 
 test('首页：概览区渲染 7 张模块卡且可跳转', () => {
   const h = boot();
   h.goto('home');
-  const cards = h.window.document.querySelectorAll('.rank-card[data-go]');
+  const cards = h.window.document.querySelectorAll('.module-card[data-go]:not([data-go="home"])');
   assert.equal(cards.length, 7, '7 个模块概览卡');
   assert.ok(h.window.document.querySelector('[data-go="today"]'), '有进入今日计划按钮');
-  const go = h.window.document.querySelector('.rank-card[data-go="news"]');
+  const go = h.window.document.querySelector('.module-card[data-go="news"]');
   assert.ok(go, '新闻卡存在');
   go.dispatchEvent(new h.window.MouseEvent('click', { bubbles: true }));
   assert.ok(h.window.location.hash.indexOf('news') >= 0, '点击卡片切换路由');

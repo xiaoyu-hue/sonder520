@@ -100,7 +100,7 @@
     if (motionDisabled()) return;
     var scope = container || document;
     if (!scope.querySelectorAll) return;
-    var nums = scope.querySelectorAll('.rank-card .num, .rate-num');
+    var nums = scope.querySelectorAll('.rank-card .num, .module-stat-num, .rate-num');
     Array.prototype.forEach.call(nums, function (el) {
       var txt = (el.textContent || '').trim();
       var m = /^(\d+(?:\.\d+)?)(%?)$/.exec(txt);

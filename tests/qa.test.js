@@ -213,15 +213,15 @@ test('QA：首页问候语下方显示当日金句', () => {
   const h = boot();
   const doc = h.window.document;
   h.goto('home');
-  const quote = doc.querySelector('.quote');
+  const quote = doc.querySelector('.quote-card');
   assert.ok(quote, '首页应有金句元素');
   const text = quote.textContent.trim();
   assert.ok(/「.+」/.test(text), '金句应为引号包裹的非空内容: ' + text);
   assert.ok(h.window.SonderQuotes.quotes.includes(text.replace(/「|」/g, '')), '内容应来自金句库');
-  const t1 = doc.querySelector('.quote').textContent;
+  const t1 = doc.querySelector('.quote-card').textContent;
   h.goto('today');
   h.goto('home');
-  assert.equal(doc.querySelector('.quote').textContent, t1, '同日刷新应保持同一句');
+  assert.equal(doc.querySelector('.quote-card').textContent, t1, '同日刷新应保持同一句');
 });
 
 test('QA：对局结束后不能悔棋', async () => {

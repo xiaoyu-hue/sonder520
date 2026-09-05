@@ -9,7 +9,7 @@ test('首页卡片点击跳转到对应模块', () => {
   const h = boot();
   const doc = h.window.document;
   h.goto('home');
-  doc.querySelector('.rank-card[data-go="dev"]').click();
+  doc.querySelector('.module-card[data-go="dev"]').click();
   assert.match(h.window.location.hash, /dev/);
   h.window.dispatchEvent(new h.window.HashChangeEvent('hashchange'));
   assert.ok(h.window.document.querySelector('#devAdd'), '应进入开发工作页面');
