@@ -1,7 +1,7 @@
 /* ============================================================
  * desktop-pet.js - 小莫灵家族桌面玩偶核心模块
  * 浏览器(window.DesktopPetCore)与 Node(module.exports)通用。
- * 规格基准：docs/desktop-pet-spec.md（v2.1）
+ * 规格基准：docs/specs/desktop-pet-spec.md（v2.1）
  * 依赖：desktop-pet-data.js（配置数据，须先于本文件加载）。
  *
  * 本文件按规格 9.5 七区分区，配置数据已提取至 desktop-pet-data.js。

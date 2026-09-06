@@ -546,7 +546,7 @@ sonder520/
 ├── js/store.js                # 修改：默认 settings 增加 desktopPet 完整对象 + modules.desktopPet 开关
 ├── js/store-settings.js       # 修改：增加桌面玩偶设置方法
 ├── js/settings.js             # 修改：模块开关中增加"桌面玩偶"（仅总开关，详细设置移到独立板块）
-└── docs/desktop-pet-spec.md   # 本文档
+└── docs/specs/desktop-pet-spec.md   # 本文档
 模块职责划分： - desktop-pet.js：纯逻辑 + 浮层 UI（玩偶本身、商店弹窗、喂食弹窗、成就横幅），不依赖页面路由 - desktop-pet-page.js：独立板块的页面渲染（玩偶展示区、金币/亲密度概览、设置面板、成就列表），通过 Pages['desktop-pet'] 注册 - 两个文件都通过 UMD 暴露全局变量，desktop-pet-page.js 依赖 desktop-pet.js 的 PetFamily 实例
 desktop-pet.js 单文件内部分区建议（预计 1500-2500 行，用注释分区，便于维护）：
 /* ============================================================

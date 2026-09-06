@@ -216,11 +216,13 @@ npm run sync-sw
 
 ## 📚 文档
 
-- **[PRD.md](PRD.md)** - 产品需求文档（中文版，含版本历史、视觉设计、数据规范、验收标准）
+- **[PRD.md](docs/PRD.md)** - 产品需求文档（中文版，含版本历史、视觉设计、数据规范、验收标准）
 - **[AGENTS.md](AGENTS.md)** - 项目协作规则（AI Agent 开发规范）
 - **[CHANGELOG.md](CHANGELOG.md)** - 更新日志
 - **[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)** - 行为准则
 - **[LICENSE](LICENSE)** - MIT 许可证
+- **[docs/](docs/README.md)** - 文档总索引（ADR 决策记录、迁移计划、规格与验收）
+- **[AUTHOR.md](docs/AUTHOR.md)** - 关于作者
 
 ---
 

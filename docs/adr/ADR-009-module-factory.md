@@ -9,6 +9,6 @@
   4. **落盘语义与领域方法一致**：`store.save()` + `store._emitChange(collectionKey)`；删除记录入 `_undoPush` 撤销栈，`undoRemove` 原位置恢复。写序不变量与加密/备份/导出路径零变更。
   5. **query 纯净**：不改 state、不触发渲染；返回记录浅拷贝，不外泄可变引用。
   6. **集合注册（数据安全关键）**：`createModule` 时经 `store._registerCollection(id)` 将集合 key 纳入 store.js 的 `EXTRA_COLLECTIONS` 注册表与 `defaultState` 保底，使 normalize 白名单在**重载 / 导入 / 解密 / 清空**全部路径保留工厂数据——保证 E2E「新建→刷新→还在」成立。store.js 改动为纯增量（注册表默认空，存量行为零变更）。
-  7. **storageKey 粒度持久化（每集合独立 key）——已落地（2026-08-20）**：v0.1 集合统一存于主快照 `state.<id>`；Phase 7 收官后落地逐集合独立 key：LS `sonder_col_<id>_v1` / IDB entry key `<id>`，**合并不再经整份 `STORAGE_KEY`**（旧整份仅作 legacy 迁移来源一次性拆写，旧 key 保留不删，回滚安全）。落盘语义收口为 `store._commit(集合id)`（单集合序列化/去重/落盘，写序不变量不变），备份/加密随之逐集合独立 bundle。实现与验证记录见 `docs/plan-storage-key-granularity.md`。
+  7. **storageKey 粒度持久化（每集合独立 key）——已落地（2026-08-20）**：v0.1 集合统一存于主快照 `state.<id>`；Phase 7 收官后落地逐集合独立 key：LS `sonder_col_<id>_v1` / IDB entry key `<id>`，**合并不再经整份 `STORAGE_KEY`**（旧整份仅作 legacy 迁移来源一次性拆写，旧 key 保留不删，回滚安全）。落盘语义收口为 `store._commit(集合id)`（单集合序列化/去重/落盘，写序不变量不变），备份/加密随之逐集合独立 bundle。实现与验证记录见 `docs/plans/plan-storage-key-granularity.md`。
 - 代价：store.js 新增一个注册表（默认空）；未来迁移模块时必须走 `createModule`（或专项迁移器），不得绕开注册直写集合 key（否则数据会被 normalize 静默丢弃）。
 - 实证（2026-08-17）：23 项新测试（UMD 契约 / 校验矩阵 / 冻结 / add/update/remove 净化与回滚语义 / query 纯净 / render 挂点 / destroy / 备份往返保留），全量 561 项绿；`npm run typecheck` 与 `npm run lint` 零错误零警告。

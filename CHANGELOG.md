@@ -1,7 +1,7 @@
 ﻿# Changelog
 
 本项目所有重要变更均记录于此。格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
-版本号遵循语义化版本（SemVer）。完整版本演进另见 [PRD.md](PRD.md) 的版本历史表。
+版本号遵循语义化版本（SemVer）。完整版本演进另见 [PRD.md](docs/PRD.md) 的版本历史表。
 
 ## [v6.0] - 2026-08-21
 

@@ -11,4 +11,4 @@
   3. 测试专用钩子 `window.__SONDER_TEST__` 门闩：harness 在**脚本加载前**注入标志，games/reading/today 的 `__*Dbg` 钩子仅测试进程挂载，生产零暴露。
   4. 时间类断言用 waitFor 条件轮询替代固定 sleep（消除慢机器 flake）；防抖/定时器等真实时序语义若与测试同步断言冲突，以测试契约为先（如搜索无防抖）。
 - 理由：单开发者无 QA 人力，契约测试把"未来回归"消灭在提交前；491 项断言中相当一部分是这类"行为锁"。
-- 代价：契约测试与实现耦合强（行号、字符串断言），重构需同步维护；无真浏览器 E2E（盲区由 docs/device-acceptance.md 人工清单 + Playwright 冒烟逐步补充）。
+- 代价：契约测试与实现耦合强（行号、字符串断言），重构需同步维护；无真浏览器 E2E（盲区由 docs/specs/device-acceptance.md 人工清单 + Playwright 冒烟逐步补充）。

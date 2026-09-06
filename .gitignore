@@ -7,3 +7,6 @@ netlify-login.log
 .netlify
 test-results/
 playwright-report/
+
+# 手机 AI agent 工具残留（内部工作计划），勿入库
+.omo/

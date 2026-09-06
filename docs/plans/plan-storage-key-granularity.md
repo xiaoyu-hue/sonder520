@@ -113,7 +113,7 @@
 
 ## 提交计划（按层拆分，4 笔，任一阶段失败即停）
 
-1. **001 方案文档**：`docs/plan-storage-key-granularity.md`（本文件，先行落库）。**已提交 `5cd3c69`。**
+1. **001 方案文档**：`docs/plans/plan-storage-key-granularity.md`（本文件，先行落库）。**已提交 `5cd3c69`。**
 2. **002 TrustLayer 核心**：`store.js` 注册表 + 集合级写/读/迁移/加密/备份改造 + `_commit` 收口 + 领域 API/工厂触发点适配 → 全量测试 → typecheck/lint → 新增契约测试。**已提交 `e18ed77`：592 项全绿 + typecheck/lint 零问题 + 新增 `tests/store-granular.test.js`（19 文件，+1003/−356）。**
 3. **003 模块 config storageKey 激活**：八模块 `js/*.js` config `storageKey` 改 `sonder_col_<id>_v1` → 全量回归（行为零变化，纯声明）。**（代码层已由 `_commit` 收口覆盖，无独立 storageKey 改造需求，行为验证并入 002 回归。）**
 4. **004 文档同步**：`npm run sync-sw`（v47 → v48）→ ADR-009 决策 7 更新（已落地 + 本方案记录）+ ADR-011 追加 → CHANGELOG → AGENTS 基线（测试数/提交数/缓存 v48）→ PRD 缓存描述 v47 → v48 → 方案文档标注已完成。**已提交 `76c0365`（CHANGELOG/README/README.en/PRD/device-acceptance/ADR-009/plan 标注）+ AGENTS/ADR-011/ADR 索引同步暂挂批（提交数 194→197）。**
