@@ -29,7 +29,7 @@ test('冒烟: 首页零错误、CSP 零违规、静态资源全部 200', async (
   await page.goto('/');
   await expect(page.locator('#pageTitle')).toBeVisible();
   await expect(page.locator('#nav button')).not.toHaveCount(0);
-  expect(await page.locator('#content .card').count()).toBeGreaterThan(0);
+  expect(await page.locator('#content .module-card').count()).toBeGreaterThan(0);
   await page.waitForTimeout(800);
   expect(breaches).toEqual([]);
   expect(await page.evaluate(() => window.__cspViolations)).toEqual([]);
