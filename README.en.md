@@ -219,7 +219,7 @@ npm run sync-sw
 - **[PRD.md](docs/PRD.md)** - Product requirements (Chinese, contains version history, visual design, data specs, acceptance criteria)
 - **[AGENTS.md](AGENTS.md)** - Project collaboration rules (AI Agent development spec)
 - **[CHANGELOG.md](CHANGELOG.md)** - Update log
-- **[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)** - Code of conduct
+- **[CODE_OF_CONDUCT.en.md](CODE_OF_CONDUCT.en.md)** - Code of conduct
 - **[LICENSE](LICENSE)** - MIT License
 - **[docs/](docs/README.md)** - Documentation index (ADRs, migration plans, specs & acceptance)
 - **[AUTHOR.en.md](docs/AUTHOR.en.md)** - About the author
@@ -254,7 +254,7 @@ npm run sync-sw
 
 ## 🤝 Contributing
 
-Welcome! Please read [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) and [AGENTS.md](AGENTS.md) for project guidelines.
+Welcome! Please read [CODE_OF_CONDUCT.en.md](CODE_OF_CONDUCT.en.md) and [AGENTS.md](AGENTS.md) for project guidelines.
 
 ### Contribution Flow
 
