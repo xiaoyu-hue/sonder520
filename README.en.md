@@ -33,12 +33,28 @@
 
 | Feature | Description |
 |---------|-------------|
-| 🌐 **Pure Frontend** | HTML/CSS/Vanilla JS, zero build, zero dependencies |
+| 🌐 **Pure Frontend** | HTML/CSS/Vanilla JS, zero build, zero runtime dependencies |
 | 🔒 **Privacy First** | Data stored only in local browser, optional encryption |
 | 🎨 **Ink-Wash Style** | Rice-paper / Ink-black dual themes, liquid glass card design |
-| 📱 **Cross-Platform** | Desktop/Tablet/Phone responsive, PWA offline support |
+| 📱 **Responsive in-browser (3 viewports)** | Desktop/Tablet/Phone responsive layout, PWA offline support |
 | 🎮 **Built-in Games** | Tic-Tac-Toe, Gomoku, Minesweeper, and 3 more mini games |
 | 🧪 **Test Coverage** | 699 tests passing (Unit + Contract + Integration + E2E) |
+
+### 🔐 Data & Privacy
+
+- **Your data stays only in your browser**: Primary storage is IndexedDB (source of truth), localStorage is used as a fallback copy and cross-tab signal. Data is never uploaded to any server.
+- **Optional encryption**: Enable encrypted storage in Settings (PBKDF2 key derivation + AES-GCM-256). Once encrypted, no one can read your data even if they gain access to the browser.
+- **Manual backup**: Export a JSON backup via "Settings → Export Backup". Please back up before clearing browser data or switching devices.
+- **Zero runtime dependencies**: The project does not depend on any third-party runtime libraries — all features are built on browser-native APIs.
+
+### ⚠️ When Sonder520 is NOT a good fit
+
+To be honest, Sonder520 is not a universal tool. Please think twice or choose more specialized software in these scenarios:
+
+- **Need automatic cross-device sync** — Data only lives in the current browser. It cannot be automatically restored after switching devices or clearing browser data (manual import required).
+- **Need team collaboration** — This is a personal tool with no multi-user sharing, collaboration, or permission management.
+- **Need native app experience** — It is a Web App (PWA), not a native iOS/Android app. Some system-level capabilities (background push, system notifications) are limited.
+- **Sole storage for important data** — Browser data can be cleared or corrupted. Back up regularly and do not keep the only copy in the browser.
 
 ---
 
@@ -67,6 +83,8 @@
 
 ### Sonder-Frame Progressive Framework
 
+> Note: Sonder-Frame is a lightweight framework developed internally for this project, not a general-purpose open-source framework. It is designed specifically for personal productivity tools.
+
 ```
 Application (Application Layer)
     ↓
@@ -85,7 +103,7 @@ IDB (Primary Storage) + localStorage (Fallback Copy) + Crypto (Encryption)
 |------------|---------|
 | **HTML5** | Semantic structure |
 | **CSS3** | Liquid glass design, ink-wash style, responsive layout |
-| **Vanilla JS** | Zero dependencies, zero build, high performance |
+| **Vanilla JS** | Zero runtime dependencies, zero build steps, runs directly in browser |
 | **IndexedDB** | Primary data storage (source of truth) |
 | **localStorage** | Fallback copy + cross-tab signaling |
 | **Crypto API** | PBKDF2 + AES-GCM-256 encryption |
@@ -272,11 +290,26 @@ This project uses the [MIT License](LICENSE) — free to use, modify, and distri
 
 ---
 
-## 🙏 Acknowledgments
+## 🙏 Acknowledgments & Dependencies
 
+Sonder520 stands on the shoulders of these open-source projects and browser standards. Without them, a zero-programming-background author could not have built this.
+
+### Development & Testing Toolchain
+
+| Project | License | Notes |
+|---------|---------|-------|
+| [Playwright](https://playwright.dev) | Apache-2.0 | E2E testing (Desktop/Tablet/Phone) |
+| [ESLint](https://eslint.org) | MIT | Code linting |
+| [eslint-plugin-jsdoc](https://github.com/gajus/eslint-plugin-jsdoc) | BSD-3-Clause | JSDoc comment linting |
+| [TypeScript](https://www.typescriptlang.org) | Apache-2.0 | Zero-build type checking (via JSDoc) |
+| [jsdom](https://github.com/jsdom/jsdom) | MIT | DOM test environment |
+| [fake-indexeddb](https://github.com/dumbmatter/fakeIndexedDB) | Apache-2.0 | IndexedDB test mock |
+
+### Special Thanks
+
+- **Browser-native APIs** (W3C standards) — IndexedDB, Crypto API (PBKDF2 + AES-GCM), Web Worker (Gomoku AI async computation), Service Worker (PWA offline support). Sonder520 has zero runtime dependencies; all features are built on these browser-native capabilities.
 - **AI Agent**: Project development assisted by AI Agent
-- **Open Source Community**: Thanks to all open source contributors
-- **Users**: Thanks to everyone who uses Sonder520
+- **Everyone who contributes code, documentation, and time to the open-source community.**
 
 ---
 
