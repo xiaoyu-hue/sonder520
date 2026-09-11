@@ -5,7 +5,7 @@
 ## 项目本质
 
 - Sonder 是**已稳定、已上线、测试完备**的本地优先个人生产力 Web App：原生 JS、零构建、零运行时依赖。**这不是空白项目，禁止当重写许可。**
-- 现状基线：696 项测试通过、239 次提交、14 份 ADR（ADR-013 写路径收口 / ADR-014 Phase④ IndexedDB 真源反转已落地）、双站线上（CF Pages + GH Pages，缓存 v74）、IndexedDB 主快照 + localStorage 副本（双写双存，集合级逐 key；IDB=载入真源，LS=跨标签信号+副本）、可选 AES-GCM 加密（逐集合 bundle）、PWA、Web Worker、12 个 hash 路由模块。
+- 现状基线：696 项测试通过、239 次提交、14 份 ADR（ADR-013 写路径收口 / ADR-014 Phase④ IndexedDB 真源反转已落地）、双站线上（CF Pages + GH Pages，缓存 v83）、IndexedDB 主快照 + localStorage 副本（双写双存，集合级逐 key；IDB=载入真源，LS=跨标签信号+副本）、可选 AES-GCM 加密（逐集合 bundle）、PWA、Web Worker、12 个 hash 路由模块。
 - v6.0 方向：Sonder-Frame 内部框架（渐进式），**④ IndexedDB 优先写（LS 降级为 fallback）是核心遗留项**。
 
 ## 第一原则
@@ -50,7 +50,7 @@ IDB（Primary） + localStorage（Fallback/元数据） + Crypto
 
 ## 测试纪律
 
-- **现有 584 项测试是迁移安全网，不是旧包袱**——不得因"更干净"而大规模删除；旧测试验证行为则保留，仅验证废弃内部实现才可重写。
+- **迁移基线 584 项测试是迁移安全网，不是旧包袱**——不得因"更干净"而大规模删除；旧测试验证行为则保留，仅验证废弃内部实现才可重写。
 - 分层保持：Unit / Contract（createModule 必须成功且有 add/getById/query/update/delete/destroy）/ Integration（Factory+TrustLayer、Factory+VisualEngine、Module+EventBridge）/ E2E（用户可见行为：新建→刷新→还在）。
 - 迁移前 `npm test` 必须过；迁移后必须再过；失败先判断（真 bug / 依赖旧内部实现 / 有意行为改变），**禁止"先改测试"逃避**；必须确认行为改变是否有意。
 - 测试预算参考：全量约 124s（motion Toast 5.4s / games-worker 3.3s / today 3.2s 最慢），超时阈值 30s。

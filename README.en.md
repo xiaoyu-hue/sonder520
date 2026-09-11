@@ -38,7 +38,7 @@
 | 🎨 **Ink-Wash Style** | Rice-paper / Ink-black dual themes, liquid glass card design |
 | 📱 **Responsive in-browser (3 viewports)** | Desktop/Tablet/Phone responsive layout, PWA offline support |
 | 🎮 **Built-in Games** | Tic-Tac-Toe, Gomoku, Minesweeper, and 3 more mini games |
-| 🧪 **Test Coverage** | 699 tests passing (Unit + Contract + Integration + E2E) |
+| 🧪 **Test Coverage** | 696 tests passing (Unit + Contract + Integration + E2E) |
 
 ### 🔐 Data & Privacy
 
