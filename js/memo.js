@@ -18,7 +18,7 @@
   var CONFIG = {
     id: 'memos',
     displayName: '快速备忘',
-    storageKey: 'sonder_memos_v1',
+    storageKey: 'sonder_data_v1',
     schemaVersion: 1,
     prepend: true,
     timeField: 'time',
