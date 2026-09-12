@@ -19,21 +19,64 @@
     this._emitChange('settings');
     return this.state.settings.wallpaperOpacity;
   };
-  /* 自定义壁纸：data URL 存取，不进持久化快照（返回是否成功，配额写满返回 false） */
+  /* ====== 自定义壁纸（C-7：IndexedDB 独立 entry 为主存，localStorage 仅作
+   * 同步副本/降级/遗留迁移源；不进 state 快照、不进备份——装饰性数据） ====== */
   Store.prototype.getCustomWallpaper = function () {
-    try { return this._storage ? this._storage.getItem(h.STORAGE_WALLPAPER_KEY) : null; } catch (e) { return null; }
+    return this._wallpaperCache || null;
   };
   Store.prototype.setCustomWallpaper = function (dataUrl) {
     if (typeof dataUrl !== 'string' || dataUrl.indexOf('data:image/') !== 0) return false;
-    try {
-      this._storage.setItem(h.STORAGE_WALLPAPER_KEY, dataUrl);
-      this._emitChange('settings'); /* 壁纸即时生效，各页重绘 */
-      return true;
-    } catch (e) { return false; }
+    this._wallpaperCache = dataUrl;
+    var self = this;
+    /* 先同步写 LS（设置后立即刷新也不丢）；IDB 落盘成功后移除 LS——
+     * 避免 base64 长期占用 5MB localStorage 配额（旧版隐患） */
+    try { if (this._storage) this._storage.setItem(h.STORAGE_WALLPAPER_KEY, dataUrl); } catch (e) { /* 配额满：IDB 主存仍可用 */ }
+    this._emitChange('settings'); /* 壁纸即时生效，各页重绘 */
+    if (h.idbPut && h.idbReady) {
+      h.idbReady().then(function (db) {
+        return h.idbPut(db, h.STORAGE_WALLPAPER_KEY, { savedAt: h.nowISO(), data: dataUrl });
+      }).then(function () {
+        try { if (self._storage) self._storage.removeItem(h.STORAGE_WALLPAPER_KEY); } catch (e) { /* 忽略 */ }
+      }).catch(function () { /* IDB 不可用：保留 LS 副本（降级模式，行为同旧版） */ });
+    }
+    return true;
   };
   Store.prototype.clearCustomWallpaper = function () {
+    this._wallpaperCache = null;
     try { if (this._storage) this._storage.removeItem(h.STORAGE_WALLPAPER_KEY); } catch (e) { /* 忽略 */ }
+    if (h.idbDel && h.idbReady) {
+      h.idbReady().then(function (db) { return h.idbDel(db, h.STORAGE_WALLPAPER_KEY); }).catch(function () { /* 忽略 */ });
+    }
     this._emitChange('settings');
+  };
+  /* 启动恢复：IDB entry 优先；缺失时若 LS 有遗留（旧版本数据）则迁入 IDB
+   * 并在落盘成功后移除 LS。由 store.js loadIdb 尾部调用（挂接 openIdb 的 db）。 */
+  Store.prototype._restoreCustomWallpaper = function (db) {
+    var self = this;
+    if (!db || !h.idbGet) return Promise.resolve(false);
+    return h.idbGet(db, h.STORAGE_WALLPAPER_KEY).then(function (entry) {
+      if (entry && typeof entry === 'object' && typeof entry.data === 'string' && entry.data.indexOf('data:image/') === 0) {
+        self._wallpaperCache = entry.data;
+        self._emitChange('settings');
+        return true;
+      }
+      var legacy = null;
+      try { legacy = self._storage ? self._storage.getItem(h.STORAGE_WALLPAPER_KEY) : null; } catch (e) { legacy = null; }
+      if (!legacy || legacy.indexOf('data:image/') !== 0) return false;
+      self._wallpaperCache = legacy;
+      if (h.idbPut) {
+        return h.idbPut(db, h.STORAGE_WALLPAPER_KEY, { savedAt: h.nowISO(), data: legacy }).then(function () {
+          try { if (self._storage) self._storage.removeItem(h.STORAGE_WALLPAPER_KEY); } catch (e) { /* 忽略 */ }
+          self._emitChange('settings');
+          return true;
+        }).catch(function () {
+          self._emitChange('settings'); /* IDB 写入失败：本会话用 LS 值，保留 LS 不删 */
+          return true;
+        });
+      }
+      self._emitChange('settings');
+      return true;
+    }).catch(function () { return false; });
   };
   Store.prototype.setTaskReminder = function (on) {
     this.state.settings.taskReminder = !!on;

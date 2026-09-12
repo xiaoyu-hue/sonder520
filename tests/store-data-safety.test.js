@@ -210,7 +210,7 @@ test('数据安全：锁定态调用 enableEncryption 必须拒绝且真密文�
   assert.equal(sReloaded.state.memos.length, 0, '重载锁定态内存确为空（攻击前提成立）');
 
   let rejected = null;
-  try { await sReloaded.enableEncryption('9999'); } catch (e) { rejected = e; }
+  try { await sReloaded.enableEncryption('999999'); } catch (e) { rejected = e; }
   assert.ok(rejected, '锁定态 enableEncryption 必须 reject');
   assert.match(rejected.message, /锁定/, '错误信息说明锁定原因');
   assert.equal(storage.getItem(COL('memos')), encBefore, '真密文未被空数据密文覆盖');

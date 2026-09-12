@@ -110,6 +110,15 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
       req.onerror = function () { reject(req.error || new Error('idb-open')); };
     });
   }
+  /* C-7：单例连接缓存（壁纸等轻量独立 entry 读写复用，失败后重置以便重试） */
+  var dbReadyPromise = null;
+  function idbReady() {
+    if (!idbAvailable()) return Promise.reject(new Error('idb-unavailable'));
+    if (!dbReadyPromise) {
+      dbReadyPromise = openIdb().catch(function (e) { dbReadyPromise = null; throw e; });
+    }
+    return dbReadyPromise;
+  }
   /* IDB 只存字符串（JSON），跨环境最稳；put 走完整事务以正确报错 */
   function idbPut(db, key, json) {
     return new Promise(function (resolve, reject) {
@@ -117,6 +126,14 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
       tx.objectStore(IDB_STORE).put(json, key);
       tx.oncomplete = function () { resolve(null); };
       tx.onerror = function () { reject(tx.error || new Error('idb-put')); };
+    });
+  }
+  function idbDel(db, key) {
+    return new Promise(function (resolve, reject) {
+      var tx = db.transaction(IDB_STORE, 'readwrite');
+      tx.objectStore(IDB_STORE).delete(key);
+      tx.oncomplete = function () { resolve(null); };
+      tx.onerror = function () { reject(tx.error || new Error('idb-del')); };
     });
   }
   function idbGet(db, key) {
@@ -406,7 +423,7 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
   }
 
   /* ---------- Store ---------- */
-  /** @constructor @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _storeWrite: Function, _idbWriteCols: any, _colJson: any, _rev: number, _encKey: any, _hasEncSnapshot: Function, _hasLegacySnapshot: Function, _readLocalColsRaw: Function, _idbEncLocked: boolean, _undo: any[], _pendingLocalCols: any, _localFlushHandle: any, _bus: any, _emitChange: Function, _persistFailed: boolean, _idbFailed: boolean, _lastPersistError: any, _statusReason: string, _lastSeenMeta: any, _bindStorageWatch: Function }} */
+  /** @constructor @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _storeWrite: Function, _idbWriteCols: any, _colJson: any, _rev: number, _encKey: any, _hasEncSnapshot: Function, _hasLegacySnapshot: Function, _readLocalColsRaw: Function, _idbEncLocked: boolean, _undo: any[], _pendingLocalCols: any, _localFlushHandle: any, _bus: any, _emitChange: Function, _persistFailed: boolean, _idbFailed: boolean, _lastPersistError: any, _statusReason: string, _lastSeenMeta: any, _bindStorageWatch: Function, _wallpaperCache: (string | null) }} */
   function Store(storage) {
     this._storage = storage || (typeof localStorage !== 'undefined' ? localStorage : null);
     /* SonderBus 数据变更广播总线（浏览器 window.SonderBus / 测试注入；缺省静默） */
@@ -441,6 +458,7 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     this._meta = null;
     this._idbPromise = null;
     this._colJson = {};      /* 集合 id → 最近一次落盘串（明文/密文），写路径去重 + storageUsage 体积 */
+    this._wallpaperCache = null; /* C-7：自定义壁纸 dataURL 内存缓存（getCustomWallpaper 同步返回，IDB/LS 双写） */
     this._rev = 0;
     this._encKey = null;
     this._idbEncLocked = false;
@@ -947,13 +965,13 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
    * legacy 整份（LS STORAGE_KEY / IDB 'state'）存在且未集合化 → 先一次性拆分迁移（旧 key 保留不删）。
    * 返回 Promise<是否采用持久化数据需重绘>：IDB 数据被采用（任一集合来自 IDB 且 state 变更）→ true；
    * 仅 LS 数据（构造期已同步合并）→ false（等价旧行为：不重绘）。 */
-  /** @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _idbWriteCols: any, _colJson: any, _rev: number, save: Function, _encKey: any, _decryptParse: Function, _idbEncLocked: boolean, flushPersist: Function, _emitChange: Function, _migrateLegacyIfNeeded: Function, _loadColsMerge: Function, _backfillCols: Function }} */
+  /** @this {{ _storage: any, state: any, _meta: any, _idbPromise: any, _persistLocal: any, _idbWriteCols: any, _colJson: any, _rev: number, save: Function, _encKey: any, _decryptParse: Function, _idbEncLocked: boolean, flushPersist: Function, _emitChange: Function, _migrateLegacyIfNeeded: Function, _loadColsMerge: Function, _backfillCols: Function, _restoreCustomWallpaper: Function }} */
   /* ==================== TrustLayer: IDB 读取与迁移 ==================== */
   Store.prototype.loadIdb = function () {
     var self = this;
     if (!idbAvailable()) return Promise.resolve(false);
     return openIdb().then(function (db) {
-      return self._migrateLegacyIfNeeded(db).then(function (justSplit) {
+      var mergedRes = self._migrateLegacyIfNeeded(db).then(function (justSplit) {
         /* ADR-014 引导期豁免：刚完成 legacy 拆分的这一次合并，平局仍取 LS——
          * split 回声两侧内容恒等，且首次安装不应误报"采用 IDB"触发全量重绘。
          * 稳态（非本次拆分）冲突一律 IDB 优先。 */
@@ -969,6 +987,11 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
           if (merged.fromIdb || merged.hasExtra) self._emitChange('all');
           return merged.fromIdb && !merged.locked;
         });
+      });
+      /* C-7：无论数据合并结果如何，都恢复自定义壁纸（IDB 优先；LS 遗留自动迁移）。
+       * 等待完成再 resolve，保证首帧渲染前 getCustomWallpaper 已就绪、无壁纸闪烁。 */
+      return mergedRes.then(function (adopted) {
+        return self._restoreCustomWallpaper(db).then(function () { return adopted; });
       });
     }).catch(function () { return false; });
   };
@@ -1790,7 +1813,9 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
       uid: uid, nowISO: nowISO, todayStr: todayStr, fmtDate: fmtDate,
       deepClone: deepClone, isPlainObject: isPlainObject, find: find, idxOf: idxOf,
       normalizePriority: normalizePriority, clampOpacity: clampOpacity, normalize: normalize,
-      num0: Stats.num0, hashStr: Stats.hashStr, STORAGE_WALLPAPER_KEY: STORAGE_WALLPAPER_KEY
+      num0: Stats.num0, hashStr: Stats.hashStr, STORAGE_WALLPAPER_KEY: STORAGE_WALLPAPER_KEY,
+      /* C-7：IDB 独立 entry 读写（自定义壁纸等非 state 数据） */
+      idbReady: idbReady, idbPut: idbPut, idbGet: idbGet, idbDel: idbDel
     }
   };
   return api;
