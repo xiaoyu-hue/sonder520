@@ -31,5 +31,12 @@
     "jsdoc/require-jsdoc": "off",
     "jsdoc/check-param-names": "warn",
     "jsdoc/check-types": "warn"
-  }
+  },
+  "overrides": [
+    {
+      "files": ["**/*.mjs"],
+      "parserOptions": { "sourceType": "module" },
+      "rules": { "no-implicit-globals": "off" }
+    }
+  ]
 }

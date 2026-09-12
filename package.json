@@ -6,7 +6,7 @@
   "scripts": {
     "test": "node --test --test-timeout=30000 \"tests/**/*.test.js\"",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint js/*.js tests/*.js scripts/*.js e2e/*.js",
+    "lint": "eslint \"js/**/*.js\" \"js/**/*.mjs\" tests/*.js scripts/*.js e2e/*.js",
     "test:e2e": "playwright test",
     "sync-sw": "node scripts/sync-sw.js"
   },
