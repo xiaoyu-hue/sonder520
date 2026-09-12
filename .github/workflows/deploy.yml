@@ -24,7 +24,7 @@ jobs:
         run: node scripts/sync-sw.js --check
 
   e2e:
-    name: E2E Smoke (Chromium)
+    name: E2E Smoke (三端：Chromium 桌面 + WebKit 手机/平板)
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -34,5 +34,5 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npx playwright install --with-deps chromium
-      - run: npx playwright test --project=desktop-chromium
+      - run: npx playwright install --with-deps chromium webkit
+      - run: npx playwright test
