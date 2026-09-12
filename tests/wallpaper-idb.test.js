@@ -61,7 +61,7 @@ test('壁纸：clearCustomWallpaper 清除内存缓存、LS 与 IDB', async () =
   await poll(() => !h.store._storage.getItem(WP));
   h.store.clearCustomWallpaper();
   assert.equal(h.store.getCustomWallpaper(), null, '内存缓存已清');
-  assert.equal(h.store._storage.getItem(WP), null, 'LS 已清');
+  assert.equal(h.store._storage.getItem(WP), '', 'LS 写入空串清除标记（getter 视为已清除）');
 
   const h2 = boot(withIdb(f));
   await h2.hooks.idbReady;

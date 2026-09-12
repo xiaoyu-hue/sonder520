@@ -28,7 +28,7 @@ const MANUAL_REVIEW = {
   'search.js:129': 'html 变量在 renderGroup 内构建：label/text/sub 均过 UI.esc，module 为内部注册表常量',
   'selfmedia.js:307': '多行拼接：p.title 过 UI.esc，pills/legend/rows 均为数值与常量色值，miniLine 只输出数字',
   'today.js:129': 'html 由 section() 构建：t.title/note/priority 与 pr.label 均过 esc，t.id 经 normalize 白名单收口',
-  'ui.js:51': 'UI.el 框架入口（innerHTML 接收调用方已转义字符串），调用方由本清单约束'
+  'ui.js:59': 'UI.el 框架入口（innerHTML 接收调用方已转义字符串），调用方由本清单约束'
 };
 
 test('innerHTML 契约：全部赋值点清空或已转义，其余在人工审查白名单内', () => {

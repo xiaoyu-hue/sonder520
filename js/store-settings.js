@@ -22,15 +22,23 @@
   /* ====== 自定义壁纸（C-7：IndexedDB 独立 entry 为主存，localStorage 仅作
    * 同步副本/降级/遗留迁移源；不进 state 快照、不进备份——装饰性数据） ====== */
   Store.prototype.getCustomWallpaper = function () {
+    var ls = null;
+    try { ls = this._storage ? this._storage.getItem(h.STORAGE_WALLPAPER_KEY) : null; } catch (e) { ls = null; }
+    if (ls) { this._wallpaperCache = ls; return ls; }
+    /* LS 存空串 = 显式清除标记（clearCustomWallpaper 写入，跨实例可感知） */
+    if (ls === '') { this._wallpaperCache = null; return null; }
+    /* LS 无值且缓存有值：IDB 落盘成功后 LS 已被移走的模式，回退缓存 */
     return this._wallpaperCache || null;
   };
   Store.prototype.setCustomWallpaper = function (dataUrl) {
     if (typeof dataUrl !== 'string' || dataUrl.indexOf('data:image/') !== 0) return false;
-    this._wallpaperCache = dataUrl;
     var self = this;
-    /* 先同步写 LS（设置后立即刷新也不丢）；IDB 落盘成功后移除 LS——
-     * 避免 base64 长期占用 5MB localStorage 配额（旧版隐患） */
-    try { if (this._storage) this._storage.setItem(h.STORAGE_WALLPAPER_KEY, dataUrl); } catch (e) { /* 配额满：IDB 主存仍可用 */ }
+    /* 先同步写 LS（设置后立即刷新也不丢）；LS 写失败（配额满等）视为保存失败，
+     * 保持旧契约语义；IDB 落盘成功后移除 LS——避免 base64 长期占用 5MB 配额 */
+    try {
+      if (this._storage) this._storage.setItem(h.STORAGE_WALLPAPER_KEY, dataUrl);
+    } catch (e) { return false; }
+    this._wallpaperCache = dataUrl;
     this._emitChange('settings'); /* 壁纸即时生效，各页重绘 */
     if (h.idbPut && h.idbReady) {
       h.idbReady().then(function (db) {
@@ -43,7 +51,9 @@
   };
   Store.prototype.clearCustomWallpaper = function () {
     this._wallpaperCache = null;
-    try { if (this._storage) this._storage.removeItem(h.STORAGE_WALLPAPER_KEY); } catch (e) { /* 忽略 */ }
+    /* 写空串标记而非 removeItem：getCustomWallpaper 可区分"已清除"与
+     * "IDB 落盘后 LS 被移走"，跨实例（同存储不同 Store 实例）也能感知清除 */
+    try { if (this._storage) this._storage.setItem(h.STORAGE_WALLPAPER_KEY, ''); } catch (e) { /* 忽略 */ }
     if (h.idbDel && h.idbReady) {
       h.idbReady().then(function (db) { return h.idbDel(db, h.STORAGE_WALLPAPER_KEY); }).catch(function () { /* 忽略 */ });
     }
