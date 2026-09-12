@@ -258,7 +258,7 @@
     container.querySelector('#bkFile').addEventListener('change', function (e) {
       var file = e.target.files[0];
       if (!file) return;
-      UI.confirmBox('导入将覆盖当前全部数据，确定继续？').then(function (ok) {
+      UI.confirmBox('导入将覆盖当前全部数据，确定继续？', '继续导入').then(function (ok) {
         if (!ok) { e.target.value = ''; return; }
         var reader = new FileReader();
         reader.onload = function () {
