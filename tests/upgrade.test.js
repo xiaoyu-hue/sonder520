@@ -98,7 +98,7 @@ test('停用加密：密码正确转回明文并清盐，数据完好', async ()
 
 test('启用加密：自检前置校验，弱密码被拒绝且明文快照保留', async () => {
   const { st, s } = seeded(['原数据']);
-  await assert.rejects(() => s.enableEncryption('ab'), /至少 4 位/);
+  await assert.rejects(() => s.enableEncryption('ab'), /至少 6 位/);
   assert.ok(st._data[COL('tasks')].includes('原数据'), '明文快照应原样保留');
   assert.equal(st._data[SALT_KEY], undefined, '不应残留盐');
   assert.equal(s.needsUnlock(), false);

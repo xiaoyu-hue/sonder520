@@ -366,12 +366,13 @@
       title: '启用加密',
       confirmText: '启用加密',
       fields: [
-        { key: 'pwd', label: '设置密码（至少 4 位，请牢记）', type: 'password', required: true, placeholder: '用于解锁本应用与加密备份导入' },
+        { key: 'pwd', label: '设置密码（至少 6 位，建议 8 位以上，请牢记）', type: 'password', required: true, placeholder: '用于解锁本应用与加密备份导入' },
         { key: 'pwd2', label: '确认密码', type: 'password', required: true }
       ],
       onSubmit: function (v) {
-        if (v.pwd.length < 4) return '密码至少 4 位';
+        /* 先提示不一致（比长度更可行动），再校验长度（C-8：下限 6 位） */
         if (v.pwd !== v.pwd2) return '两次输入的密码不一致';
+        if (v.pwd.length < 6) return '密码至少 6 位';
         return store.enableEncryption(v.pwd).then(function () {
           UI.toast('已启用加密，全部数据已加密存储');
           hooks.render('settings');

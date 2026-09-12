@@ -1344,7 +1344,7 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
   Store.prototype.enableEncryption = function (password) {
     var self = this;
     if (!cryptoReady()) return Promise.reject(new Error('当前环境不支持 Web Crypto'));
-    if (typeof password !== 'string' || password.length < 4) return Promise.reject(new Error('密码至少 4 位'));
+    if (typeof password !== 'string' || password.length < 6) return Promise.reject(new Error('密码至少 6 位'));
     if (this._encKey) return Promise.reject(new Error('已处于加密模式'));
     if (this.needsUnlock()) return Promise.reject(new Error('锁定状态下禁止启用加密：请先解锁'));
     var salt = Crypto.saltBytes();
