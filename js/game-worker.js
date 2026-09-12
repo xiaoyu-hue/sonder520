@@ -6,7 +6,6 @@
  * id 为调用方递增序号，主线程据此丢弃过期回复（悔棋/重开/切换后）。
  * 注意：不进入 index.html 的 script 列表（无 DOM 需求），由 games.js 按需 new Worker 加载，
  *       并在 sw.js 预缓存清单中登记（scripts/sync-sw.js 的 EXTRA 列表）。 */
-/* eslint-disable no-var */
 'use strict';
 importScripts('games-logic.js');
 

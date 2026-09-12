@@ -165,7 +165,7 @@ test('门禁：_idbWriteCols 只允许出现在 _storeWrite 体内（结构性�
   const bodyEnd = next > 0 ? next : STORE_SRC.length;
   let last = -1;
   let found = 0;
-  while (true) { // eslint-disable-line no-constant-condition
+  while (true) {
     const i = STORE_SRC.indexOf('_idbWriteCols(', last + 1);
     if (i < 0) break;
     last = i;

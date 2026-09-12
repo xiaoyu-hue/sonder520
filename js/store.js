@@ -1377,7 +1377,7 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     }).then(function (key) {
       self._encKey = key;
       if (self._storage) {
-        try { self._storage.setItem(STORAGE_SALT_KEY, Crypto.bytesToB64(salt)); } catch (e) { throw new Error('盐存储失败，已中止'); }
+        try { self._storage.setItem(STORAGE_SALT_KEY, Crypto.bytesToB64(salt)); } catch (e) { throw Object.assign(new Error('盐存储失败，已中止'), { cause: e }); }
       }
       self._rev++;
       return self._encSave(self._collectAllRaw()).then(function () {
