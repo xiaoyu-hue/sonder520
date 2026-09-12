@@ -8,7 +8,15 @@
   var overlayRoot = function () { return document.getElementById('overlayRoot'); };
   var toastWrap = function () {
     var w = document.getElementById('toastWrap');
-    if (!w) { w = document.createElement('div'); w.id = 'toastWrap'; document.body.appendChild(w); }
+    if (!w) {
+      w = document.createElement('div');
+      w.id = 'toastWrap';
+      document.body.appendChild(w);
+    }
+    /* U-1：无障碍声明——容器为礼貌性活动区（index.html 预置元素同样生效），
+     * 屏幕阅读器用户可感知"已保存/已删除"等操作反馈；重复设置幂等无害 */
+    w.setAttribute('role', 'status');
+    w.setAttribute('aria-live', 'polite');
     return w;
   };
 
@@ -54,7 +62,8 @@
 
   /* action: { label, onClick } 可选操作按钮（如删除撤销） */
   function toast(msg, type, action) {
-    var node = el('<div class="toast' + (type === 'err' ? ' err' : '') + '"><span>' + esc(msg) + '</span></div>');
+    /* U-1：错误 toast 用 role=alert（断言式活动区），及时打断播报；普通 toast 由容器 aria-live 兜底 */
+    var node = el('<div class="toast' + (type === 'err' ? ' err' : '') + '"' + (type === 'err' ? ' role="alert"' : '') + '><span>' + esc(msg) + '</span></div>');
     if (action) {
       var btn = el('<button type="button" class="toast-act">' + esc(action.label) + '</button>');
       btn.onclick = function () {
