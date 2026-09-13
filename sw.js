@@ -4,7 +4,7 @@
  * 内容变了而版本没升说明部署流程漏跑 sync-sw。 */
 'use strict';
 
-var CACHE = 'sonder-v101';
+var CACHE = 'sonder-v102';
 
 var ASSETS = [
   './',
@@ -62,7 +62,7 @@ var ASSETS = [
   './assets/apple-touch-icon.png',
   './js/game-worker.js'
 ];
-var ASSET_SIG = 'f90f521f841c';
+var ASSET_SIG = 'a38bd61c7fc6';
 
 /* install：预缓存全部资源，立即接管。
  * Request(cache:'reload') 绕过 HTTP 缓存直取网络——GH Pages max-age=600 下
@@ -117,9 +117,11 @@ self.addEventListener('fetch', function (e) {
           caches.open(CACHE).then(function (c) { c.put(e.request, copy); });
           return res;
         }
-        /* 回源拿到非 ok（瞬时 5xx/404）：有缓存副本时兜底返回旧版而非直接透传错误 */
+        /* 回源非 ok（瞬时 5xx/404）：上方 caches.match 已兜底过缓存副本；
+         * 此处透传原响应。不得返回 index.html——子资源（js/css/img）拿到 HTML
+         * 会被浏览器按 MIME 解析报错（F-35） */
         if (res && !res.ok) {
-          return caches.match('./index.html').then(function (fallback) { return fallback || res; });
+          return res;
         }
         return res;
       }).catch(function () {
