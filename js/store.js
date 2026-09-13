@@ -22,6 +22,7 @@
     require('./store-media.js')(api.Store, api._h);
     require('./store-content.js')(api.Store, api._h);
     require('./store-settings.js')(api.Store, api._h);
+    require('./store-undo.js')(api.Store, api._h);
     module.exports = api;
   } else {
     root.SonderStore = factory();
@@ -498,11 +499,7 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     catch (e) { return false; }
   };
 
-  /* P4c：删除撤销——记录删除条目（容量 10，超出丢最旧），undoRemove 恢复 */
-  Store.prototype._undoPush = function (u) {
-    this._undo.push(u);
-    if (this._undo.length > 10) this._undo.shift();
-  };
+  /* P4c：删除撤销——已迁 store-undo.js（_undoPush/undoRemove），此处仅保留注册方法 */
   /* 工厂扩展：注册标准模块集合 key（幂等；ModuleFactory.createModule 调用）。
    * 使该集合进入 normalize 白名单——重载/导入/解密后数据不被丢弃，并保底为空数组；
    * 同时并入 COLLECTIONS——集合级读写路径（LS 每集合 key / IDB entry / 启动合并）必须覆盖工厂集合。
@@ -511,21 +508,6 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     if (typeof key !== 'string' || !key) return;
     if (EXTRA_COLLECTIONS.indexOf(key) < 0) EXTRA_COLLECTIONS.push(key);
     if (COLLECTIONS.indexOf(key) < 0) COLLECTIONS.push(key);
-  };
-  /* P4c：撤销最近一次删除；成功返回被恢复的数据，无可撤销返回 null */
-  Store.prototype.undoRemove = function () {
-    var u = this._undo.pop();
-    if (!u) return null;
-    if (u.restore) {
-      u.restore(this.state);
-    } else {
-      var arr = this.state[u.list];
-      if (!Array.isArray(arr)) return null;
-      arr.splice(Math.min(u.at, arr.length), 0, u.data);
-    }
-    this._commit(u.list); /* 撤销恢复写回被撤销的集合（多文档删除跨集合时全量兜底） */
-    this._emitChange(u.list || 'all'); /* 撤销恢复：广播受影响数据 */
-    return u.data || true;
   };
 
   /* SonderBus 数据变更广播：集合方法在 save() 后调用（list 为数据键名）。
