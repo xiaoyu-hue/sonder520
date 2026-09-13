@@ -434,7 +434,7 @@ interface SonderModuleField {
   type: SonderFieldType;
   label: string;
   required?: boolean;
-  options?: string[];
+  options?: Array<string | { value: string; label: string }>;
 }
 interface SonderModuleConfig {
   id: string;
