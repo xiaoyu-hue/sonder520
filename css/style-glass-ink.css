@@ -1,0 +1,26 @@
+/* =============================================================
+   style-glass-ink.css · v6.2 液态玻璃 × 水墨融合（方向 C）
+   壳层：宣纸纹理 + 墨粒（浅色）／墨黑山水颗粒 + 压暗（深色）
+   策略：全部以选择器覆盖现有规则，新增文件隔离、可整体回滚。
+   断点契约：本文件不引入新 @media 宽度值（responsive.test.js 白名单）。
+   ============================================================= */
+
+/* ---------- 纸纹噪声（浅色宣纸：纤维 + 颗粒 + 纸角泛黄，罩在壁纸雾化层上） ---------- */
+body::after {
+  opacity: 0.45;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.4'/%3E%3C/svg%3E"),
+    repeating-linear-gradient(0deg, rgba(0,0,0,0.1) 0 1px, transparent 1px 2px),
+    repeating-linear-gradient(90deg, rgba(0,0,0,0.07) 0 1px, transparent 1px 3px),
+    radial-gradient(140% 120% at 85% 8%, rgba(96,74,44,0.07), transparent 55%);
+}
+
+/* ---------- 深色墨黑山水：大墨晕 + 细墨点 + 顶部微亮/底部压暗（山水纵深） ---------- */
+[data-theme="dark"] body::after {
+  opacity: 0.55;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.05' numOctaves='1' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.13'/%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.42'/%3E%3C/svg%3E"),
+    radial-gradient(130% 100% at 50% 0%, rgba(255,255,255,0.07), transparent 45%),
+    radial-gradient(150% 115% at 50% 120%, rgba(0,0,0,0.5), transparent 62%);
+}
