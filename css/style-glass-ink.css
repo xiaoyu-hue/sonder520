@@ -11,11 +11,13 @@
   --glass-glow: rgba(255, 255, 255, 0.5);
   --glass-thick: rgba(0, 0, 0, 0.05);
   --ink-halo: rgba(96, 84, 64, 0.08);
+  --ink-focus: rgba(96, 84, 64, 0.16);
 }
 [data-theme="dark"] {
   --glass-glow: rgba(255, 255, 255, 0.09);
   --glass-thick: rgba(0, 0, 0, 0.35);
   --ink-halo: rgba(232, 222, 208, 0.07);
+  --ink-focus: rgba(232, 222, 208, 0.14);
 }
 
 /* ---------- 纸纹噪声（浅色宣纸：纤维 + 颗粒 + 纸角泛黄，罩在壁纸雾化层上） ---------- */
@@ -133,3 +135,14 @@ body::after {
 
 
 
+
+/* ---------- 聚焦墨晕（v6.2 微交互 ④）：聚焦时墨色晕环缓缓晕开 ---------- */
+textarea, select,
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]) {
+  transition: border-color .3s var(--ease-ink), box-shadow .3s var(--ease-ink);
+}
+textarea:focus, select:focus,
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--ink-focus), 0 0 16px 1px var(--ink-focus);
+}
