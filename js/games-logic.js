@@ -440,10 +440,11 @@
     }
     var opened = 0;
     var queue = [[r, c]];
+    var head = 0; /* F-22：指针出队替代 shift()，避免大空白区 BFS 的 O(n²) 头部搬移 */
     b[r][c].revealed = true;
     opened++;
-    while (queue.length) {
-      var cur = queue.shift();
+    while (head < queue.length) {
+      var cur = queue[head++];
       if (b[cur[0]][cur[1]].adj === 0) {
         mineNeighbors(s, cur[0], cur[1]).forEach(function (n) {
           var cell = b[n[0]][n[1]];
