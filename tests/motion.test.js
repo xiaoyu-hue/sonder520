@@ -80,6 +80,12 @@ test('动态层：页面墨染过渡遮罩有独立关键帧、样式', () => {
   assert.ok(/\.ink-transit[^{]*\{[^}]*pointer-events:\s*none/.test(css), '过渡遮罩应不拦截交互');
 });
 
+test('微交互：统计数字变化时墨滴弹跳（numInk）', () => {
+  assert.ok(css.includes('@keyframes numInk'), '缺 numInk 关键帧');
+  assert.ok(css.includes('.num-bump'), '缺 .num-bump 触发类');
+  assert.ok(css.includes('scale(1.3)'), '墨滴弹跳应包含放大相位');
+});
+
 test('动态层：统计卡光泽扫过（sheen）', () => {
   assert.ok(css.includes('@keyframes sheenSweep'), '缺 sheenSweep 关键帧');
   assert.ok(css.includes('.rank-card::after'), '统计卡缺光泽层 ::after');

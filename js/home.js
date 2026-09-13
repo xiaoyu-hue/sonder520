@@ -14,6 +14,8 @@
     return '晚上好';
   }
 
+  var lastNums = {};
+
   function render(container, ctx) {
     var UI = ctx.UI, store = ctx.store;
     currentEl = container; currentCtx = ctx;
@@ -106,6 +108,17 @@
       '</div>'
     ].join('');
 
+    /* 数字跳动（v6.2 微交互 ②）：统计值变化时墨滴弹跳（首次渲染只记录不跳） */
+    container.querySelectorAll('.module-stat-num').forEach(function (el) {
+      var card = el.closest('[data-go]');
+      var go = card ? card.getAttribute('data-go') : '_';
+      var num = el.getAttribute('data-num');
+      if (lastNums[go] !== undefined && lastNums[go] !== num) {
+        el.classList.add('num-bump');
+      }
+      lastNums[go] = num;
+    });
+
     /* 事件绑定 */
     container.querySelector('#hmSave').addEventListener('click', function () {
       var v = container.querySelector('#hmMemo').value;
@@ -135,7 +148,7 @@
       '<div class="module-desc">' + UI.esc(sub) + '</div>'+
       '<div class="module-stats">'+
         '<div class="module-stat">'+
-          '<div class="module-stat-num">' + num + '</div>'+
+          '<div class="module-stat-num" data-num="' + num + '">' + num + '</div>'+
           '<div class="module-stat-label">总计</div>'+
         '</div>'+
       '</div>'+
