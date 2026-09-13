@@ -955,8 +955,7 @@
         s.style.left = (20 + Math.random() * 60) + '%';
         s.style.top = (30 + Math.random() * 40) + '%';
         el.appendChild(s);
-        var fxTimer = setTimeout(function () { if (s.parentNode) s.parentNode.removeChild(s); }, 700);
-        if (self._fxTimers) self._fxTimers.push(fxTimer);
+        var sparkleTimer = fxTimer(self, function () { if (s.parentNode) s.parentNode.removeChild(s); }, 700);
       })(i);
     }
   };
@@ -970,8 +969,7 @@
     t.className = 'dp-fx-coin';
     t.textContent = '+' + amount;
     el.appendChild(t);
-    var fxTimer2 = setTimeout(function () { if (t.parentNode) t.parentNode.removeChild(t); }, 850);
-    if (this._fxTimers) this._fxTimers.push(fxTimer2);
+    var fxTimer2 = fxTimer(this, function () { if (t.parentNode) t.parentNode.removeChild(t); }, 850);
   };
 
   /** 成就解锁光环：角色外框脉冲发光 */
@@ -981,8 +979,7 @@
     if (!el) return;
     var self3 = this;
     el.classList.add('dp-fx-glow');
-    var fxTimer3 = setTimeout(function () { if (!self3._destroyed && el) el.classList.remove('dp-fx-glow'); }, 950);
-    if (this._fxTimers) this._fxTimers.push(fxTimer3);
+    var fxTimer3 = fxTimer(this, function () { if (!self3._destroyed && el) el.classList.remove('dp-fx-glow'); }, 950);
   };
 
   /** 互动爱心飘散：在角色周围创建 3 颗爱心 */
@@ -1003,8 +1000,7 @@
         h.style.fontSize = (10 + Math.random() * 5) + 'px';
         h.style.color = ['#ff6b8a', '#ff4757', '#e84393'][idx % 3];
         el.appendChild(h);
-        var fxTimer4 = setTimeout(function () { if (h.parentNode) h.parentNode.removeChild(h); }, 700);
-        if (self4._fxTimers) self4._fxTimers.push(fxTimer4);
+        var fxTimer4 = fxTimer(self4, function () { if (h.parentNode) h.parentNode.removeChild(h); }, 700);
       })(i);
     }
   };
@@ -1206,7 +1202,7 @@
     drawEyeShape(this.eyeR, 'closed', 'right', 0.08);
     this.el.classList.add('dp-eyes-closed');
     var self = this;
-    var restoreTimer = setTimeout(function () {
+    var restoreTimer = fxTimer(this, function () {
       if (!self.el || self._destroyed) return;
       self.el.classList.remove('dp-eyes-closed');
       /* 恢复当前情绪的眼睛形状 */
@@ -1214,7 +1210,6 @@
         self._drawEyes(self.eyeL, self.eyeR, cfg.eyes, 'idle');
       }
     }, 160);
-    if (this._fxTimers) this._fxTimers.push(restoreTimer);
   };
 
   /* 调度待机语录（15-30 秒，40% 概率，D.4；_destroyed 守卫防竞态复活） */
@@ -1396,6 +1391,21 @@
 
   /* 销毁（移除监听/定时器/DOM）。_destroyed 置位必须最先执行：
    * 自续期链（眨眼/语录）与延迟绑定回调据此放弃复活。 */
+  /* 特效定时器包装（F-25）：登记到 _fxTimers 供 destroy 统一清理；
+   * 回调执行后自动从数组移除，避免长期挂机累积已完成 id */
+  function fxTimer(self, fn, ms) {
+    var t = setTimeout(function () {
+      try { fn(); } catch (e) { /* 特效回调异常不影响主流程 */ }
+      var arr = self && self._fxTimers;
+      if (arr) {
+        var idx = arr.indexOf(t);
+        if (idx >= 0) arr.splice(idx, 1);
+      }
+    }, ms);
+    if (self && self._fxTimers) self._fxTimers.push(t);
+    return t;
+  }
+
   Pet.prototype.destroy = function () {
     this._destroyed = true;
     if (this._blinkTimer) clearTimeout(this._blinkTimer);
@@ -1420,8 +1430,7 @@
     if (this._boundDblClick && this.el) this.el.removeEventListener('dblclick', this._boundDblClick);
     if (this._boundContextMenu && this.el) this.el.removeEventListener('contextmenu', this._boundContextMenu);
     if (this._boundTouchStart && this.el) this.el.removeEventListener('touchstart', this._boundTouchStart);
-    if (this._boundTouchEnd && this.el) this.el.removeEventListener('touchend', this._boundTouchEnd);
-    if (this._boundTouchCancel && this.el) this.el.removeEventListener('touchcancel', this._boundTouchEnd);
+    if (this._boundTouchEnd && this.el) { this.el.removeEventListener('touchend', this._boundTouchEnd); this.el.removeEventListener('touchcancel', this._boundTouchEnd); }
     this._closeContextMenu();
     /* 清理拖拽事件 */
     if (this._boundDown && this.el) this.el.removeEventListener('pointerdown', this._boundDown);
