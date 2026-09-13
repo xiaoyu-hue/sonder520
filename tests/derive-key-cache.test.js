@@ -15,8 +15,12 @@ subtle.deriveKey = function () {
 };
 after(() => { subtle.deriveKey = realDeriveKey; });
 
-async function rawOf(key) {
-  return new Uint8Array(await subtle.exportKey('raw', key));
+/* 密钥不可导出（extractable:false）后改用密钥指纹比较：同密钥对固定明文+固定 IV
+ * 加密得到相同密文，异密钥必不同。 */
+const PROBE_IV = new Uint8Array(12).fill(7);
+async function fingerprintOf(key) {
+  const buf = await subtle.encrypt({ name: 'AES-GCM', iv: PROBE_IV }, key, new TextEncoder().encode('sonder-key-probe'));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
 test('PBKDF2 缓存：同密码同盐只派生一次，密钥一致', async () => {
@@ -25,7 +29,7 @@ test('PBKDF2 缓存：同密码同盐只派生一次，密钥一致', async () =
   const k1 = await C.deriveKey('缓存测试密码-2026', salt);
   const k2 = await C.deriveKey('缓存测试密码-2026', salt);
   assert.equal(deriveCalls, before + 1, '同参只应派生一次（60 万次迭代不重跑）');
-  assert.deepEqual(await rawOf(k1), await rawOf(k2), '两次密钥必须一致');
+  assert.equal(await fingerprintOf(k1), await fingerprintOf(k2), '两次密钥必须一致');
 });
 
 test('PBKDF2 缓存：异盐/异密码/异迭代数都会重新派生', async () => {

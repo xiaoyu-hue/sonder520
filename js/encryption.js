@@ -70,7 +70,7 @@
       return cr.subtle.importKey('raw', pw, 'PBKDF2', false, ['deriveKey']).then(function (base) {
         return cr.subtle.deriveKey(
           { name: 'PBKDF2', salt: salt, iterations: it, hash: 'SHA-256' },
-          base, ALGO, true, ['encrypt', 'decrypt']
+          base, ALGO, false, ['encrypt', 'decrypt']
         );
       }).then(function (key) {
         derivedKeyCache = { fp: fp, it: it, key: key };

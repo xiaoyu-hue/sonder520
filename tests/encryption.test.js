@@ -6,12 +6,25 @@ const C = require('../js/encryption.js');
 const PWD = '我的强密码-2026@测试';
 const PWD2 = '另一个不同密码';
 
+/* 密钥不可导出（extractable:false）后，用"固定明文+固定 IV 加密"的密文作为密钥指纹：
+ * 同密钥 → 密文必然相同；异密钥 → 密文必然不同。行为等价于比较 raw 字节。 */
+const PROBE_IV = new Uint8Array(12).fill(7);
+function keyFingerprint(key) {
+  return crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv: PROBE_IV },
+    key,
+    new TextEncoder().encode('sonder-key-probe')
+  ).then(function (buf) {
+    return Array.from(new Uint8Array(buf)).map(function (b) {
+      return b.toString(16).padStart(2, '0');
+    }).join('');
+  });
+}
+
 function sameKey(a, b) {
   return C.deriveKey(PWD, new Uint8Array([1, 2, 3])).then(async k1 => {
     const k2 = await C.deriveKey(PWD, new Uint8Array([1, 2, 3]));
-    const r1 = await crypto.subtle.exportKey('raw', k1);
-    const r2 = await crypto.subtle.exportKey('raw', k2);
-    assert.deepEqual(new Uint8Array(r1), new Uint8Array(r2));
+    assert.equal(await keyFingerprint(k1), await keyFingerprint(k2));
   });
 }
 
@@ -22,17 +35,13 @@ test('密钥派生：同密码同盐得到同一密钥', async () => {
 test('密钥派生：不同盐派生不同密钥', async () => {
   const k1 = await C.deriveKey(PWD, new Uint8Array([1, 2, 3]));
   const k2 = await C.deriveKey(PWD, new Uint8Array([9, 9, 9]));
-  const r1 = new Uint8Array(await crypto.subtle.exportKey('raw', k1));
-  const r2 = new Uint8Array(await crypto.subtle.exportKey('raw', k2));
-  assert.notDeepEqual(r1, r2);
+  assert.notEqual(await keyFingerprint(k1), await keyFingerprint(k2));
 });
 
 test('密钥派生：不同密码派生不同密钥', async () => {
   const k1 = await C.deriveKey(PWD, new Uint8Array([1, 2, 3]));
   const k2 = await C.deriveKey(PWD2, new Uint8Array([1, 2, 3]));
-  const r1 = new Uint8Array(await crypto.subtle.exportKey('raw', k1));
-  const r2 = new Uint8Array(await crypto.subtle.exportKey('raw', k2));
-  assert.notDeepEqual(r1, r2);
+  assert.notEqual(await keyFingerprint(k1), await keyFingerprint(k2));
 });
 
 test('加解密往返：中文/换行/特殊字符完整还原', async () => {
