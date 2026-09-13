@@ -470,6 +470,10 @@ interface Window {
   SonderStore: SonderStoreFactory;
   SonderStats: SonderStatsFactory;
   SonderModuleFactory: SonderModuleFactoryApi;
+  /* v6.x 架构升级：Repository 数据访问边界（过渡形态，委托旧 Store） */
+  SonderTaskRepository: SonderRepositoryFactory;
+  SonderBookRepository: SonderRepositoryFactory;
+  SonderDevRepository: SonderRepositoryFactory;
   SonderMarkdown: { render(src: string): string; esc(s: unknown): string };
   SonderCrypto: SonderCryptoApi;
   SonderGames: SonderGamesApi;
@@ -674,6 +678,50 @@ declare var SonderStore: SonderStoreFactory;
 declare var SonderStats: SonderStatsFactory;
 declare var SonderModuleFactory: SonderModuleFactoryApi;
 declare var SonderBus: SonderBusApi;
+
+/* Repository 工厂与数据访问对象（过渡形态，行为委托旧 Store） */
+interface SonderTaskRepository {
+  get(id: string): SonderTask | null;
+  getAll(): SonderTask[];
+  create(d: SonderTaskInput): SonderTask;
+  update(id: string, patch: SonderTaskInput): SonderTask | null;
+  remove(id: string): void;
+  reorder(id: string, dir: 'up' | 'down'): boolean;
+}
+interface SonderBookRepository {
+  get(id: string): SonderBook | null;
+  getAll(): SonderBook[];
+  create(d: SonderBookInput): SonderBook;
+  update(id: string, patch: SonderBookInput): SonderBook | null;
+  remove(id: string): void;
+  addReadingSession(bookId: string, minutes: number): number | null;
+  addNote(bookId: string, text: string): SonderBookNote | null;
+  removeNote(bookId: string, noteId: string): void;
+  getExcerpts(): SonderExcerpt[];
+  addExcerpt(d: Record<string, unknown>): SonderExcerpt | null;
+  removeExcerpt(id: string): void;
+}
+interface SonderDevRepository {
+  getProject(id: string): Record<string, unknown> | null;
+  getProjects(): Array<Record<string, unknown>>;
+  createProject(d: Record<string, unknown>): Record<string, unknown>;
+  updateProject(id: string, patch: Record<string, unknown>): Record<string, unknown> | null;
+  removeProject(id: string): void;
+  addTask(projId: string, d: Record<string, unknown>): Record<string, unknown> | null;
+  updateTask(projId: string, taskId: string, patch: Record<string, unknown>): Record<string, unknown> | null;
+  removeTask(projId: string, taskId: string): void;
+  addNote(d: Record<string, unknown>): Record<string, unknown>;
+  updateNote(id: string, patch: Record<string, unknown>): Record<string, unknown> | null;
+  removeNote(id: string): void;
+  addSnippet(d: Record<string, unknown>): Record<string, unknown>;
+  updateSnippet(id: string, patch: Record<string, unknown>): Record<string, unknown> | null;
+  removeSnippet(id: string): void;
+}
+interface SonderRepositoryFactory {
+  createTaskRepository(store: SonderStoreImpl): SonderTaskRepository;
+  createBookRepository(store: SonderStoreImpl): SonderBookRepository;
+  createDevRepository(store: SonderStoreImpl): SonderDevRepository;
+}
 
 /* Web Worker 专用全局（game-worker.js，不在 DOM/窗口作用域内）：
  * DOM lib 的 postMessage/self 重载与 worker 环境兼容，仅 importScripts 缺失需要补充。 */

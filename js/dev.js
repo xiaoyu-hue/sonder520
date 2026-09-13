@@ -15,6 +15,12 @@
   var unsubs = [];
   var delegatedBound = false;
 
+  /* v6.x 架构升级 Phase 4 续：开发场景数据访问经 DevRepository 边界
+   * （嵌套任务子操作不再直连 Store） */
+  function repoDev(store) {
+    return window.SonderDevRepository.createDevRepository(store);
+  }
+
   function routeIs() {
     return (location.hash || '').replace(/^#\/?/, '').split('/')[0] === 'dev';
   }
@@ -102,7 +108,7 @@
       if (!c) return;
       var row = c.closest('[data-task]'), card = c.closest('[data-proj]');
       var proj = card && findById(store.state.devProjects, card.dataset.proj);
-      if (proj) store.updateDevTask(proj.id, row.dataset.task, { done: c.checked });
+      if (proj) repoDev(store).updateTask(proj.id, row.dataset.task, { done: c.checked });
     });
     container.addEventListener('click', function (e) {
       var b = e.target.closest && e.target.closest('[data-pinfo],[data-pdel],[data-tadd],[data-tedit],[data-tdel],[data-copy],[data-nedit],[data-ndel],[data-sedit],[data-sdel]');
@@ -138,7 +144,7 @@
         if (b.hasAttribute('data-tedit')) { if (t) openTask(ctx, pr.id, t); }
         else {
           UI.confirmBox('删除这个任务？').then(function (ok) {
-            if (ok) store.removeDevTask(pr.id, row.dataset.task);
+            if (ok) repoDev(store).removeTask(pr.id, row.dataset.task);
           });
         }
         return;
@@ -223,8 +229,8 @@
         { key: 'note', label: '说明', type: 'textarea', value: target ? (target.note || '') : '' }
       ],
       onSubmit: function (v) {
-        if (target) ctx.store.updateDevTask(projId, target.id, v);
-        else ctx.store.addDevTask(projId, v);
+        if (target) repoDev(ctx.store).updateTask(projId, target.id, v);
+        else repoDev(ctx.store).addTask(projId, v);
         ctx.UI.toast('已保存');
         return true;
       }
