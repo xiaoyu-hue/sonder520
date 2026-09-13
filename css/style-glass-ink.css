@@ -111,4 +111,25 @@ body::after {
   background: linear-gradient(90deg, transparent 0%, rgba(232, 222, 208, 0.38) 30%, rgba(232, 222, 208, 0.38) 70%, transparent 100%);
 }
 
+/* ---------- 动效统一：墨晕过渡 + 浮现墨感缓动（--ease-ink） ---------- */
+.ink-transit {
+  background:
+    radial-gradient(420px 300px at 50% 42%, rgba(50, 40, 30, 0.26), transparent 55%),
+    radial-gradient(900px 650px at 50% 42%, rgba(50, 40, 30, 0.12), transparent 72%);
+  animation-duration: .38s;
+  animation-timing-function: var(--ease-ink);
+}
+[data-theme="dark"] .ink-transit {
+  background:
+    radial-gradient(420px 300px at 50% 42%, rgba(232, 226, 216, 0.12), transparent 55%),
+    radial-gradient(900px 650px at 50% 42%, rgba(232, 226, 216, 0.05), transparent 72%);
+}
+.card-animate-in {
+  animation-timing-function: var(--ease-ink);
+}
+.main-card {
+  transition-timing-function: var(--ease-ink);
+}
+
+
 
