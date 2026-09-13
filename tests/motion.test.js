@@ -57,14 +57,13 @@ test('无障碍：尊重 prefers-reduced-motion', () => {
 });
 
 test('行为：Toast 动效样式由 JS 驱动，仍可出现与收回', async () => {
-  const { boot } = require('./harness.js');
+  const { boot, waitFor } = require('./harness.js');
   const { window } = boot();
   window.UI.toast('叮');
   const t = window.document.querySelector('#toastWrap .toast');
   assert.ok(t, 'toast 未出现');
   assert.ok(window.getComputedStyle || true);
-  await new Promise(r => setTimeout(r, 2700));
-  assert.equal(window.document.querySelector('#toastWrap .toast'), null, 'toast 未按时消失');
+  await waitFor(() => window.document.querySelector('#toastWrap .toast') === null, 'toast 应按时消失');
 });
 
 test('动态层：墨点涟漪有独立关键帧、样式与固定定位节点', () => {
