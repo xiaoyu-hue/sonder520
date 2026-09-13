@@ -19,12 +19,12 @@ const JS_DIR = path.join(__dirname, '..', 'js');
  * store.js sanitizeStateIds 对全部记录 id 做 SAFE_ID_RE 白名单校验、非法一律 uid() 重生，
  * 导入路径不再能注入含引号/尖括号/空白的 id。 */
 const MANUAL_REVIEW = {
-  'consulting.js:105': 'renderProjects：pr.name/note/stage 均过 UI.esc，pr.id 经 normalize 白名单收口',
-  'consulting.js:118': 'renderFollowups：f.note/date 均过 UI.esc，f.id 经 normalize 白名单收口',
-  'consulting.js:131': 'renderIncomes：amount 经 Number()||0 归一为数字，i.date/note 过 UI.esc，i.id 经 normalize 白名单收口',
-  'dev.js:258': '纯字面量（暂无任务占位）',
-  'dev.js:260': 'projectCard 任务列表：t.title 过 UI.esc（同类行内），t.id 经 normalize 白名单收口',
-  'home.js:53': '多行数组拼接：greeting()/lastMemo/quoteHtml/moduleCard 插值均过 UI.esc，汇总数字为数值型',
+  'consulting.js:112': 'renderProjects：pr.name/note/stage 均过 UI.esc，pr.id 经 normalize 白名单收口',
+  'consulting.js:125': 'renderFollowups：f.note/date 均过 UI.esc，f.id 经 normalize 白名单收口',
+  'consulting.js:138': 'renderIncomes：amount 经 Number()||0 归一为数字，i.date/note 过 UI.esc，i.id 经 normalize 白名单收口',
+  'dev.js:264': '纯字面量（暂无任务占位）',
+  'dev.js:266': 'projectCard 任务列表：t.title 过 UI.esc（同类行内），t.id 经 normalize 白名单收口',
+  'home.js:55': '多行数组拼接：greeting()/lastMemo/quoteHtml/moduleCard 插值均过 UI.esc，汇总数字为数值型',
   'search.js:129': 'html 变量在 renderGroup 内构建：label/text/sub 均过 UI.esc，module 为内部注册表常量',
   'selfmedia.js:314': '多行拼接：p.title 过 UI.esc，pills/legend/rows 均为数值与常量色值，miniLine 只输出数字',
   'today.js:129': 'html 由 section() 构建：t.title/note/priority 与 pr.label 均过 esc，t.id 经 normalize 白名单收口',
