@@ -10,3 +10,6 @@ playwright-report/
 
 # 手机 AI agent 工具残留（内部工作计划），勿入库
 .omo/
+
+# 代码审查中间产物（子代理分析底稿；结论已收敛进审查报告，本地留档）
+artifacts/
