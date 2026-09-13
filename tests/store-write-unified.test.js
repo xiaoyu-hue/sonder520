@@ -156,7 +156,8 @@ test('收口点：无锁环境降级顺序直执行（等价旧行为）', async
 /* ====== ADR-013 门禁：结构防绕过 + 让位集成 ====== */
 const fs = require('node:fs');
 const path = require('node:path');
-const STORE_SRC = fs.readFileSync(path.join(__dirname, '..', 'js', 'store.js'), 'utf8');
+/* v6.x Phase 6：写锁收口点 _storeWrite 已迁至 store-persistence.js（store.js 不再持有） */
+const STORE_SRC = fs.readFileSync(path.join(__dirname, '..', 'js', 'store-persistence.js'), 'utf8');
 
 test('门禁：_idbWriteCols 只允许出现在 _storeWrite 体内（结构性防绕过）', () => {
   const start = STORE_SRC.indexOf('Store.prototype._storeWrite = function');
