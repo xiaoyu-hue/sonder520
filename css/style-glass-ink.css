@@ -6,14 +6,16 @@
    断点契约：本文件不引入新 @media 宽度值（responsive.test.js 白名单）。
    ============================================================= */
 
-/* 玻璃内发光强度：浅色亮玻璃 / 深色暗玻璃 */
+/* 玻璃内发光强度：浅色亮玻璃 / 深色暗玻璃（[data-theme=dark] 块须在后，同特异性后置胜出） */
 :root {
   --glass-glow: rgba(255, 255, 255, 0.5);
   --glass-thick: rgba(0, 0, 0, 0.05);
+  --ink-halo: rgba(96, 84, 64, 0.08);
 }
 [data-theme="dark"] {
   --glass-glow: rgba(255, 255, 255, 0.09);
   --glass-thick: rgba(0, 0, 0, 0.35);
+  --ink-halo: rgba(232, 222, 208, 0.07);
 }
 
 /* ---------- 纸纹噪声（浅色宣纸：纤维 + 颗粒 + 纸角泛黄，罩在壁纸雾化层上） ---------- */
@@ -48,4 +50,65 @@ body::after {
 .main-card::before {
   background: linear-gradient(90deg, transparent, var(--border-hi) 18%, #ffffff 50%, var(--border-hi) 82%, transparent);
 }
+
+/* ---------- 水墨融入：hover 墨晕环 + 点击墨压 + 标题笔触线 ---------- */
+.main-card:hover {
+  box-shadow:
+    0 12px 48px rgba(0, 0, 0, 0.16),
+    0 0 0 5px var(--ink-halo),
+    inset 0 1px 0 var(--border-hi),
+    inset 0 -1px 0 var(--glass-thick),
+    inset 0 20px 32px -18px var(--glass-glow),
+    0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+.main-card:active {
+  transform: translateY(-1px) scale(0.996);
+  box-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.14),
+    0 0 0 9px var(--ink-halo),
+    inset 0 1px 0 var(--border-hi),
+    inset 0 -1px 0 var(--glass-thick),
+    inset 0 20px 32px -18px var(--glass-glow),
+    0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+/* 深色卡片存在 [data-theme="dark"] 前缀特化规则（style-cards.css），
+ * 需同特异性后置覆盖，否则玻璃精修与墨晕在深色下失效 */
+[data-theme="dark"] .main-card {
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    inset 0 -1px 0 var(--glass-thick),
+    inset 0 20px 32px -18px var(--glass-glow),
+    0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+[data-theme="dark"] .main-card:hover {
+  box-shadow:
+    0 16px 48px rgba(0, 0, 0, 0.5),
+    0 0 0 5px var(--ink-halo),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15),
+    inset 0 -1px 0 var(--glass-thick),
+    inset 0 20px 32px -18px var(--glass-glow),
+    0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+[data-theme="dark"] .main-card:active {
+  transform: translateY(-1px) scale(0.996);
+  box-shadow:
+    0 6px 20px rgba(0, 0, 0, 0.5),
+    0 0 0 9px var(--ink-halo),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15),
+    inset 0 -1px 0 var(--glass-thick),
+    inset 0 20px 32px -18px var(--glass-glow),
+    0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+.btn:active {
+  box-shadow: 0 0 0 6px var(--ink-halo);
+}
+/* 笔触线：中间浓、两端虚，似一笔墨痕 */
+.section-title::after {
+  background: linear-gradient(90deg, transparent 0%, rgba(90, 78, 60, 0.55) 30%, rgba(90, 78, 60, 0.55) 70%, transparent 100%);
+}
+[data-theme="dark"] .section-title::after {
+  background: linear-gradient(90deg, transparent 0%, rgba(232, 222, 208, 0.38) 30%, rgba(232, 222, 208, 0.38) 70%, transparent 100%);
+}
+
 
