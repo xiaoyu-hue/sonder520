@@ -177,8 +177,8 @@
       '<div class="list-item" data-id="' + b.id + '">' +
       '<div class="grow">' +
       '<div class="title">' + UI.esc(b.title) + (b.author ? ' <span class="muted small">' + UI.esc(b.author) + '</span>' : '') + '</div>' +
-      '<div class="row" style="margin-top:6px"><span class="progress grow" style="max-width:160px"><i style="width:' + b.progress + '%"></i></span>' +
-      '<span class="small muted">' + b.progress + '%</span>' +
+      '<div class="row" style="margin-top:6px"><span class="progress grow" style="max-width:160px"><i style="width:' + (b.progress || 0) + '%"></i></span>' +
+      '<span class="small muted">' + (b.progress || 0) + '%</span>' +
       (b.status === '已读完' && b.finishedAt ? '<span class="small muted"> · ' + UI.esc(b.finishedAt) + ' 读完</span>' : '') +
       '</div>' +
       '<div class="row" style="margin-top:8px;flex-wrap:wrap;gap:6px">' +

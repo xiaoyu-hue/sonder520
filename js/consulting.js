@@ -65,7 +65,7 @@
 
   function clientCard(c, ctx) {
     var UI = ctx.UI;
-    var total = Math.round(c.income.reduce(function (s, i) { return s + (Number(i.amount) || 0); }, 0) * 100) / 100;
+    var total = Math.round((c.income || []).reduce(function (s, i) { return s + (Number(i.amount) || 0); }, 0) * 100) / 100;
     var open = expanded[c.id];
     var card = UI.el(
       '<div class="card" style="margin-bottom:14px" data-client="' + c.id + '">' +
