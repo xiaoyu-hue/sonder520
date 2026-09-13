@@ -164,6 +164,10 @@
           UI.toast('当前环境不支持 IndexedDB，请导出备份', 'err');
         }
         render();
+      }).catch(function (err) {
+        try { console.error('[Sonder] IDB 迁移失败', err); } catch (e) { /* 忽略 */ }
+        UI.toast('迁移失败，请导出备份', 'err');
+        render();
       });
     });
     bar.querySelector('#qClose').addEventListener('click', function () {
@@ -192,6 +196,9 @@
     idbReady: store.loadIdb().then(function (applied) {
       if (applied) onHash();
       return applied;
+    }).catch(function (err) {
+      try { console.error('[Sonder] IDB 启动加载失败，回退 localStorage', err); } catch (e) { /* 忽略 */ }
+      return false;
     })
   };
   if (window.__SONDER_TEST__) {
@@ -293,6 +300,11 @@
         lockPwdEl.value = '';
         onHash();
         todayReminder();
+      }).catch(function (err) {
+        busy = false;
+        btn.disabled = false;
+        try { console.error('[Sonder] 解锁失败', err); } catch (e) { /* 忽略 */ }
+        lockErrEl.textContent = '解锁失败，请重试';
       });
     }
     btn.onclick = tryUnlock;
@@ -312,6 +324,9 @@
         try { sessionStorage.removeItem('sonder_session_pwd'); } catch (e) { /* ignore */ }
         showLockScreen();
       }
+    }).catch(function (err) {
+      try { console.error('[Sonder] 免密自动解锁失败', err); } catch (e) { /* 忽略 */ }
+      showLockScreen();
     });
   }
 

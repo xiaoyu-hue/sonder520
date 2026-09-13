@@ -285,6 +285,10 @@
           store.importBackup(text).then(function (res) {
             if (res.ok) { UI.toast('备份已恢复'); e.target.value = ''; hooks.render('settings'); }
             else { UI.toast(res.error, 'err'); e.target.value = ''; }
+          }).catch(function (err) {
+            try { console.error('[Sonder] 导入失败', err); } catch (e) { /* 忽略 */ }
+            UI.toast('导入失败，请检查文件', 'err');
+            e.target.value = '';
           });
         };
         reader.readAsText(file);
@@ -303,6 +307,9 @@
     container.querySelector('#btnMigrateIdb').addEventListener('click', function () {
       store.migrateToIdb().then(function (ok) {
         UI.toast(ok ? '已迁移至 IndexedDB' : '当前环境不支持 IndexedDB', ok ? '' : 'err');
+      }).catch(function (err) {
+        try { console.error('[Sonder] IDB 迁移失败', err); } catch (e) { /* 忽略 */ }
+        UI.toast('迁移失败，请导出备份', 'err');
       });
     });
   }
