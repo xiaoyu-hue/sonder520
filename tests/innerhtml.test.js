@@ -32,8 +32,8 @@ const MANUAL_REVIEW = {
 };
 
 test('innerHTML 契约：全部赋值点清空或已转义，其余在人工审查白名单内', () => {
-  const files = fs.readdirSync(JS_DIR).filter(f => f.endsWith('.js'));
-  assert.ok(files.length > 10, '应扫描到全部 js 文件');
+  const files = fs.readdirSync(JS_DIR, { recursive: true }).filter(f => f.endsWith('.js'));
+  assert.ok(files.length > 10, '应扫描到全部 js 文件（含 framework/ 子目录）');
   const found = [];
   files.forEach(f => {
     const lines = fs.readFileSync(path.join(JS_DIR, f), 'utf8').split('\n');
