@@ -12,12 +12,20 @@
   --glass-thick: rgba(0, 0, 0, 0.05);
   --ink-halo: rgba(96, 84, 64, 0.08);
   --ink-focus: rgba(96, 84, 64, 0.16);
+  --glass-edge: rgba(255, 255, 255, 0.05);  /* F-30：玻璃白描边 */
+  --glass-sheen: #ffffff;                    /* F-30：高光白芯 */
+  --ink-stroke: rgba(90, 78, 60, 0.55);      /* F-30：笔触线（浅色） */
+  --check-white: #fff;                       /* F-30：色块上对勾 */
 }
 [data-theme="dark"] {
   --glass-glow: rgba(255, 255, 255, 0.09);
   --glass-thick: rgba(0, 0, 0, 0.35);
   --ink-halo: rgba(232, 222, 208, 0.07);
   --ink-focus: rgba(232, 222, 208, 0.14);
+  --glass-edge: rgba(255, 255, 255, 0.05);
+  --glass-sheen: #ffffff;
+  --ink-stroke: rgba(232, 222, 208, 0.38);  /* 与 .section-title::after 暗色覆盖值一致 */
+  --check-white: #fff;
 }
 
 /* ---------- 纸纹噪声（浅色宣纸：纤维 + 颗粒 + 纸角泛黄，罩在壁纸雾化层上） ---------- */
@@ -47,10 +55,10 @@ body::after {
     inset 0 1px 0 var(--border-hi),
     inset 0 -1px 0 var(--glass-thick),
     inset 0 20px 32px -18px var(--glass-glow),
-    0 0 0 1px rgba(255, 255, 255, 0.05);
+    0 0 0 1px var(--glass-edge);
 }
 .main-card::before {
-  background: linear-gradient(90deg, transparent, var(--border-hi) 18%, #ffffff 50%, var(--border-hi) 82%, transparent);
+  background: linear-gradient(90deg, transparent, var(--border-hi) 18%, var(--glass-sheen) 50%, var(--border-hi) 82%, transparent);
 }
 
 /* ---------- 水墨融入：hover 墨晕环 + 点击墨压 + 标题笔触线 ---------- */
@@ -81,7 +89,7 @@ body::after {
     inset 0 1px 0 rgba(255, 255, 255, 0.1),
     inset 0 -1px 0 var(--glass-thick),
     inset 0 20px 32px -18px var(--glass-glow),
-    0 0 0 1px rgba(255, 255, 255, 0.05);
+    0 0 0 1px var(--glass-edge);
 }
 [data-theme="dark"] .main-card:hover {
   box-shadow:
@@ -90,7 +98,7 @@ body::after {
     inset 0 1px 0 rgba(255, 255, 255, 0.15),
     inset 0 -1px 0 var(--glass-thick),
     inset 0 20px 32px -18px var(--glass-glow),
-    0 0 0 1px rgba(255, 255, 255, 0.05);
+    0 0 0 1px var(--glass-edge);
 }
 [data-theme="dark"] .main-card:active {
   transform: translateY(-1px) scale(0.996);
@@ -100,17 +108,17 @@ body::after {
     inset 0 1px 0 rgba(255, 255, 255, 0.15),
     inset 0 -1px 0 var(--glass-thick),
     inset 0 20px 32px -18px var(--glass-glow),
-    0 0 0 1px rgba(255, 255, 255, 0.05);
+    0 0 0 1px var(--glass-edge);
 }
 .btn:active {
   box-shadow: 0 0 0 6px var(--ink-halo);
 }
 /* 笔触线：中间浓、两端虚，似一笔墨痕 */
 .section-title::after {
-  background: linear-gradient(90deg, transparent 0%, rgba(90, 78, 60, 0.55) 30%, rgba(90, 78, 60, 0.55) 70%, transparent 100%);
+  background: linear-gradient(90deg, transparent 0%, var(--ink-stroke) 30%, var(--ink-stroke) 70%, transparent 100%);
 }
 [data-theme="dark"] .section-title::after {
-  background: linear-gradient(90deg, transparent 0%, rgba(232, 222, 208, 0.38) 30%, rgba(232, 222, 208, 0.38) 70%, transparent 100%);
+  background: linear-gradient(90deg, transparent 0%, var(--ink-stroke) 30%, var(--ink-stroke) 70%, transparent 100%);
 }
 
 /* ---------- 动效统一：墨晕过渡 + 浮现墨感缓动（--ease-ink） ---------- */
@@ -195,7 +203,7 @@ input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):focus {
   top: 2px;
   width: 6px;
   height: 11px;
-  border: solid #fff;
+  border: solid var(--check-white);
   border-width: 0 2px 2px 0;
   transform: rotate(45deg) scale(0);
   transition: transform .22s var(--ease-ink) .1s;
