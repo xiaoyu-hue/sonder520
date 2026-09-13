@@ -1737,7 +1737,12 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     this.save();
     this.flushPersist();
     var selfPlain = this;
-    return (this._idbPromise || Promise.resolve()).then(function () {
+    /* F-4：_storeWrite 的 IDB 挂链发生在写锁回调内，直接读 _idbPromise 会等到旧链；
+     * 改用 _storeWrite 的锁 Promise 判定"本次写已入队"，再等链末端真正落盘。 */
+    var lastIdb = this._idbPromise || Promise.resolve();
+    return this._storeWrite(null, { ls: 'skip', idb: 'write' }).then(function () {
+      return (selfPlain._idbPromise === lastIdb ? Promise.resolve() : selfPlain._idbPromise);
+    }).then(function () {
       selfPlain._emitChange('all'); /* 导入覆盖全量数据：各页重绘 */
       return { ok: true };
     });
@@ -1768,7 +1773,11 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
           /* 明文回落路径：同 importBackup 主路径，等待落盘后再 resolve */
           self.save();
           self.flushPersist();
-          return (self._idbPromise || Promise.resolve()).then(function () {
+          /* F-4：等待本次导入写链真正入队并完成（见 importBackup 明文路径注释） */
+          var lastIdb = self._idbPromise || Promise.resolve();
+          return self._storeWrite(null, { ls: 'skip', idb: 'write' }).then(function () {
+            return (self._idbPromise === lastIdb ? Promise.resolve() : self._idbPromise);
+          }).then(function () {
             self._emitChange('all'); /* 导入覆盖全量数据：各页重绘 */
             return { ok: true };
           });

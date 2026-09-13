@@ -124,3 +124,41 @@ test('IndexedDB：设置页提供手动迁移按钮，点击后数据进入 IDB'
   assert.equal(await h2.hooks.idbReady, true, '迁移后的数据应能从 IDB 恢复');
   assert.equal(h2.store.state.memos[0].text, '待迁移');
 });
+
+/* F-4 回归：导入必须等"本次" IDB 写链真正完成（真实 Web Locks 回调异步，
+ * save() 同步返回时新链尚未挂到 _idbPromise——旧实现 await 到旧链，resolve 后
+ * 立即刷新会丢刚导入的数据）。用异步回调的 locks mock 复现该时序。 */
+test('导入：resolve 时本次 IDB 写入必须已真正完成（异步写锁时序，F-4）', async () => {
+  const f = new IDBFactory();
+  const h1 = boot(withIdb(f));
+  h1.store.addTask({ title: '导入目标-F4', date: '2026-09-13' });
+  await h1.store._idbPromise; /* 让 h1 数据落盘 */
+
+  const json = h1.store.exportBackup();
+  const h2 = boot(withIdb(f));
+  await h2.hooks.idbReady;
+
+  /* store.js 在 window 上下文读取 window.navigator.locks；装异步回调锁复现真实时序 */
+  let lockCalls = 0;
+  const locks = {
+    request(name, cb) {
+      /* 模拟真实 Web Locks：回调在后续任务执行（与同步 mock 的关键差异） */
+      return new Promise(resolve => setImmediate(() => { lockCalls++; cb(); resolve(); }));
+    }
+  };
+  Object.defineProperty(h2.window.navigator, 'locks', { value: locks, configurable: true });
+  try {
+    const r = await h2.store.importBackup(json);
+    assert.equal(r.ok, true);
+    /* 关键断言（微任务级，无宏任务间隙）：resolve 时本次写锁回调必须已执行。
+     * 旧实现只 await 旧链，resolve 时 save() 的锁回调尚未运行（此处 lockCalls=0）。 */
+    assert.ok(lockCalls >= 2, 'resolve 时写锁回调应已执行（save 落盘 + 确认写），实际 ' + lockCalls);
+    /* 端到端：IDB 主快照立即可见导入数据（readSnapshot 的 open 会排空宏任务，
+     * 此时写早已完成；真正被上面的 lockCalls 断言拦截的是"过早 resolve"） */
+    const snap = await h2.store.readSnapshot('idb');
+    assert.ok(snap && Array.isArray(snap.tasks) && snap.tasks.some(t => t.title === '导入目标-F4'),
+      '导入 resolve 后 IDB 主快照应立即可见导入数据（snap.tasks=' + JSON.stringify(snap && snap.tasks) + '）');
+  } finally {
+    delete h2.window.navigator.locks;
+  }
+});
