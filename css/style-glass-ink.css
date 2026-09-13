@@ -158,3 +158,48 @@ input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):focus {
   animation: numInk .45s var(--ease-ink);
   display: inline-block;
 }
+
+/* ---------- 任务完成打勾（v6.2 微交互 ①）：墨晕扩散 + 笔触对勾 ----------
+ * 墨晕用 transition 实现（0→9px 透明环）：仅状态变化时播放，
+ * 页面加载时已勾选任务不会重播动画 */
+.tpl-done {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border: 1.5px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  position: relative;
+  cursor: pointer;
+  flex: none;
+  box-shadow: 0 0 0 0 transparent;
+  transition:
+    border-color .25s var(--ease-ink),
+    background .25s var(--ease-ink),
+    box-shadow .4s var(--ease-ink);
+}
+.tpl-done:hover {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px var(--ink-halo);
+}
+.tpl-done:checked {
+  border-color: var(--accent);
+  background: var(--accent);
+  box-shadow: 0 0 0 9px transparent;
+}
+.tpl-done::after {
+  content: "";
+  position: absolute;
+  left: 6px;
+  top: 2px;
+  width: 6px;
+  height: 11px;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg) scale(0);
+  transition: transform .22s var(--ease-ink) .1s;
+}
+.tpl-done:checked::after {
+  transform: rotate(45deg) scale(1);
+}

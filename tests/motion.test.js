@@ -86,6 +86,12 @@ test('微交互：统计数字变化时墨滴弹跳（numInk）', () => {
   assert.ok(css.includes('scale(1.3)'), '墨滴弹跳应包含放大相位');
 });
 
+test('微交互：任务完成打勾——墨晕扩散 + 笔触对勾', () => {
+  assert.ok(css.includes('.tpl-done:checked'), '任务勾选缺 :checked 样式');
+  assert.ok(css.includes('.tpl-done:checked::after'), '勾选后缺对勾伪元素');
+  assert.ok(css.includes('appearance: none') || css.includes('-webkit-appearance: none'), '勾选框应自绘（去原生外观）');
+});
+
 test('动态层：统计卡光泽扫过（sheen）', () => {
   assert.ok(css.includes('@keyframes sheenSweep'), '缺 sheenSweep 关键帧');
   assert.ok(css.includes('.rank-card::after'), '统计卡缺光泽层 ::after');
