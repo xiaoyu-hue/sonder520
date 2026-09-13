@@ -3,6 +3,21 @@
 本项目所有重要变更均记录于此。格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循语义化版本（SemVer）。完整版本演进另见 [PRD.md](docs/PRD.md) 的版本历史表。
 
+## [v6.1] - 2026-09-13 (深度审查修复)
+
+### 已实施
+
+- **C-1 lint 补盲区**：`npm run lint` 纳入 js/ 子目录与 .mjs 文件（原漏检 ModuleFactory.js、game-worker.js、quotes-core.mjs 三个文件，现均 0 错误）。
+- **C-2 ESLint 8 → 9 迁移**：升级 eslint 9 + flat config（eslint.config.js 等价迁移原规则）；新推荐规则与 catch 参数行为按旧版对齐；删除废弃的 .eslintrc.json；顺手修复 store.js 盐存储失败 throw 缺失 cause、移除两条失效 eslint-disable 注释。lint 0 错误 0 警告。
+- **C-4 memo 存储键统一**：`sonder_memos_v1` → `sonder_data_v1`，与其余模块一致（修复"卸载模块不删 memo 数据"与导出备份遗漏）。
+- **C-7 自定义壁纸迁入 IndexedDB**：壁纸 base64 不再长期占用 5MB localStorage 配额；启动自动迁移旧数据；IDB 不可用自动降级回 LS；新增 5 项迁移/降级/清除测试。
+- **C-8 加密密码下限提升**：4 位 → 6 位（建议 8 位以上），向导校验顺序优化（先查不一致再查长度）。
+- **T-1 CI E2E 三端化**：GitHub Actions 从仅桌面端扩展到桌面/平板/手机三端。
+- **U-1 Toast 无障碍**：toastWrap 增加 role=status + aria-live=polite，错误 toast 附加 role=alert。
+- **U-2 导入覆盖确认**：确认框按钮语义与文案一致（显式"继续导入"）。
+- **测试稳定性**：`npm test` 增加 `--test-force-exit`（根治应用定时器链残留致进程不退出，作者注释自述的正解）+ 超时 30s → 60s（慢机器偶发挂起容忍）。
+- 测试基线 696 → 704 项；离线缓存升版 v89。
+
 ## [v6.0] - 2026-08-21
 
 ## [v6.0] - 2026-08-22 (三端适配)
