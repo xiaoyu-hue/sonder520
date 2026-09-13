@@ -3,13 +3,17 @@
  * 测试通过在 Node 中注入内存 storage 来验证全部数据逻辑。
  *
 * 文件结构（核心 + 领域扩展）：
- *   store.js          核心：构造、持久化、加密/导入导出 + 共享 helper（api 导出）
- *   store-stats.js    纯函数统计/聚合层（任务分组、自媒体/开发/阅读统计、CSV 等，无 Store 依赖）
- *   store-report.js   Store.prototype.summarize / buildWeeklyReport（计算委托 store-stats）
- *   store-tasks.js    快速备忘 + 今日计划
- *   store-media.js    自媒体 + 开发工作 + 技术笔记/代码片段
- *   store-content.js  咨询 + 阅读/书摘 + 新闻 + 设计 + 游戏记录
- *   store-settings.js 主题/壁纸/提醒/模块开关/难度/帧率
+ *   store.js                核心：构造、加密/解密 + 共享 helper（api 导出）与 _h 白名单
+ *   store-stats.js          纯函数统计/聚合层（任务分组、自媒体/开发/阅读统计、CSV 等，无 Store 依赖）
+ *   store-report.js         Store.prototype.summarize / buildWeeklyReport（计算委托 store-stats）
+ *   store-undo.js           删除撤销（_undoPush/undoRemove）
+ *   store-persistence.js    持久化核心（LS/IDB 读写、save/_commit、写锁收口 ADR-013）
+ *   store-migration.js      legacy 拆分迁移 + IDB 读取（loadIdb/migrateToIdb）
+ *   store-import-export.js  备份导出/导入/清空（readSnapshot/exportBackup/importBackup/clearAll）
+ *   store-tasks.js          快速备忘 + 今日计划
+ *   store-media.js          自媒体 + 开发工作 + 技术笔记/代码片段
+ *   store-content.js        咨询 + 阅读/书摘 + 新闻 + 设计 + 游戏记录
+ *   store-settings.js       主题/壁纸/提醒/模块开关/难度/帧率
  * 领域文件通过 SonderStore.Store 与 _h（core helper 白名单）注入；新增领域方法
  * 请写入对应领域文件而非本文件，并同步在 globals.d.ts 中声明签名。
  */
