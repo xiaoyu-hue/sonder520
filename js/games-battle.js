@@ -167,9 +167,20 @@
     }
   }
 
+  /* 终止 AI Worker（F-20）：离开游戏页/关页时释放常驻线程。
+   * 重新进入游戏页由 render 恢复调度 ensureAiWorker 懒重建。 */
+  function stopAiWorker() {
+    if (!S.aiWorker) return;
+    try { S.aiWorker.terminate(); } catch (e) { /* 已失效的 worker，忽略 */ }
+    S.aiWorker = null;
+    if (S.aiTimer) { clearTimeout(S.aiTimer); S.aiTimer = null; }
+    S.aiSeq++;      /* 作废在途 worker 消息（worker 已死不会再来，防御性自增） */
+    S.busy = false; /* 解除棋盘占用，避免残留 busy 永久锁死 */
+    S.aiWaitCtx = null;
+  }
+
   /* worker 回复落子：id 与当前 aiSeq 不一致即过期（悔棋/重开/切换），直接丢弃 */
-  function onAiWorkerMsg(e) {
-    var d = e && e.data;
+  function onAiWorkerMsg(e) {    var d = e && e.data;
     if (!d || d.id !== S.aiSeq) return;
     S.aiSeq++; /* 本回复已消费，后续同 id 消息视为过期 */
     if (S.aiTimer) { clearTimeout(S.aiTimer); S.aiTimer = null; } /* 取消在看守的 watchdog */
@@ -365,11 +376,20 @@
     render(ctx);
   }
 
+  /* F-20：离开游戏页/关页时终止 AI Worker（hash 路由切走即离开游戏域；
+   * 进入 game 页时不触发——worker 此时尚未创建，由 render 恢复调度懒重建） */
+  window.addEventListener('hashchange', function () {
+    var route = (location.hash || '').replace(/^#\/?/, '');
+    if (route !== 'game') stopAiWorker();
+  });
+  window.addEventListener('pagehide', stopAiWorker);
+
   /* 对域外暴露：games.js（render 分派 / 游戏选择 / AI 恢复调度）与测试经此引用 */
   window.SonderGamesBattle = {
     gameView: gameView,
     aiThink: aiThink,
     startGame: startGame,
-    switchDiff: switchDiff
+    switchDiff: switchDiff,
+    stopAiWorker: stopAiWorker
   };
 })();

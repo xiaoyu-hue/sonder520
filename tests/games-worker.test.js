@@ -214,16 +214,18 @@ test('修复：AI 思考中切走页面，越页回复后 aiWaitCtx 必须清空
   cell(h, 7, 7).click();            /* X → worker 投递，busy=true / aiWaitCtx 置位 */
   const w = FakeWorker.last;
   const id = w.sent[0].id;
-  h.goto('home');                   /* 切走页面：在途回复将命中越页守卫 */
+  h.goto('home');                   /* 切走页面：在途回复将命中越页守卫（F-20 同时释放常驻线程） */
   w.fire({ id: id, mv: { r: 8, c: 8 } });   /* 正常回复，但页面已不在 */
   await wait(30);
   assert.equal(h.window.__gamesDbg().busy, false, '越页回复后 busy 必须复位');
   h.goto('game');                   /* 切回：恢复路径应重新调度 AI（aiWaitCtx 不得残留） */
   const t0 = Date.now();
-  while (Date.now() - t0 < 2000 && w.sent.length < 2) await wait(25);
-  assert.equal(w.sent.length, 2, '切回后应重新投递 AI 计算，实际 ' + w.sent.length + ' 条');
-  const id2 = w.sent[1].id;
-  w.fire({ id: id2, mv: { r: 8, c: 8 } });
+  while (Date.now() - t0 < 2000 && !(FakeWorker.last && FakeWorker.last !== w && FakeWorker.last.sent.length >= 1)) await wait(25);
+  assert.ok(FakeWorker.last !== w, '切回后应重建 Worker（F-20 释放常驻线程）');
+  const w2 = FakeWorker.last;
+  assert.ok(w2.sent.length >= 1, '切回后应重新投递 AI 计算，实际 ' + w2.sent.length + ' 条');
+  const id2 = w2.sent[0].id;
+  w2.fire({ id: id2, mv: { r: 8, c: 8 } });
   await wait(30);
   assert.ok(cell(h, 8, 8).querySelector('.stone.w'), '新一轮回复应正常落子');
 });
