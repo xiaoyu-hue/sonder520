@@ -474,6 +474,7 @@ interface Window {
   SonderTaskRepository: SonderRepositoryFactory;
   SonderBookRepository: SonderRepositoryFactory;
   SonderDevRepository: SonderRepositoryFactory;
+  SonderSettingsRepository: SonderRepositoryFactory;
   SonderMarkdown: { render(src: string): string; esc(s: unknown): string };
   SonderCrypto: SonderCryptoApi;
   SonderGames: SonderGamesApi;
@@ -717,10 +718,24 @@ interface SonderDevRepository {
   updateSnippet(id: string, patch: Record<string, unknown>): Record<string, unknown> | null;
   removeSnippet(id: string): void;
 }
+interface SonderSettingsRepository {
+  getSettings(): Record<string, unknown>;
+  setTheme(t: string): void;
+  setWallpaperOpacity(v: number): number;
+  getCustomWallpaper(): string | null;
+  setCustomWallpaper(dataUrl: string): boolean;
+  clearCustomWallpaper(): void;
+  setTaskReminder(on: boolean): boolean;
+  setModuleEnabled(key: string, on: boolean): void;
+  setGameDifficulty(d: string): string;
+  setFrameRate(f: number): number;
+  setDesktopPet(patch: Record<string, unknown> | null): void;
+}
 interface SonderRepositoryFactory {
   createTaskRepository(store: SonderStoreImpl): SonderTaskRepository;
   createBookRepository(store: SonderStoreImpl): SonderBookRepository;
   createDevRepository(store: SonderStoreImpl): SonderDevRepository;
+  createSettingsRepository(store: SonderStoreImpl): SonderSettingsRepository;
 }
 
 /* Web Worker 专用全局（game-worker.js，不在 DOM/窗口作用域内）：

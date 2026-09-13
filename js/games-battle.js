@@ -351,7 +351,7 @@
     if (state.difficulty === v) return;
     var g = state.game;
     var go = function () {
-      state.difficulty = ctx.store.setGameDifficulty(v);
+      state.difficulty = window.SonderSettingsRepository.createSettingsRepository(ctx.store).setGameDifficulty(v);
       if (g) startGame(ctx, g.kind);
       else render(ctx);
     };

@@ -5,25 +5,31 @@
   var S = window.SonderStore;
   var currentEl = null, currentCtx = null;
 
+  /* v6.x 架构升级 Phase 4 续：设置场景数据访问经 SettingsRepository 边界 */
+  function repoOf(store) {
+    return window.SonderSettingsRepository.createSettingsRepository(store);
+  }
+
   function render(ctx) {
     var container = currentEl, store = ctx.store, UI = ctx.UI;
     var hooks = window.__sonderHooks;
+    var settings = repoOf(store).getSettings();
     container.innerHTML = '';
     container.appendChild(UI.el('<div class="section-title" style="margin-top:0">外观</div>'));
     container.appendChild(UI.el(
       '<div class="card">' +
       '<div class="row" style="align-items:center">' +
       '<label class="small muted" style="margin-right:12px;white-space:nowrap">主题</label>' +
-      '<label class="toggle"><input type="radio" name="theme" value="auto" ' + (store.state.settings.theme === 'auto' ? 'checked' : '') + '> 跟随系统</label>' +
-      '<label class="toggle"><input type="radio" name="theme" value="light" ' + (store.state.settings.theme === 'light' ? 'checked' : '') + '> 浅色宣纸</label>' +
-      '<label class="toggle"><input type="radio" name="theme" value="dark" ' + (store.state.settings.theme === 'dark' ? 'checked' : '') + '> 深色墨黑</label>' +
+      '<label class="toggle"><input type="radio" name="theme" value="auto" ' + (settings.theme === 'auto' ? 'checked' : '') + '> 跟随系统</label>' +
+      '<label class="toggle"><input type="radio" name="theme" value="light" ' + (settings.theme === 'light' ? 'checked' : '') + '> 浅色宣纸</label>' +
+      '<label class="toggle"><input type="radio" name="theme" value="dark" ' + (settings.theme === 'dark' ? 'checked' : '') + '> 深色墨黑</label>' +
       '<span class="muted small" style="margin-left:auto">跟随系统时随系统深浅自动切换</span>' +
       '</div></div>'
     ));
     container.querySelectorAll('input[name="theme"]').forEach(function (r) {
       r.addEventListener('change', function () {
         if (!r.checked) return;
-        store.setTheme(r.value);
+        repoOf(store).setTheme(r.value);
         hooks.applyTheme();
         document.documentElement.setAttribute('data-theme', r.value === 'auto' ? (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : r.value);
         UI.toast(r.value === 'auto' ? '已切换为跟随系统' : (r.value === 'dark' ? '已切换为深色墨黑' : '已切换为浅色宣纸'));
@@ -31,7 +37,7 @@
       });
     });
 
-    var fr = store.state.settings.frameRate;
+    var fr = settings.frameRate;
     var frCard = UI.el(
       '<div class="card" style="margin-top:10px">' +
       '<div class="row">' +
@@ -46,15 +52,15 @@
     container.querySelectorAll('input[name="frame"]').forEach(function (r) {
       r.addEventListener('change', function () {
         if (!r.checked) return;
-        var f = store.setFrameRate(Number(r.value));
+        var f = repoOf(store).setFrameRate(Number(r.value));
         document.documentElement.setAttribute('data-frame', String(f));
         UI.toast(f === 60 ? '已切换为省电模式（60）' : '动画帧率已设为 ' + f);
         hooks.render('settings');
       });
     });
 
-    var wp = store.state.settings.wallpaperOpacity;
-    var customWall = store.getCustomWallpaper();
+    var wp = settings.wallpaperOpacity;
+    var customWall = repoOf(store).getCustomWallpaper();
     var wallSrc = customWall || 'img/wallpaper.jpg';
     container.appendChild(UI.el(
       '<div class="card" style="margin-top:10px">' +
@@ -78,7 +84,7 @@
     });
     if (customWall) {
       container.querySelector('#wallReset').addEventListener('click', function () {
-        store.clearCustomWallpaper();
+        repoOf(store).clearCustomWallpaper();
         wallThumb.src = 'img/wallpaper.jpg';
         hooks.applyWallpaper();
         UI.toast('已恢复默认壁纸');
@@ -115,7 +121,7 @@
       };
       reader.readAsDataURL(file);
       function applyWallpaperDataUrl(d) {
-        if (!store.setCustomWallpaper(d)) {
+        if (!repoOf(store).setCustomWallpaper(d)) {
           UI.alertBox('存储空间不足，图片过大，请压缩后上传');
           return;
         }
@@ -174,27 +180,27 @@
     /* 拖动仅实时预览，松手才持久化（P3f：避免拖动过程高频全量写盘） */
     wpInput.addEventListener('change', function () {
       var v = Number(wpInput.value);
-      store.setWallpaperOpacity(v);
+      repoOf(store).setWallpaperOpacity(v);
       hooks.render('settings');
     });
 
     container.appendChild(UI.el('<div class="section-title">模块开关</div>'));
     var modBox = UI.el('<div class="card"></div>');
     S.moduleList.forEach(function (m) {
-      var on = store.state.settings.modules[m.key];
+      var on = settings.modules[m.key];
       var label = UI.el('<label class="toggle" style="margin:6px 16px 6px 0;display:inline-flex"><input type="checkbox" data-mod="' + m.key + '" ' + (on ? 'checked' : '') + '> ' + m.label + '</label>');
       modBox.appendChild(label);
     });
     container.appendChild(modBox);
     container.querySelectorAll('[data-mod]').forEach(function (c) {
       c.addEventListener('change', function () {
-        store.setModuleEnabled(c.dataset.mod, c.checked);
+        repoOf(store).setModuleEnabled(c.dataset.mod, c.checked);
         hooks.render('settings');
       });
     });
 
     container.appendChild(UI.el('<div class="section-title">提醒</div>'));
-    var rm = store.state.settings.taskReminder;
+    var rm = settings.taskReminder;
     container.appendChild(UI.el(
       '<div class="card">' +
       '<div class="row">' +
@@ -204,7 +210,7 @@
       '</div></div>'
     ));
     container.querySelector('#taskReminder').addEventListener('change', function () {
-      store.setTaskReminder(container.querySelector('#taskReminder').checked);
+      repoOf(store).setTaskReminder(container.querySelector('#taskReminder').checked);
       hooks.render('settings');
     });
 
