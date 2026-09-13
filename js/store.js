@@ -115,7 +115,14 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
   function idbReady() {
     if (!idbAvailable()) return Promise.reject(new Error('idb-unavailable'));
     if (!dbReadyPromise) {
-      dbReadyPromise = openIdb().catch(function (e) { dbReadyPromise = null; throw e; });
+      dbReadyPromise = openIdb().then(function (db) {
+        /* F-8：浏览器可能回收 IDB 连接（内存压力 onclose / 版本变更 onversionchange）。
+         * 连接失效后重置单例，下次读写自动重新打开——否则后续写入会全部静默失败
+         * 直到用户手动刷新页面。 */
+        db.onclose = function () { dbReadyPromise = null; };
+        db.onversionchange = function () { dbReadyPromise = null; };
+        return db;
+      }).catch(function (e) { dbReadyPromise = null; throw e; });
     }
     return dbReadyPromise;
   }

@@ -125,6 +125,43 @@ test('IndexedDB：设置页提供手动迁移按钮，点击后数据进入 IDB'
   assert.equal(h2.store.state.memos[0].text, '待迁移');
 });
 
+/* F-8 回归：浏览器回收 IDB 连接（onclose）后，壁纸写入（走 idbReady 单例连接）
+ * 必须自动重开连接，不能静默失败直到用户刷新。通过包装 f.open 收集连接并主动 close 模拟回收。 */
+test('IndexedDB：连接被回收（onclose）后壁纸写入自动重开连接（F-8）', async () => {
+  const f = new IDBFactory();
+  const opened = [];
+  const origOpen = f.open.bind(f);
+  f.open = function (name, ver) {
+    const req = origOpen(name, ver);
+    req.addEventListener('success', () => opened.push(req.result));
+    return req;
+  };
+  const h1 = boot(withIdb(f));
+  await h1.hooks.idbReady;
+  h1.store.setCustomWallpaper('data:image/png;base64,AAAA');
+  /* 等壁纸连接真正建立（loadIdb 的 open + idbReady 的 open），
+   * 确保 close 前缓存连接已就绪——否则 close 发生在连接建立前会掩盖 bug */
+  await waitFor(() => opened.length >= 2, '壁纸连接应建立（loadIdb + idbReady），实际 ' + opened.length);
+  assert.equal(h1.store.getCustomWallpaper(), 'data:image/png;base64,AAAA');
+
+  /* 模拟浏览器回收：关闭连接使其实质失效（关闭连接上开事务抛 InvalidStateError），
+   * 再 fire onclose——fake-indexeddb 的 close() 不自动派发该事件，
+   * 真实浏览器会在连接被回收（内存压力）时派发，测试手动驱动修复逻辑 */
+  const closedCount = opened.length; /* close 前基线：后续必须出现新连接 */
+  opened.slice().forEach(db => {
+    try { db.close(); } catch (e) { /* 已关闭忽略 */ }
+    if (typeof db.onclose === 'function') db.onclose(); /* F-8：触发单例重置 */
+  });
+
+  h1.store.setCustomWallpaper('data:image/png;base64,BBBB');
+  await waitFor(() => opened.length > closedCount,
+    '回收后应重新打开连接（基线 ' + closedCount + '，实际 ' + opened.length + '）');
+
+  const h2 = boot(withIdb(f));
+  await waitFor(() => h2.store.getCustomWallpaper() === 'data:image/png;base64,BBBB',
+    '回收后的壁纸写入应落盘并被新实例恢复（修复前旧连接写入静默失败，此处仍是 AAAA）');
+});
+
 /* F-4 回归：导入必须等"本次" IDB 写链真正完成（真实 Web Locks 回调异步，
  * save() 同步返回时新链尚未挂到 _idbPromise——旧实现 await 到旧链，resolve 后
  * 立即刷新会丢刚导入的数据）。用异步回调的 locks mock 复现该时序。 */
