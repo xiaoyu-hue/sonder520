@@ -2,6 +2,7 @@
   "name": "Sonder",
   "short_name": "Sonder",
   "description": "个人工作生活管理 —— 自媒体 / 开发 / 咨询 / 阅读 / 新闻 / 设计 / 娱乐游戏",
+  "id": "./",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
