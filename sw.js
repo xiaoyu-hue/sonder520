@@ -4,7 +4,7 @@
  * 内容变了而版本没升说明部署流程漏跑 sync-sw。 */
 'use strict';
 
-var CACHE = 'sonder-v108';
+var CACHE = 'sonder-v109';
 
 var ASSETS = [
   './',
@@ -26,6 +26,7 @@ var ASSETS = [
   './js/repositories/task-repository.js',
   './js/store-media.js',
   './js/store-content.js',
+  './js/repositories/book-repository.js',
   './js/store-settings.js',
   './js/ui.js',
   './js/motion.js',
@@ -63,7 +64,7 @@ var ASSETS = [
   './assets/apple-touch-icon.png',
   './js/game-worker.js'
 ];
-var ASSET_SIG = 'd51dc32c7e78';
+var ASSET_SIG = 'e1fe8c3088fc';
 
 /* install：预缓存全部资源，立即接管。
  * Request(cache:'reload') 绕过 HTTP 缓存直取网络——GH Pages max-age=600 下
