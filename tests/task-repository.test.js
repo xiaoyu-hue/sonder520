@@ -2,6 +2,8 @@
 /* TaskRepository 边界测试（v6.x 架构升级 · Repository 第一版）
  * 验证：读（get/getAll）、写（create/update/remove/reorder）与旧 Store 行为完全一致，
  * 且不改变事件/undo/持久化语义。 */
+const fs = require('node:fs');
+const path = require('node:path');
 const { test } = require('node:test');
 const assert = require('node:assert');
 const { boot } = require('./harness.js');
@@ -115,4 +117,25 @@ test('TaskRepository：create 无 title 时默认“未命名任务”（与 sto
   const t = repo.create({});
   assert.equal(t.title, '未命名任务');
   assert.equal(t.priority, 'p2', '默认优先级 p2');
+});
+
+/* Phase 3 门禁：home.js 的任务数据访问必须经 TaskRepository，不得回退直连 store.updateTask */
+test('TaskRepository：home.js 已迁移至边界（不再直连 store.updateTask）', () => {
+  const src = fs.readFileSync(path.join(__dirname, '..', 'js', 'home.js'), 'utf8');
+  assert.ok(!/store\.updateTask/.test(src), 'home.js 不应再直连 store.updateTask');
+  assert.ok(/repo\.update\(/.test(src), 'home.js 勾选完成应经 repo.update');
+  assert.ok(/repo\.getAll\(/.test(src), 'home.js 读取应经 repo.getAll');
+});
+
+test('TaskRepository：home.js 勾选完成经边界后行为不变（done 联动 doneAt）', () => {
+  const h = boot();
+  h.store.addTask({ title: '首页勾选', priority: 'p2' });
+  h.goto('home');
+  const box = h.$('.hm-done');
+  assert.ok(box, '首页应有任务勾选框');
+  box.checked = true;
+  box.dispatchEvent(new h.window.Event('change', { bubbles: true }));
+  const t = h.store.state.tasks[0];
+  assert.equal(t.done, true, '勾选后任务应为完成');
+  assert.ok(t.doneAt, 'done=true 应联动写 doneAt（与 store.updateTask 一致）');
 });

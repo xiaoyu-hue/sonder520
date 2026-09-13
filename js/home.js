@@ -19,6 +19,8 @@
   function render(container, ctx) {
     var UI = ctx.UI, store = ctx.store;
     currentEl = container; currentCtx = ctx;
+    /* v6.x 架构升级 Phase 3：任务数据访问经 TaskRepository 边界，不再直连 Store 任务方法 */
+    var repo = window.SonderTaskRepository.createTaskRepository(store);
     var sum = store.summarize();
     var day = S.todayStr();
     
@@ -35,7 +37,7 @@
       quoteHtml = quote ? '<div class="quote-card">「' + quote + '」</div>' : '';
     }
     
-    var g = S.groupTasks(store.state.tasks, day);
+    var g = S.groupTasks(repo.getAll(), day);
     var todayList = g.now.slice(0, 6);
 
     var taskInner = todayList.length
@@ -131,7 +133,7 @@
     
     container.querySelectorAll('.hm-done').forEach(function (c) {
       c.addEventListener('change', function () {
-        store.updateTask(c.closest('[data-tid]').dataset.tid, { done: c.checked });
+        repo.update(c.closest('[data-tid]').dataset.tid, { done: c.checked });
         render(container, ctx);
       });
     });
