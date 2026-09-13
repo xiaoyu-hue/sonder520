@@ -190,12 +190,19 @@
     var weekStart = new Date(y, m, 1).getDay();
     var daysInMonth = new Date(y, m + 1, 0).getDate();
     var today = S.todayStr();
+    /* 预聚合 publishDate → 选题列表（单次 O(n)，避免每格全量 filter） */
+    var postsByDate = new Map();
+    store.state.posts.forEach(function (p) {
+      var key = p.publishDate || '';
+      if (!postsByDate.has(key)) postsByDate.set(key, []);
+      postsByDate.get(key).push(p);
+    });
     var cellHtml = '';
     var i, n;
     for (i = 0; i < weekStart; i++) cellHtml += '<div class="cal-day empty"></div>';
     for (n = 1; n <= daysInMonth; n++) {
       var dateStr = y + '-' + String(m + 1).padStart(2, '0') + '-' + String(n).padStart(2, '0');
-      var todays = store.state.posts.filter(function (p) { return p.publishDate === dateStr; });
+      var todays = postsByDate.get(dateStr) || [];
       cellHtml += '<div class="cal-day' + (dateStr === today ? ' cal-today' : '') + '" data-date="' + dateStr + '">' +
         '<span class="cal-num">' + n + '</span>' +
         todays.map(function (p) {
