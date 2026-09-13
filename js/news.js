@@ -28,7 +28,7 @@
       { key: 'url', type: 'text', label: '链接' },
       { key: 'source', type: 'text', label: '来源' },
       { key: 'tags', type: 'array', label: '标签' },
-      { key: 'status', type: 'select', label: '状态', options: ['unread', 'read', 'favorite'] },
+      { key: 'status', type: 'select', label: '状态', options: [{ value: 'unread', label: '待读' }, { value: 'read', label: '已读' }, { value: 'favorite', label: '收藏' }] },
       { key: 'note', type: 'text', label: '备注' }
     ]
   };
@@ -145,7 +145,7 @@
         { key: 'url', label: '链接', type: 'text', value: target ? target.url : '' },
         { key: 'source', label: '来源', type: 'text', value: target ? target.source : '' },
         { key: 'tags', label: '标签(逗号分隔)', type: 'text', value: target ? (target.tags || []).join(',') : '' },
-        { key: 'status', label: '状态', type: 'select', value: target ? target.status : 'unread', options: ['unread', 'read', 'favorite'] },
+        { key: 'status', label: '状态', type: 'select', value: target ? target.status : 'unread', options: [{ value: 'unread', label: '待读' }, { value: 'read', label: '已读' }, { value: 'favorite', label: '收藏' }] },
         { key: 'note', label: '备注', type: 'text', value: target ? target.note : '' }
       ],
       onSubmit: function (v) {

@@ -140,6 +140,14 @@
 
   /* ---------- 字段净化：用户输入默认不可信 ---------- */
 
+  /* select options 支持字符串数组或 {value,label} 对象数组（v0.1.3：显示名与存储值分离）。
+   * value 统一为字符串：对象项取 .value，字符串项取自身。 */
+  function selectValues(options) {
+    return (options || []).map(function (o) {
+      return String((typeof o === 'object' && o !== null) ? o.value : o);
+    });
+  }
+
   function sanitize(cfg, key, value) {
     var f = cfg.fieldMap[key];
     if (f.type === 'text' || f.type === 'textarea' || f.type === 'date') {
@@ -155,7 +163,8 @@
     if (f.type === 'array') return Array.isArray(value) ? value.slice() : [];
     if (f.type === 'select') {
       var v = String(value === undefined || value === null ? '' : value);
-      return f.options.indexOf(v) >= 0 ? v : f.options[0];
+      var vals = selectValues(f.options);
+      return vals.indexOf(v) >= 0 ? v : vals[0];
     }
     return '';
   }

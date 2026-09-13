@@ -357,8 +357,10 @@
   function todayLine() {
     var d = new Date();
     var week = ['日', '一', '二', '三', '四', '五', '六'][d.getDay()];
+    var hh = ('0' + d.getHours()).slice(-2);
+    var mm = ('0' + d.getMinutes()).slice(-2);
     document.getElementById('topDate').textContent =
-      d.getFullYear() + '年' + (d.getMonth() + 1) + '月' + d.getDate() + '日 · 周' + week;
+      d.getFullYear() + '年' + (d.getMonth() + 1) + '月' + d.getDate() + '日 · 周' + week + ' ' + hh + ':' + mm;
   }
 
   /* 离线状态指示：按 navigator.onLine 切换页脚 #netOnline / #netOffline。
@@ -379,6 +381,7 @@
   applyFrame();
   buildNav();
   todayLine();
+  setInterval(todayLine, 30000); /* 顶部日期时间每 30 秒刷新（分钟级变化及时、开销可忽略） */
   applyNetState();
   bindQuotaBar();
   /* 另一标签已接管编辑（多标签让位协议）：本页未保存的输入已被放弃，即时提示用户 */
