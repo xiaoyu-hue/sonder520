@@ -43,7 +43,7 @@
 
   function ensureMod(ctx) {
     if (!mod) {
-      mod = globalThis.SonderModuleFactory.createModule(ctx.store, CONFIG);
+      mod = globalThis.SonderDesignsRepository.createDesignsRepository(ctx.store, CONFIG);
       /* 工厂操作（灵感/项目 add/update/remove）完成即统一重绘（仅当前路由为本页） */
       mod.render(function () { if (currentEl && currentCtx && routeIs('design')) render(currentCtx); });
     }

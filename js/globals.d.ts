@@ -477,6 +477,10 @@ interface Window {
   SonderSettingsRepository: SonderRepositoryFactory;
   SonderClientsRepository: SonderRepositoryFactory;
   SonderGamesRepository: SonderRepositoryFactory;
+  /* Phase 5 提炼：走工厂封装的集合（memos/news/designs）正式包装为 Repository */
+  SonderMemosRepository: SonderRepositoryFactory;
+  SonderNewsRepository: SonderRepositoryFactory;
+  SonderDesignsRepository: SonderRepositoryFactory;
   SonderMarkdown: { render(src: string): string; esc(s: unknown): string };
   SonderCrypto: SonderCryptoApi;
   SonderGames: SonderGamesApi;
@@ -762,6 +766,47 @@ interface SonderRepositoryFactory {
   createSettingsRepository(store: SonderStoreImpl): SonderSettingsRepository;
   createClientsRepository(store: SonderStoreImpl): SonderClientsRepository;
   createGamesRepository(store: SonderStoreImpl): SonderGamesRepository;
+  /* Phase 5 提炼：三页经工厂封装，包装层接受页面 CONFIG（单源） */
+  createMemosRepository(store: SonderStoreImpl, config: SonderModuleConfig): SonderMemosRepository;
+  createNewsRepository(store: SonderStoreImpl, config: SonderModuleConfig): SonderNewsRepository;
+  createDesignsRepository(store: SonderStoreImpl, config: SonderModuleConfig): SonderDesignsRepository;
+}
+/* Phase 5：工厂封装集合的统一 Repository 接口（薄包装，委托工厂模块） */
+interface SonderMemosRepository {
+  get(id: string): Record<string, unknown> | null;
+  getAll(): Array<Record<string, unknown>>;
+  create(d: Record<string, unknown>): Record<string, unknown>;
+  update(id: string, patch: Record<string, unknown>): Record<string, unknown> | null;
+  remove(id: string): void;
+  add(d: Record<string, unknown>): Record<string, unknown>;
+  getById(id: string): Record<string, unknown> | null;
+  query(filter?: (r: Record<string, unknown>) => boolean, sort?: (a: Record<string, unknown>, b: Record<string, unknown>) => number): Array<Record<string, unknown>>;
+  render(fn: () => void): void;
+  destroy(): void;
+}
+interface SonderNewsRepository {
+  get(id: string): Record<string, unknown> | null;
+  getAll(): Array<Record<string, unknown>>;
+  create(d: Record<string, unknown>): Record<string, unknown>;
+  update(id: string, patch: Record<string, unknown>): Record<string, unknown> | null;
+  remove(id: string): void;
+  add(d: Record<string, unknown>): Record<string, unknown>;
+  getById(id: string): Record<string, unknown> | null;
+  query(filter?: (r: Record<string, unknown>) => boolean, sort?: (a: Record<string, unknown>, b: Record<string, unknown>) => number): Array<Record<string, unknown>>;
+  render(fn: () => void): void;
+  destroy(): void;
+}
+interface SonderDesignsRepository {
+  get(id: string): Record<string, unknown> | null;
+  getAll(): Array<Record<string, unknown>>;
+  create(d: Record<string, unknown>): Record<string, unknown>;
+  update(id: string, patch: Record<string, unknown>): Record<string, unknown> | null;
+  remove(id: string): void;
+  add(d: Record<string, unknown>): Record<string, unknown>;
+  getById(id: string): Record<string, unknown> | null;
+  query(filter?: (r: Record<string, unknown>) => boolean, sort?: (a: Record<string, unknown>, b: Record<string, unknown>) => number): Array<Record<string, unknown>>;
+  render(fn: () => void): void;
+  destroy(): void;
 }
 
 /* Web Worker 专用全局（game-worker.js，不在 DOM/窗口作用域内）：

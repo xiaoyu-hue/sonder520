@@ -35,7 +35,7 @@
 
   function ensureMod(ctx) {
     if (!mod) {
-      mod = globalThis.SonderModuleFactory.createModule(ctx.store, CONFIG);
+      mod = globalThis.SonderNewsRepository.createNewsRepository(ctx.store, CONFIG);
       /* 工厂操作（add/update/remove）完成即统一重绘（仅当前路由为本页） */
       mod.render(function () { if (currentEl && currentCtx && routeIs()) render(currentCtx); });
     }

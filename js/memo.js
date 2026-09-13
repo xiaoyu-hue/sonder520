@@ -28,12 +28,12 @@
     ]
   };
 
-  /* 工厂模块懒初始化：首次渲染/操作时创建（ctx.store 注入） */
+  /* 工厂模块懒初始化：首次渲染/操作时创建（ctx.store 注入）；经 MemosRepository 边界包装 */
   function ensureMod(ctx) {
     if (mod || !ctx || !ctx.store) return mod;
-    var F = globalThis.SonderModuleFactory;
-    if (F && F.createModule) {
-      mod = F.createModule(ctx.store, CONFIG);
+    var R = globalThis.SonderMemosRepository;
+    if (R && R.createMemosRepository) {
+      mod = R.createMemosRepository(ctx.store, CONFIG);
       mod.render(function () {
         if (currentEl && currentCtx && routeIs('memo')) draw();
       });
