@@ -184,6 +184,10 @@
   window.__sonderHooks = {
     store: store,
     render: function (route) { location.hash = route; render(); },
+    /* 生产必需（settings.js 主题切换 / 壁纸上传与清除调用；误置于测试门闩导致
+     * 真实浏览器点击弹"页面发生错误"横幅，v6.2 修正） */
+    applyTheme: applyTheme,
+    applyWallpaper: applyWallpaper,
     /* 启动时尝试从 IndexedDB 恢复（数据更大、更稳）；若采用则重绘当前页 */
     idbReady: store.loadIdb().then(function (applied) {
       if (applied) onHash();
@@ -193,8 +197,6 @@
   if (window.__SONDER_TEST__) {
     window.__sonderHooks.ctx = ctx;
     window.__sonderHooks.Pages = Pages;
-    window.__sonderHooks.applyTheme = applyTheme;
-    window.__sonderHooks.applyWallpaper = applyWallpaper;
     window.__sonderHooks.applyFrame = applyFrame;
     window.__sonderHooks.todayLine = todayLine;
   }
