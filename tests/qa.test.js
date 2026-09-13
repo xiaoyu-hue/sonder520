@@ -278,7 +278,10 @@ test('QA：执后手新开局 AI 先手落一子，棋盘其余为空；切换�
   assert.ok(first, '执后手选择器应存在');
   first.value = 'O';
   first.dispatchEvent(new h.window.Event('change', { bubbles: true }));
-  await wait(500);
+  await waitFor(() => {
+    const dbg = h.window.__gamesDbg();
+    return dbg.playerStone === 'O' && dbg.game.moves === 1 && dbg.game.turn === 'O';
+  }, 'AI 执先应已落一子');
   let dbg = h.window.__gamesDbg();
   assert.equal(dbg.playerStone, 'O', '已切为执后手');
   assert.equal(dbg.game.moves, 1, 'AI 执先应已落一子');
@@ -287,7 +290,10 @@ test('QA：执后手新开局 AI 先手落一子，棋盘其余为空；切换�
 
   doc.querySelector('[data-act="new"]').click();
   doc.querySelector('[data-act="yes"]').click();
-  await wait(600);
+  await waitFor(() => {
+    const d = h.window.__gamesDbg();
+    return d.game.kind === 'gomoku' && !d.game.over && d.game.moves === 1;
+  }, '新局应初始化且 AI 已落一子');
   dbg = h.window.__gamesDbg();
   assert.equal(dbg.game.kind, 'gomoku', '新局仍是五子棋');
   assert.equal(dbg.game.over, false);
@@ -299,7 +305,10 @@ test('QA：执后手新开局 AI 先手落一子，棋盘其余为空；切换�
   assert.equal(dbg.mode, 'pvp', '应已切换为双人模式');
   assert.equal(dbg.game.moves, 0, '切换后应为空盘');
   doc.querySelector('[data-mode="ai"]').click();
-  await wait(500);
+  await waitFor(() => {
+    const d = h.window.__gamesDbg();
+    return d.mode === 'ai' && !d.game.over && d.game.moves === 1;
+  }, 'AI 模式新盘应只有 AI 先手一子');
   dbg = h.window.__gamesDbg();
   assert.equal(dbg.mode, 'ai', '应已切回 AI 模式');
   assert.equal(dbg.game.over, false);
@@ -340,7 +349,7 @@ test('QA：AI 思考中悔棋会取消待落子并撤回一回合', async () => 
   doc.querySelector('[data-pick="tictactoe"]').click();
   cell(h, 0, 0).click();
   doc.querySelector('[data-act="undo"]').click();
-  await wait(400);
+  await waitFor(() => h.window.__gamesDbg().busy === false, 'AI 思考中的悔棋应已生效');
   const dbg = h.window.__gamesDbg();
   assert.equal(dbg.busy, false);
   assert.equal(dbg.game.over, false);
