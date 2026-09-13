@@ -3,6 +3,17 @@
 本项目所有重要变更均记录于此。格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循语义化版本（SemVer）。完整版本演进另见 [PRD.md](docs/PRD.md) 的版本历史表。
 
+## [v6.2] - 2026-09-13 (液态玻璃 × 水墨视觉深化 · 方向 C)
+
+### 已实施
+
+- **fix(ui) 主题切换/壁纸操作生产环境弹"页面发生错误"横幅**：根因 `applyTheme`/`applyWallpaper` 被置于 `__SONDER_TEST__` 测试门闩后，而 settings.js 生产路径无条件调用 → TypeError 触发 error-guard 横幅；真实用户点击主题切换、上传/清除壁纸均受影响（主题视觉已切换但 toast 与重绘被异常截断）。修复：两方法移入常驻 hooks（生产必需），`applyFrame` 生产未用保持门闩内。
+- **feat(ui) 壳层宣纸纹理 × 墨黑山水颗粒**（新增 `css/style-glass-ink.css`，v6.2 视觉全部隔离于此文件、可整体回滚）：浅色 body::after 雾化层叠加 SVG feTurbulence 灰度纸粒 + 纵横纤维 + 纸角泛黄（宣纸质感）；深色双频墨粒（大墨晕 baseFrequency 0.05 + 细墨点 0.9）+ 顶部微亮/底部压暗 vignette（墨黑山水纵深）。未引入新断点，不触发响应式白名单契约。
+- **feat(ui) 玻璃卡片液态厚度精修**：`.main-card` 阴影链新增底部内影 `--glass-thick`（玻璃厚度感）+ 顶部内发光 `--glass-glow`（液态浸润）+ 顶部高光白芯渐变；浅色亮玻璃/深色暗玻璃分强度变量。
+- **feat(ui) 水墨融入交互**：`.main-card` hover 外环 `--ink-halo` 墨晕（5px）、active 按压扩散（9px）、按钮 `:active` 墨晕；`.section-title::after` 墨线改"中间浓两端虚"笔触渐变。修复两处覆盖失效：深色卡片 `[data-theme="dark"]` 前缀特化规则特异性更高（补同特异性后置规则）、`:root` 变量块顺序覆盖深色值（重组顺序）。
+- **feat(ui) 动效统一**：页面切换墨晕过渡（`.ink-transit` 双层渐变 + 时长 .38s）与卡片浮现/过渡统一走 `--ease-ink` 墨感缓动；减动效 `!important` 覆盖不受影响。
+- **回归**：全量单测 704 项（79 文件）、E2E 30 项（chromium 三端视口）、tsc/lint/SW 指纹全绿；三端×双主题真浏览器截图 0 console 错误（webkit 因环境缺系统依赖未跑，以 chromium 视口等价验证）。
+
 ## [v6.1] - 2026-09-13 (深度审查修复)
 
 ### 已实施
