@@ -1393,7 +1393,7 @@ test('desktop-pet: 页面加载 streak 检查——首次设置 lastActiveDay', 
   const family = new C.PetFamily(store);
   try {
     const stats = store.state.settings.desktopPet.achievements.stats;
-    const today = new Date().toISOString().slice(0, 10);
+    const today = window.SonderStore.todayStr(); /* 与实现一致的本地时区日期 */
     assert.strictEqual(stats.lastActiveDay, today, 'lastActiveDay 设置为今天');
     assert.ok(stats.streakDays >= 1, 'streakDays >= 1');
   } finally {

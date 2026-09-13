@@ -2,11 +2,11 @@
  * hashStr 实现收敛在 store.js（SonderStore._h.hashStr），此处注入复用。 */
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) {
-    module.exports = factory(require('./store.js')._h.hashStr);
+    module.exports = factory(require('./store.js')._h.hashStr, require('./store.js').todayStr);
   } else {
-    root.SonderQuotes = factory(root.SonderStore._h.hashStr);
+    root.SonderQuotes = factory(root.SonderStore._h.hashStr, root.SonderStore.todayStr);
   }
-})(typeof self !== 'undefined' ? self : this, function (hashStr) {
+})(typeof self !== 'undefined' ? self : this, function (hashStr, todayStr) {
   'use strict';
 
   var QUOTES = [
@@ -52,11 +52,11 @@
     '日出江花红胜火，春来江水绿如蓝。'
   ];
 
-  /* 取某天的金句；dateStr 形如 'YYYY-MM-DD'，缺省取今天 */
+  /* 取某天的金句；dateStr 形如 'YYYY-MM-DD'，缺省取今天（本地时区，避免 UTC 跨日） */
   function quoteOfDay(dateStr) {
     var d = String(dateStr || '');
     if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) {
-      d = new Date().toISOString().slice(0, 10);
+      d = todayStr();
     }
     return QUOTES[hashStr(d) % QUOTES.length];
   }

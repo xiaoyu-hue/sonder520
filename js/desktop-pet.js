@@ -2364,7 +2364,13 @@
 
   PetFamily.prototype._updateStreak = function () {
     var stats = this.settings.desktopPet.achievements.stats;
-    var today = new Date().toISOString().slice(0, 10);
+    /* 本地时区日期串（与 store.js fmtDate 一致；避免 UTC 导致北京凌晨 0-8 点不换日） */
+    var today = (function () {
+      var d = new Date();
+      var m = String(d.getMonth() + 1).padStart(2, '0');
+      var day = String(d.getDate()).padStart(2, '0');
+      return d.getFullYear() + '-' + m + '-' + day;
+    })();
     if (stats.lastActiveDay === today) return;
     if (stats.lastActiveDay) {
       var prev = new Date(stats.lastActiveDay);

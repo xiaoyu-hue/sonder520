@@ -46,11 +46,19 @@ export const QUOTES = [
   '日出江花红胜火，春来江水绿如蓝。'
 ];
 
+/* 本地时区日期串 YYYY-MM-DD（与 store.js todayStr/fmtDate 逻辑一致，避免 UTC 跨日） */
+function localDateStr() {
+  var d = new Date();
+  var m = String(d.getMonth() + 1).padStart(2, '0');
+  var day = String(d.getDate()).padStart(2, '0');
+  return d.getFullYear() + '-' + m + '-' + day;
+}
+
 /* 取某天的金句；hashStr 注入（如 store.js 的 SonderStore._h.hashStr），dateStr 形如 'YYYY-MM-DD'，缺省取今天 */
 export function pickQuote(hashStr, dateStr) {
   var d = String(dateStr || '');
   if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) {
-    d = new Date().toISOString().slice(0, 10);
+    d = localDateStr();
   }
   return QUOTES[hashStr(d) % QUOTES.length];
 }
