@@ -597,6 +597,7 @@ interface SonderGamesBattleApi {
   aiThink(ctx: SonderCtx): void;
   startGame(ctx: SonderCtx, kind: string): void;
   switchDiff(ctx: SonderCtx, v: string): void;
+  stopAiWorker(): void;
 }
 
 interface SonderGamesPageApi {

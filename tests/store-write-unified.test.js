@@ -163,15 +163,13 @@ test('门禁：_idbWriteCols 只允许出现在 _storeWrite 体内（结构性�
   assert.ok(start > 0, '_storeWrite 应存在');
   const next = STORE_SRC.indexOf('Store.prototype.', start + 10);
   const bodyEnd = next > 0 ? next : STORE_SRC.length;
-  let last = -1;
   let found = 0;
-  while (true) {
-    const i = STORE_SRC.indexOf('_idbWriteCols(', last + 1);
-    if (i < 0) break;
-    last = i;
-    found++;
+  let i = STORE_SRC.indexOf('_idbWriteCols(', 0);
+  while (i >= 0) {
     assert.ok(i > start && i < bodyEnd,
       '发现收口点之外的 _idbWriteCols 直调 @' + i + '——写路径必须经 _storeWrite（ADR-013）');
+    found++;
+    i = STORE_SRC.indexOf('_idbWriteCols(', i + 1);
   }
   assert.ok(found > 0, '_storeWrite 体内应有 IDB 相位调用');
 });
