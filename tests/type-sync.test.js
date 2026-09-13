@@ -30,7 +30,7 @@ function extractDtsMethods() {
 
 /* ---------- 从 Store.prototype 提取实际方法名 ---------- */
 function extractStoreMethods() {
-  const files = ['store.js', 'store-tasks.js', 'store-media.js', 'store-content.js', 'store-settings.js', 'store-report.js', 'store-undo.js', 'store-persistence.js'];
+  const files = ['store.js', 'store-tasks.js', 'store-media.js', 'store-content.js', 'store-settings.js', 'store-report.js', 'store-undo.js', 'store-persistence.js', 'store-migration.js'];
   const methods = new Set();
   for (const f of files) {
     const fp = path.join(root, 'js', f);
