@@ -53,8 +53,9 @@ test('响应式：断点白名单契约（防魔法数回潮）', () => {
   /* 允许的宽度值：360 超小屏 / 720 手机 / 721 平板下界 / 900 横屏(配 max-height:480) / 960 平板上界 / 1240 限宽阈值 */
   const ALLOWED = new Set(['360', '720', '721', '900', '960', '1240']);
   const offenders = [];
-  for (const rel of ['css/style-base.css', 'css/desktop-pet.css']) {
-    const text = fs.readFileSync(path.join(__dirname, '..', rel), 'utf8');
+  const cssDir = path.join(__dirname, '..', 'css');
+  for (const file of fs.readdirSync(cssDir).filter(f => f.endsWith('.css')).sort()) {
+    const text = fs.readFileSync(path.join(cssDir, file), 'utf8');
     const re = /@media[^{]+/g;
     let m;
     while ((m = re.exec(text)) !== null) {
@@ -62,7 +63,7 @@ test('响应式：断点白名单契约（防魔法数回潮）', () => {
       /* 特性查询豁免（非宽度断点）：prefers-reduced-motion / hover / pointer */
       if (/prefers-reduced-motion|hover:\s*hover|pointer:\s*fine/.test(q)) continue;
       for (const w of [...q.matchAll(/(?:max|min)-width:\s*(\d+)px/g)].map(x => x[1])) {
-        if (!ALLOWED.has(w)) offenders.push(`${rel}: ${q.trim().replace(/\s+/g, ' ')}`);
+        if (!ALLOWED.has(w)) offenders.push(`${file}: ${q.trim().replace(/\s+/g, ' ')}`);
       }
     }
   }
