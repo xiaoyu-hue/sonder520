@@ -21,6 +21,12 @@
   var delegatedBound = false;
   var unsubs = [];
 
+  /* v6.x 架构升级 Phase 4 续：咨询场景数据访问经 ClientsRepository 边界
+   * （projects/followups/income 嵌套子操作不再直连 Store） */
+  function repoOf(store) {
+    return window.SonderClientsRepository.createClientsRepository(store);
+  }
+
   /* 单工厂模块配置：id 对应 state.clients（与 store.addClient 等同一集合）
    * prepend 对齐 addClient 的 unshift（最新在前）；不配 timeField——createdAt/updatedAt 由工厂默认生成；
    * 三个 array 字段声明后工厂 add 自动补 []（对齐 addClient 契约：id + projects/followups/income）；
@@ -54,13 +60,14 @@
   function render(ctx) {
     var container = currentEl, store = ctx.store, UI = ctx.UI;
     container.innerHTML = '';
-    container.appendChild(UI.el('<div class="hbar"><button class="btn primary" id="csAdd">＋ 新建客户</button><span class="sp"></span><span class="muted small">客户 ' + store.state.clients.length + ' 位</span></div>'));
+    container.appendChild(UI.el('<div class="hbar"><button class="btn primary" id="csAdd">＋ 新建客户</button><span class="sp"></span><span class="muted small">客户 ' + repoOf(store).getClients().length + ' 位</span></div>'));
     container.querySelector('#csAdd').addEventListener('click', function () { openClient(ctx); });
-    if (!store.state.clients.length) {
+    var clients = repoOf(store).getClients();
+    if (!clients.length) {
       container.appendChild(UI.emptyState('还没有客户', '＋ 新建客户', function () { openClient(ctx); }));
       return;
     }
-    store.state.clients.forEach(function (c) { container.appendChild(clientCard(c, ctx)); });
+    clients.forEach(function (c) { container.appendChild(clientCard(c, ctx)); });
   }
 
   function clientCard(c, ctx) {
@@ -161,8 +168,8 @@
         { key: 'note', label: '备注', type: 'textarea', value: target ? target.note : '' }
       ],
       onSubmit: function (v) {
-        if (target) ctx.store.updateClientProject(clientId, target.id, v);
-        else ctx.store.addClientProject(clientId, v);
+        if (target) repoOf(ctx.store).updateProject(clientId, target.id, v);
+        else repoOf(ctx.store).addProject(clientId, v);
         ctx.UI.toast('已保存'); render(ctx); return true;
       }
     });
@@ -175,8 +182,8 @@
         { key: 'date', label: '日期', type: 'date', value: target ? target.date : S.todayStr() }
       ],
       onSubmit: function (v) {
-        if (target) ctx.store.updateClientFollowup(clientId, target.id, v);
-        else ctx.store.addClientFollowup(clientId, v);
+        if (target) repoOf(ctx.store).updateFollowup(clientId, target.id, v);
+        else repoOf(ctx.store).addFollowup(clientId, v);
         ctx.UI.toast('已保存'); render(ctx); return true;
       }
     });
@@ -191,8 +198,8 @@
       ],
       onSubmit: function (v) {
         if (v.amount === null || !(v.amount >= 0)) return '金额需为非负数字';
-        if (target) ctx.store.updateClientIncome(clientId, target.id, v);
-        else ctx.store.addClientIncome(clientId, v);
+        if (target) repoOf(ctx.store).updateIncome(clientId, target.id, v);
+        else repoOf(ctx.store).addIncome(clientId, v);
         ctx.UI.toast('已保存'); render(ctx); return true;
       }
     });
@@ -211,7 +218,7 @@
         '[data-cx],[data-cedit],[data-cdel],[data-spadd],[data-fuadd],[data-inadd],[data-pe],[data-pd],[data-fe],[data-fd],[data-ie],[data-idel]');
       if (!b) return;
       var card = b.closest('[data-client]');
-      var c = card && store.state.clients.filter(function (x) { return x.id === card.dataset.client; })[0];
+      var c = card && repoOf(store).getClient(card.dataset.client);
       if (!c) return;
       var row = b.closest('.cs-item');
       var id = row && row.dataset.id;
@@ -241,7 +248,7 @@
       if ('pd' in b.dataset) {
         UI.confirmBox('删除该项目？').then(function (ok) {
           if (ok) {
-            store.removeClientProject(c.id, id);
+            repoOf(store).removeProject(c.id, id);
             render(ctx);
             UI.toast('项目已删除', null, { label: '撤销', onClick: function () {
               store.undoRemove();
@@ -255,7 +262,7 @@
       if ('fd' in b.dataset) {
         UI.confirmBox('删除该跟进？').then(function (ok) {
           if (ok) {
-            store.removeClientFollowup(c.id, id);
+            repoOf(store).removeFollowup(c.id, id);
             render(ctx);
             UI.toast('跟进已删除', null, { label: '撤销', onClick: function () {
               store.undoRemove();
@@ -269,7 +276,7 @@
       if ('idel' in b.dataset) {
         UI.confirmBox('删除该笔收入？').then(function (ok) {
           if (ok) {
-            store.removeClientIncome(c.id, id);
+            repoOf(store).removeIncome(c.id, id);
             render(ctx);
             UI.toast('收入已删除', null, { label: '撤销', onClick: function () {
               store.undoRemove();
@@ -283,9 +290,9 @@
       var b = e.target.closest && e.target.closest('[data-fcheck]');
       if (!b) return;
       var card = b.closest('[data-client]');
-      var c = card && store.state.clients.filter(function (x) { return x.id === card.dataset.client; })[0];
+      var c = card && repoOf(store).getClient(card.dataset.client);
       if (!c) return;
-      store.updateClientFollowup(c.id, b.closest('.cs-item').dataset.id, { done: b.checked });
+      repoOf(store).updateFollowup(c.id, b.closest('.cs-item').dataset.id, { done: b.checked });
       render(ctx);
     });
   }

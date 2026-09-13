@@ -475,6 +475,7 @@ interface Window {
   SonderBookRepository: SonderRepositoryFactory;
   SonderDevRepository: SonderRepositoryFactory;
   SonderSettingsRepository: SonderRepositoryFactory;
+  SonderClientsRepository: SonderRepositoryFactory;
   SonderMarkdown: { render(src: string): string; esc(s: unknown): string };
   SonderCrypto: SonderCryptoApi;
   SonderGames: SonderGamesApi;
@@ -731,11 +732,28 @@ interface SonderSettingsRepository {
   setFrameRate(f: number): number;
   setDesktopPet(patch: Record<string, unknown> | null): void;
 }
+interface SonderClientsRepository {
+  getClient(id: string): SonderClient | null;
+  getClients(): SonderClient[];
+  createClient(d: SonderClientInput): SonderClient;
+  updateClient(id: string, patch: SonderClientInput): SonderClient | null;
+  removeClient(id: string): void;
+  addProject(clientId: string, d: Record<string, unknown>): SonderClientProject | null;
+  updateProject(clientId: string, projId: string, patch: Record<string, unknown>): SonderClientProject | null;
+  removeProject(clientId: string, projId: string): void;
+  addFollowup(clientId: string, d: Record<string, unknown>): SonderClientFollowup | null;
+  updateFollowup(clientId: string, fuId: string, patch: Record<string, unknown>): SonderClientFollowup | null;
+  removeFollowup(clientId: string, fuId: string): void;
+  addIncome(clientId: string, d: Record<string, unknown>): SonderClientIncome | null;
+  updateIncome(clientId: string, incId: string, patch: Record<string, unknown>): SonderClientIncome | null;
+  removeIncome(clientId: string, incId: string): void;
+}
 interface SonderRepositoryFactory {
   createTaskRepository(store: SonderStoreImpl): SonderTaskRepository;
   createBookRepository(store: SonderStoreImpl): SonderBookRepository;
   createDevRepository(store: SonderStoreImpl): SonderDevRepository;
   createSettingsRepository(store: SonderStoreImpl): SonderSettingsRepository;
+  createClientsRepository(store: SonderStoreImpl): SonderClientsRepository;
 }
 
 /* Web Worker 专用全局（game-worker.js，不在 DOM/窗口作用域内）：
