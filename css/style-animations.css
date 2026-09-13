@@ -113,3 +113,13 @@
 .rank-card:hover::after { animation: sheenSweep .8s var(--ease); }
 
 /* =============================================================
+/* 顶部时钟秒跳微动画：数字变化瞬间轻微上浮淡入（随秒跳动，不打扰阅读） */
+.top-time {
+  display: inline-block; margin-left: 8px;
+  font-variant-numeric: tabular-nums; letter-spacing: .5px;
+}
+.top-time.tick { animation: timeTick .4s ease-out; }
+@keyframes timeTick {
+  0% { opacity: .2; transform: translateY(4px); }
+  100% { opacity: 1; transform: none; }
+}
