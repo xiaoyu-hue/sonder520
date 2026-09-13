@@ -18,6 +18,12 @@
   var currentEl = null, currentCtx = null;
   var mod = null;
   var delegatedBound = false;
+
+  /* v6.x 架构升级 Phase 4：阅读场景数据访问经 BookRepository 边界
+   * （子操作 addReadingSession/addExcerpt/addBookNote 等不再直连 Store） */
+  function repoOf(store) {
+    return window.SonderBookRepository.createBookRepository(store);
+  }
   var unsubs = [];
 
   /* 单工厂模块配置：id 对应 state.books（与 store.addBook 等同一集合）
@@ -99,7 +105,7 @@
     var bookId = timer.bookId;
     timer = null;
     stopClockLoop();
-    var added = ctx.store.addReadingSession(bookId, minutes);
+    var added = repoOf(ctx.store).addReadingSession(bookId, minutes);
     ctx.UI.toast(added ? '已累计 ' + added + ' 分钟阅读' : '阅读时长已记录');
     render(ctx);
   }
@@ -110,12 +116,13 @@
     container.appendChild(UI.el('<div class="hbar"><button class="btn primary" id="rdAdd">＋ 新建书</button></div>'));
     container.querySelector('#rdAdd').addEventListener('click', function () { openBook(ctx); });
 
-    if (!store.state.books.length) {
+    var books = repoOf(store).getAll();
+    if (!books.length) {
       container.appendChild(UI.emptyState('书单是空的', '＋ 新建书', function () { openBook(ctx); }));
       return;
     }
     container.appendChild(statsSection(store, ctx));
-    var groups = window.SonderStore.booksByStatus(store.state.books);
+    var groups = window.SonderStore.booksByStatus(books);
     ['想读', '在读', '已读完'].forEach(function (grp) {
       var list = groups[grp];
       if (!list.length) return;
@@ -127,7 +134,7 @@
   }
 
   function statsSection(store, ctx) {
-    var UI = ctx.UI, stats = window.SonderStore.readingStats(store.state.books);
+    var UI = ctx.UI, stats = window.SonderStore.readingStats(repoOf(store).getAll());
     var pills = [
       ['书籍总数', stats.total], ['在读', stats.reading], ['已读完', stats.finished],
       ['想读', stats.want], ['在读平均进度', stats.avgReading + '%']
@@ -243,7 +250,7 @@
       title: '添加笔记', confirmText: '保存',
       fields: [{ key: 'text', label: '摘录/笔记', type: 'textarea', required: true }],
       onSubmit: function (v) {
-        ctx.store.addBookNote(bookId, v.text);
+        repoOf(ctx.store).addNote(bookId, v.text);
         ctx.UI.toast('已添加'); render(ctx); return true;
       }
     });
@@ -256,7 +263,7 @@
         { key: 'page', label: '页码', type: 'number', value: 1 }
       ],
       onSubmit: function (v) {
-        var ex = ctx.store.addExcerpt({ bookId: b.id, text: v.text, page: v.page });
+        var ex = repoOf(ctx.store).addExcerpt({ bookId: b.id, text: v.text, page: v.page });
         if (!ex) return '句子不能为空';
         ctx.UI.toast('已摘抄，可在「我的书摘」查看');
         render(ctx); return true;
@@ -268,12 +275,13 @@
   function renderExcerpts(container, ctx) {
     var UI = ctx.UI, store = ctx.store;
     container.innerHTML = '';
-    var groups = S.excerptsByBook(store.state.excerpts);
+    var excerpts = repoOf(store).getExcerpts();
+    var groups = S.excerptsByBook(excerpts);
     if (!groups.length) {
       container.appendChild(UI.emptyState('还没有摘抄', '去阅读计划摘抄一句', function () { ctx.navigate('reading'); }));
       return;
     }
-    var total = store.state.excerpts.length;
+    var total = excerpts.length;
     container.appendChild(UI.el('<div class="section-title" style="margin-top:0">我的书摘 · 共 ' + total + ' 条</div>'));
     groups.forEach(function (g) {
       var card = UI.el('<div class="card" style="margin-bottom:14px"></div>');
@@ -291,7 +299,7 @@
     });
     container.querySelectorAll('[data-exdel]').forEach(function (btn) {
       btn.addEventListener('click', function () {
-        store.removeExcerpt(btn.dataset.exdel);
+        repoOf(store).removeExcerpt(btn.dataset.exdel);
         renderExcerpts(container, ctx);
         UI.toast('已删除该条书摘', null, { label: '撤销', onClick: function () {
           store.undoRemove();
@@ -326,7 +334,7 @@
         '[data-act],[data-excerpt],[data-note="del"]');
       if (!b) return;
       var card = b.closest('[data-id]');
-      var book = card && store.state.books.filter(function (x) { return x.id === card.dataset.id; })[0];
+      var book = card && repoOf(store).get(card.dataset.id);
       if (!book) return;
       if (b.dataset.act === 'edit') { openBook(ctx, book); return; }
       if (b.dataset.act === 'note') { openNote(ctx, book.id); return; }
@@ -346,7 +354,7 @@
       if ('excerpt' in b.dataset) { openExcerpt(ctx, book); return; }
       if (b.dataset.note === 'del') {
         var noteId = b.closest('[data-noteitem]').dataset.noteid;
-        store.removeBookNote(book.id, noteId);
+        repoOf(store).removeNote(book.id, noteId);
         render(ctx);
         UI.toast('笔记已删除', null, { label: '撤销', onClick: function () {
           store.undoRemove();
