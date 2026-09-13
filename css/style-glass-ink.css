@@ -1,9 +1,20 @@
 /* =============================================================
    style-glass-ink.css · v6.2 液态玻璃 × 水墨融合（方向 C）
    壳层：宣纸纹理 + 墨粒（浅色）／墨黑山水颗粒 + 压暗（深色）
+   玻璃：卡片厚度内影 + 顶部液态内发光 + 高光白芯（浅深分强度）
    策略：全部以选择器覆盖现有规则，新增文件隔离、可整体回滚。
    断点契约：本文件不引入新 @media 宽度值（responsive.test.js 白名单）。
    ============================================================= */
+
+/* 玻璃内发光强度：浅色亮玻璃 / 深色暗玻璃 */
+:root {
+  --glass-glow: rgba(255, 255, 255, 0.5);
+  --glass-thick: rgba(0, 0, 0, 0.05);
+}
+[data-theme="dark"] {
+  --glass-glow: rgba(255, 255, 255, 0.09);
+  --glass-thick: rgba(0, 0, 0, 0.35);
+}
 
 /* ---------- 纸纹噪声（浅色宣纸：纤维 + 颗粒 + 纸角泛黄，罩在壁纸雾化层上） ---------- */
 body::after {
@@ -24,3 +35,17 @@ body::after {
     radial-gradient(130% 100% at 50% 0%, rgba(255,255,255,0.07), transparent 45%),
     radial-gradient(150% 115% at 50% 120%, rgba(0,0,0,0.5), transparent 62%);
 }
+
+/* ---------- 玻璃卡片精修：液态厚度 + 顶部浸润光 + 高光白芯 ---------- */
+.main-card {
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.12),
+    inset 0 1px 0 var(--border-hi),
+    inset 0 -1px 0 var(--glass-thick),
+    inset 0 20px 32px -18px var(--glass-glow),
+    0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+.main-card::before {
+  background: linear-gradient(90deg, transparent, var(--border-hi) 18%, #ffffff 50%, var(--border-hi) 82%, transparent);
+}
+
