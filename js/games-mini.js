@@ -11,6 +11,11 @@
   var state = S.state;
   function render(ctx) { S.render(ctx); }
 
+  /* v6.x 架构升级 Phase 4 续：游戏域数据访问经 GamesRepository 边界 */
+  function repoOf(store) {
+    return window.SonderGamesRepository.createGamesRepository(store);
+  }
+
   /* ---------- 休闲小游戏 ---------- */
   var MS_DIFFS = {
     easy: { label: '简单', rows: 9, cols: 9, mines: 10 },
@@ -64,7 +69,7 @@
           if (typeof o.losses === 'number') clean.losses = o.losses;
           if (typeof o.right === 'number') clean.right = o.right;
           if (typeof o.wrong === 'number') clean.wrong = o.wrong;
-          if (Object.keys(clean).length > 0) ctx.store.updateMiniRecord(kind, clean);
+          if (Object.keys(clean).length > 0) repoOf(ctx.store).updateMiniRecord(kind, clean);
         }
         window.localStorage.removeItem('sonder_games_' + kind);
       });
@@ -73,21 +78,21 @@
   /* 纪录对象按 kind 结构各异（wins/losses/best/right/wrong...），取值/算术由调用方自行处理 */
   /** @returns {any} */
   function miniRec(kind) {
-    return S.ctxRef.store ? S.ctxRef.store.getMiniRecord(kind) : {};
+    return S.ctxRef.store ? repoOf(S.ctxRef.store).getMiniRecord(kind) : {};
   }
   function miniBest(kind) {
     var o = miniRec(kind);
     return typeof o.best === 'number' ? o.best : null;
   }
   function saveMiniBest(kind, best) {
-    if (S.ctxRef.store) S.ctxRef.store.updateMiniRecord(kind, { best: best });
+    if (S.ctxRef.store) repoOf(S.ctxRef.store).updateMiniRecord(kind, { best: best });
   }
   function miniBest2(kind, key) {
     var o = miniRec(kind);
     return key in o ? o[key] : null;
   }
   function saveMiniRec(kind, patch) {
-    if (S.ctxRef.store) S.ctxRef.store.updateMiniRecord(kind, patch);
+    if (S.ctxRef.store) repoOf(S.ctxRef.store).updateMiniRecord(kind, patch);
   }
 
   /* -------- 猜数字 -------- */
@@ -133,7 +138,7 @@
           state.mini.newBest = oldBest === null || g.attempts.length < oldBest;
           if (state.mini.newBest) saveMiniBest('guessnum', g.attempts.length);
         }
-        ctx.store.addGameRecord({
+        repoOf(ctx.store).addRecord({
           kind: 'guessnum', mode: 'solo', player: 'player',
           winner: res.win ? 'player' : 'opponent',
           note: res.win ? ('第 ' + g.attempts.length + ' 次猜中，目标 ' + g.target) : ('七次未中，目标 ' + g.target)
@@ -245,7 +250,7 @@
     rec.losses = (rec.losses || 0) + (won ? 0 : 1);
     rec.diff = state.mini.diff;
     saveMiniRec('minesweeper', rec);
-    ctx.store.addGameRecord({
+    repoOf(ctx.store).addRecord({
       kind: 'minesweeper', mode: 'solo', player: 'player',
       winner: won ? 'player' : 'opponent',
       difficulty: state.mini.diff,
@@ -381,10 +386,10 @@
       if (!res.ok) { UI.toast(res.error, 'err'); return; }
       if (res.correct) {
         saveMiniRec('idiom', { right: (miniRec('idiom').right || 0) + 1 });
-        ctx.store.addGameRecord({ kind: 'idiom', mode: 'solo', player: 'player', winner: 'player', note: '答对「' + g.answer + '」' });
+        repoOf(ctx.store).addRecord({ kind: 'idiom', mode: 'solo', player: 'player', winner: 'player', note: '答对「' + g.answer + '」' });
       } else if (res.tries === g.max) {
         saveMiniRec('idiom', { wrong: (miniRec('idiom').wrong || 0) + 1 });
-        ctx.store.addGameRecord({ kind: 'idiom', mode: 'solo', player: 'player', winner: 'opponent', note: '三次未中，答案是「' + g.answer + '」' });
+        repoOf(ctx.store).addRecord({ kind: 'idiom', mode: 'solo', player: 'player', winner: 'opponent', note: '三次未中，答案是「' + g.answer + '」' });
       }
       render(ctx);
     };
@@ -446,7 +451,7 @@
       if (!res.ok) { UI.toast(res.error, 'err'); return; }
       if (res.correct) {
         saveMiniRec('brainteaser', { right: (miniRec('brainteaser').right || 0) + 1 });
-        ctx.store.addGameRecord({ kind: 'brainteaser', mode: 'solo', player: 'player', winner: 'player' });
+        repoOf(ctx.store).addRecord({ kind: 'brainteaser', mode: 'solo', player: 'player', winner: 'player' });
         render(ctx);
       } else {
         UI.toast('再想想，脑筋转个弯～');
@@ -463,7 +468,7 @@
       g.over = true;
       g.correct = false;
       saveMiniRec('brainteaser', { wrong: (miniRec('brainteaser').wrong || 0) + 1 });
-      ctx.store.addGameRecord({ kind: 'brainteaser', mode: 'solo', player: 'player', winner: 'opponent', note: '直接看了答案' });
+      repoOf(ctx.store).addRecord({ kind: 'brainteaser', mode: 'solo', player: 'player', winner: 'opponent', note: '直接看了答案' });
       render(ctx);
     });
     wrap.appendChild(card);

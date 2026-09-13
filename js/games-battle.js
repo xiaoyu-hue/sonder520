@@ -15,6 +15,11 @@
   function playerName(stone) { return S.playerName(stone); }
   function sym(stone) { return S.sym(stone); }
 
+  /* v6.x 架构升级 Phase 4 续：游戏域数据访问经 GamesRepository 边界 */
+  function repoOf(store) {
+    return window.SonderGamesRepository.createGamesRepository(store);
+  }
+
   /* ---------- 对局界面 ---------- */
   function gameView(ctx) {
     var UI = ctx.UI, g = state.game;
@@ -362,7 +367,7 @@
   /* ---------- 战绩 ---------- */
   function recordMatch(ctx) {
     var g = state.game;
-    ctx.store.addGameRecord({
+    repoOf(ctx.store).addRecord({
       kind: g.kind, mode: state.mode,
       player: state.mode === 'ai' ? state.playerStone : 'X',
       winner: g.winner, byResign: g.byResign,

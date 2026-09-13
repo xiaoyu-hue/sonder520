@@ -476,6 +476,7 @@ interface Window {
   SonderDevRepository: SonderRepositoryFactory;
   SonderSettingsRepository: SonderRepositoryFactory;
   SonderClientsRepository: SonderRepositoryFactory;
+  SonderGamesRepository: SonderRepositoryFactory;
   SonderMarkdown: { render(src: string): string; esc(s: unknown): string };
   SonderCrypto: SonderCryptoApi;
   SonderGames: SonderGamesApi;
@@ -748,12 +749,19 @@ interface SonderClientsRepository {
   updateIncome(clientId: string, incId: string, patch: Record<string, unknown>): SonderClientIncome | null;
   removeIncome(clientId: string, incId: string): void;
 }
+interface SonderGamesRepository {
+  addRecord(d: Record<string, unknown>): Record<string, unknown>;
+  clearRecords(): void;
+  getMiniRecord(kind: string): Record<string, unknown>;
+  updateMiniRecord(kind: string, patch: Record<string, unknown>): Record<string, unknown>;
+}
 interface SonderRepositoryFactory {
   createTaskRepository(store: SonderStoreImpl): SonderTaskRepository;
   createBookRepository(store: SonderStoreImpl): SonderBookRepository;
   createDevRepository(store: SonderStoreImpl): SonderDevRepository;
   createSettingsRepository(store: SonderStoreImpl): SonderSettingsRepository;
   createClientsRepository(store: SonderStoreImpl): SonderClientsRepository;
+  createGamesRepository(store: SonderStoreImpl): SonderGamesRepository;
 }
 
 /* Web Worker 专用全局（game-worker.js，不在 DOM/窗口作用域内）：
