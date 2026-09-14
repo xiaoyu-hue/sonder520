@@ -13,9 +13,12 @@
 ![HTML5](https://img.shields.io/badge/HTML5-E34F26?style=flat&logo=html5&logoColor=white)
 ![CSS3](https://img.shields.io/badge/CSS3-1572B6?style=flat&logo=css3&logoColor=white)
 ![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=flat&logo=javascript&logoColor=black)
+![Version](https://img.shields.io/badge/version-6.3.0-7c6aef?style=flat)
 ![MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
 ![PWA](https://img.shields.io/badge/PWA-Support-green)
 ![Zero-Dependency](https://img.shields.io/badge/Zero-Dependency-6B728C)
+![CI](https://github.com/xiaoyu-hue/sonder520/actions/workflows/deploy.yml/badge.svg)
+![Tests](https://img.shields.io/badge/tests-770_passing-2ea44f?style=flat)
 
 </div>
 
