@@ -6,6 +6,7 @@
 
 | 文档 | 说明 |
 | --- | --- |
+| [ARCHITECTURE.md](./ARCHITECTURE.md) | 当前技术架构（分层/文件职责/加载顺序/红线，与代码同步维护） |
 | [PRD.md](./PRD.md) | 产品需求文档（含版本历史、视觉设计、数据规范、验收标准） |
 | [AUTHOR.md](./AUTHOR.md) | 关于作者（中文） |
 | [AUTHOR.en.md](./AUTHOR.en.md) | 关于作者（英文） |
