@@ -3,6 +3,15 @@
 本项目所有重要变更均记录于此。格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循语义化版本（SemVer）。完整版本演进另见 [PRD.md](docs/PRD.md) 的版本历史表。
 
+## [未发布] - 安全基建：分支保护 + 扫描管线收口
+
+> ⚙️ 工程/CI 变更，无应用功能变化。
+
+- **启用 main 分支保护**：必须 PR 合并 + 必检全绿（CodeQL `Analyze (javascript)` / Semgrep `security-audit + owasp-top-ten` / Test Gate `Test / Typecheck / Lint` + E2E Smoke）+ 分支需最新（strict）+ 管理员不绕过（enforce_admins）+ 禁止强推/删除分支 + 线性历史。直推 main 被拒，全部改动走 PR。
+- **Test Gate 补 pull_request 触发**：修复 PR 合并检查缺失必检导致无法合并的问题（此前仅 push 触发）。
+- **停用 Dependabot 常规版本升级**（删除 dependabot.yml）：不再自动开升级 PR（避免分支/PR 杂乱）；保留 Dependabot alerts（漏洞告警）+ security updates（高危漏洞自动修复 PR）——由仓库设置控制，不受影响。
+- **移除冗余 socket.yml**：Socket Security GitHub App 已安装并接管供应链扫描（产生 `Socket Security: Project Report` 检查），自建 workflow 删除。
+
 ## [v6.3.1] - 2026-09-14 (文档与安全扫描，无功能变更)
 
 ### 📚 文档
