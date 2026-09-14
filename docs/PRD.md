@@ -4,16 +4,14 @@
 > 状态：v6.3.2 为最新发布版（见 CHANGELOG）
 > 在线地址：
 
-主站1:
-https://sonder520.netlify.app/
+主站（GitHub Pages，push main 自动部署更新）:
+https://xiaoyu-hue.github.io/sonder520/
 
-备注:主站1因为部署次数的限制，没有更新新版本，请移步主站2和备用站。
-
-主站2:
+备用副站（Cloudflare Pages）:
 https://sonder520.pages.dev/
 
-备用:
-https://xiaoyu-hue.github.io/sonder520/
+镜像备用站（Netlify，免费档有部署次数限制，内容可能滞后）:
+https://sonder520.netlify.app/
 
 本文档随实现同步更新
 

@@ -25,7 +25,7 @@
 
 ---
 
-**[🚀 在线体验](https://sonder520.pages.dev/)** · **[📖 使用文档](#-使用)** · **[🛠️ 技术架构](#-技术架构)** · **[📦 本地运行](#-本地运行)**
+**[🚀 在线体验（GitHub Pages 主站）](https://xiaoyu-hue.github.io/sonder520/)** · **[📖 使用文档](#-使用)** · **[🛠️ 技术架构](#-技术架构)** · **[📦 本地运行](#-本地运行)**
 
 ---
 
@@ -183,7 +183,7 @@ IDB (主存储) + localStorage (副本) + Crypto (加密)
 
 ### 在线使用（推荐）
 
-访问 https://sonder520.pages.dev/ 立即使用，无需安装。
+访问 https://xiaoyu-hue.github.io/sonder520/ 立即使用，无需安装。
 
 ### 本地运行
 
@@ -345,8 +345,9 @@ Sonder520 是零依赖自研实现，但架构并非凭空发明——它站在�
 
 | 平台 | 说明 |
 |------|------|
-| [Cloudflare Pages](https://pages.cloudflare.com) | 免费静态托管（主站 https://sonder520.pages.dev/） |
-| [Netlify](https://www.netlify.com) | 免费静态托管（镜像站 https://sonder520.netlify.app/） |
+| [GitHub Pages](https://pages.github.com) | 免费静态托管（主站 https://xiaoyu-hue.github.io/sonder520/，push main 自动部署） |
+| [Cloudflare Pages](https://pages.cloudflare.com) | 免费静态托管（备用副站 https://sonder520.pages.dev/） |
+| [Netlify](https://www.netlify.com) | 免费静态托管（镜像备用站 https://sonder520.netlify.app/，免费档有部署次数限制，内容可能滞后） |
 | [GitHub Actions](https://github.com/features/actions) | 免费 CI：测试/类型检查/lint/SW 指纹门禁 + E2E 三端矩阵 |
 
 ### 安全扫描与审计（CI 门禁）

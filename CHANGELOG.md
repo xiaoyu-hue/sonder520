@@ -9,6 +9,7 @@
 
 - **决策审查体系**：AGENTS.md 新增「决策协作规范」章节——不可逆 / 花钱 / 对外发布 / 影响项目走向的操作，AI 必须先答"决策三问"（坏处/代价、不做的后果、后悔条件）等作者拍板才能执行；配套新增 `docs/DECISION_REVIEW.md`（决策前反问清单 + 拍板记录模板）。
 - **文档与版本同步规范**：AGENTS.md 新增「文档与版本同步（发布必查）」章节；配套新增 `docs/DOC_SYNC.md`（唯一真源原则：版本号问 package.json、数字问测试输出、描述问代码；同步清单 + SemVer 判定表 + 发布前验证 + 同步检查模板）。含中英双语一致性、依赖 ↔ README 致谢表同步项。
+- **部署布局调整**：**GitHub Pages（https://xiaoyu-hue.github.io/sonder520/）升为主站**（push main 自动部署）；Cloudflare Pages（sonder520.pages.dev）降为备用副站；Netlify（sonder520.netlify.app）为镜像备用站（免费档部署次数限制，内容可能滞后）。README 与 PRD 中英同步更新。
 
 ## [v6.3.2] - 2026-09-14（安全基建收口，无功能变更）
 
