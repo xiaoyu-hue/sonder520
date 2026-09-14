@@ -29,6 +29,10 @@
 | [plan-storage-key-granularity.md](./plans/plan-storage-key-granularity.md) | storageKey 粒度持久化方案（ADR-009 决策 7 落地） |
 | [plan-offline-indicator.md](./plans/plan-offline-indicator.md) | 离线状态指示器方案 |
 | [improvement-plan.md](./plans/improvement-plan.md) | Sonder 项目改进计划 |
+| [plan-v6-architecture-upgrade.md](./plans/plan-v6-architecture-upgrade.md) | v6 架构升级总方案（分层/Repository/Domain） |
+| [plan-v6-architecture-upgrade-audit.md](./plans/plan-v6-architecture-upgrade-audit.md) | v6 架构升级审计（基线盘点） |
+| [plan-v6-architecture-upgrade-agent.md](./plans/plan-v6-architecture-upgrade-agent.md) | v6 架构升级 AI Agent 执行设计 |
+| [plan-v6-phase5-7.md](./plans/plan-v6-phase5-7.md) | v6 Phase 5-7 执行方案（已全部完成） |
 
 ## 规格与验收（specs/）
 

@@ -38,7 +38,7 @@
 | 🎨 **水墨风格** | 宣纸/墨黑双主题，液态玻璃卡片设计 |
 | 📱 **浏览器内三端响应式** | 桌面/平板/手机三端响应式布局，PWA 离线可用 |
 | 🎮 **内置游戏** | 井字棋、五子棋、扫雷等 6 款迷你游戏 |
-| 🧪 **测试覆盖** | 706 项测试通过（单元测试 + 契约测试 + 集成测试 + E2E） |
+| 🧪 **测试覆盖** | 770 项测试通过（单元测试 + 契约测试 + 集成测试 + E2E） |
 
 ### 🔐 数据与隐私
 
@@ -86,16 +86,22 @@
 > 注：Sonder-Frame 是本项目内部自研的轻量框架，非通用开源框架，专为个人工具类应用设计。
 
 ```
-Application (应用层)
+Application (应用层 · 10 页面)
     ↓
-ModuleFactory (标准模块工厂)
+Domain (领域规则层 · task-domain 纯函数)
+    ↓
+Repository (数据访问边界 · 9 个薄包装)
+    ↓
+ModuleFactory + Store 领域文件 (标准模块工厂 + 10 领域扩展)
     ↓
 VisualEngine + EventBridge (UI渲染 + 事件总线)
     ↓
-TrustLayer (安全存储层)
+TrustLayer (安全存储层 · 写锁收口 ADR-013)
     ↓
 IDB (主存储) + localStorage (副本) + Crypto (加密)
 ```
+
+> v6.x 架构升级：数据层拆出 Repository 数据边界与 Domain 规则层；store.js 按职责拆为 10 个领域扩展文件（详见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)）。
 
 ### 核心技术栈
 
@@ -113,11 +119,12 @@ IDB (主存储) + localStorage (副本) + Crypto (加密)
 
 ### 质量保障
 
-- ✅ **706 项测试**通过（单元测试 + 契约测试 + 集成测试 + E2E）
+- ✅ **770 项测试**通过（单元测试 + 契约测试 + 集成测试 + E2E）
 - ✅ **零构建**类型检查（JSDoc + TypeScript）
 - ✅ **ESLint** 代码规范
 - ✅ **14 份 ADR** 架构决策记录
 - ✅ **PWA** 离线支持 + 版本更新
+- ✅ **架构分层**：Domain 规则层 + Repository 数据边界 + Store 领域扩展（10 文件）
 
 ---
 
@@ -188,7 +195,7 @@ cd sonder520
 
 ### 数据管理
 
-- 数据存储在浏览器本地（localStorage + IndexedDB）
+- 数据存储在浏览器本地（IndexedDB 主存储 + localStorage 副本）
 - 定期通过「数据与设置 → 导出备份」下载 JSON 备份
 - 可在设置中开启加密存储（PBKDF2 + AES-GCM）
 
@@ -225,8 +232,8 @@ npm run sync-sw
 
 ### 测试覆盖
 
-- **单元测试**：存储、加密、TrustLayer
-- **契约测试**：ModuleFactory CRUD
+- **单元测试**：存储、加密、TrustLayer、Domain 规则
+- **契约测试**：ModuleFactory CRUD、Repository 数据边界、type-sync
 - **集成测试**：Factory+TrustLayer、Factory+VisualEngine、Module+EventBridge
 - **E2E 测试**：Playwright 三端（桌面/平板/手机）
 
@@ -253,6 +260,7 @@ npm run sync-sw
 - **桌面玩偶模块**（三角色 + 金币 + 商店 + 喂养 + 成就）
 - **离线状态指示器**
 - **三端适配完善**（桌面/平板/手机）
+- **v6.x 架构升级**：Repository 数据边界（9 个）+ Domain 规则层（task-domain）+ store.js 职责拆分（10 领域扩展文件）
 
 ### 历史版本
 
