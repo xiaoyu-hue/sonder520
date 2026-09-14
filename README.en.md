@@ -305,11 +305,28 @@ Sonder520 stands on the shoulders of these open-source projects and browser stan
 | [jsdom](https://github.com/jsdom/jsdom) | MIT | DOM test environment |
 | [fake-indexeddb](https://github.com/dumbmatter/fakeIndexedDB) | Apache-2.0 | IndexedDB test mock |
 
+### Architecture Ideas & Design Inspirations
+
+Sonder520 is a zero-dependency self-built implementation, but its architecture was not invented in a vacuum — it stands on the shoulders of open-source ideas and engineering practice. **The patterns and standards are borrowed; the code is entirely original.**
+
+| Inspiration | Idea / Pattern | Where it shows up |
+|---------|---------|-------|
+| [Martin Fowler, *Patterns of Enterprise Application Architecture*](https://martinfowler.com/eaaCatalog/repository.html) | Repository pattern (data-access boundary) | `js/repositories/` — 9 thin Repositories with unified get/getAll/create/update/remove; pages never touch storage details |
+| [Clean Architecture (Robert C. Martin)](https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html) | Layered architecture, dependencies point inward | UI → Domain → Repository → Persistence dependency direction; clear, testable boundaries |
+| [DDD tactical layering (Eric Evans)](https://martinfowler.com/bliki/AnemicDomainModel.html) | Domain model separated from storage/UI | `js/domain/task-domain.js` — pure-function rule layer (task complete/reopen semantics), no DOM or storage |
+| Frontend componentization & event-driven ecosystem (module systems & pub-sub across frameworks) | Module factory + event bus | ModuleFactory standard module protocol + SonderBus event bus (store changes → pages auto re-render) |
+| [Ink & Switch, "Local-First Software"](https://www.inkandswitch.com/local-first/) and the local-first community | Device-local primary copy, offline-capable | IndexedDB as source of truth + localStorage replica + dual-write + PWA offline |
+| [The TypeScript team](https://www.typescriptlang.org) | JSDoc type annotations + zero-build tsc checking | `globals.d.ts` + `tsc --noEmit` — type contracts without a build step |
+| Community-wide module convention | UMD (Universal Module Definition) | All domain/Repository/Domain files load in both browser and Node |
+| [W3C / MDN open standards](https://developer.mozilla.org) | WebCrypto (PBKDF2 + AES-GCM-256), IndexedDB, Web Worker, Service Worker, backdrop-filter, CSS custom properties | Encryption, persistence, AI worker, PWA, liquid-glass visuals — all built on native browser capabilities |
+
 ### Special Thanks
 
-- **Browser-native APIs** (W3C standards) — IndexedDB, Crypto API (PBKDF2 + AES-GCM), Web Worker (Gomoku AI async computation), Service Worker (PWA offline support). Sonder520 has zero runtime dependencies; all features are built on these browser-native capabilities.
+- **Browser-native capabilities** (see the W3C/MDN row above): Sonder520 has zero runtime dependencies; every feature is built on browser-native APIs.
 - **AI Agent**: Project development assisted by AI Agent
 - **Everyone who contributes code, documentation, and time to the open-source community.**
+
+> One line to sum it up: **patterns and standards borrowed, code entirely original — zero dependencies, full gratitude.**
 
 ---
 

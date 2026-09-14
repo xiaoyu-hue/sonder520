@@ -312,11 +312,28 @@ Sonder520 站在这些开源项目和浏览器标准的肩膀上。没有它们�
 | [jsdom](https://github.com/jsdom/jsdom) | MIT | DOM 测试环境 |
 | [fake-indexeddb](https://github.com/dumbmatter/fakeIndexedDB) | Apache-2.0 | IndexedDB 测试 mock |
 
+### 架构思想与设计借鉴
+
+Sonder520 是零依赖自研实现，但架构并非凭空发明——它站在大量开源思想与工程实践的肩膀上，**借鉴的是模式与标准，代码全部自研**。
+
+| 借鉴来源 | 思想/模式 | 在本项目中的体现 |
+|------|------|------|
+| [Martin Fowler《企业应用架构模式》](https://martinfowler.com/eaaCatalog/repository.html) | Repository 模式（数据访问边界） | `js/repositories/` 9 个薄包装 Repository，统一 get/getAll/create/update/remove，页面不直连存储细节 |
+| [Clean Architecture（Robert C. Martin）](https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html) | 分层架构、依赖向内 | UI → Domain → Repository → Persistence 的依赖方向，边界清晰可测 |
+| [Domain-Driven Design 战术分层](https://martinfowler.com/bliki/AnemicDomainModel.html)（Eric Evans） | 领域模型与存储/UI 分离 | `js/domain/task-domain.js` 纯函数规则层（任务完成/重开语义），不碰 DOM 与存储 |
+| 前端组件化与事件驱动生态（各框架的模块系统与发布-订阅模式） | 模块工厂 + 事件总线 | ModuleFactory 标准模块协议 + SonderBus 事件总线（store 变更 → 页面自动重绘） |
+| [Ink & Switch《Local-First Software》](https://www.inkandswitch.com/local-first/) 与本地优先社区 | 本地设备为主数据副本、离线可用 | IndexedDB 真源 + localStorage 副本 + 双写双存 + PWA 离线 |
+| [TypeScript 团队](https://www.typescriptlang.org) | JSDoc 类型注解 + tsc 零构建检查 | `globals.d.ts` + `tsc --noEmit`，无编译步骤即得类型契约 |
+| 社区通用模块规范 | UMD（Universal Module Definition） | 全部领域/Repository/Domain 文件浏览器 + Node 双环境可加载 |
+| [W3C / MDN 开放标准](https://developer.mozilla.org) | WebCrypto（PBKDF2 + AES-GCM-256）、IndexedDB、Web Worker、Service Worker、backdrop-filter、CSS 自定义属性 | 加密、持久化、AI Worker、PWA、液态玻璃视觉全部基于浏览器原生能力 |
+
 ### 特别致谢
 
-- **浏览器内置 API**（W3C 标准）—— IndexedDB、Crypto API（PBKDF2 + AES-GCM）、Web Worker（五子棋 AI 异步计算）、Service Worker（PWA 离线支持）。Sonder520 零运行时依赖，所有功能都基于这些浏览器原生能力实现。
+- **浏览器原生能力**（详见上表 W3C/MDN 标准行）：Sonder520 零运行时依赖，所有功能基于浏览器原生 API 实现。
 - **AI Agent**：项目开发由 AI Agent 辅助完成
 - **所有为开源社区贡献代码、文档和时间的人。**
+
+> 一句话总结：**借鉴的是模式与标准，代码全部自研；依赖是零，敬意是满的。**
 
 ---
 
