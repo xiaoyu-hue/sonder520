@@ -12,6 +12,7 @@
 | [AUTHOR.md](./AUTHOR.md) | 关于作者（中文） |
 | [AUTHOR.en.md](./AUTHOR.en.md) | 关于作者（英文） |
 | [DECISION_REVIEW.md](./DECISION_REVIEW.md) | 决策审查清单：不可逆/花钱/发布前必答的"决策三问"与拍板记录模板 |
+| [DOC_SYNC.md](./DOC_SYNC.md) | 文档与版本同步规范：版本号/测试数等唯一真源、同步清单与发布前验证 |
 
 ## 架构决策记录（adr/）
 
