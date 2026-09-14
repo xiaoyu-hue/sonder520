@@ -3,6 +3,20 @@
 本项目所有重要变更均记录于此。格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循语义化版本（SemVer）。完整版本演进另见 [PRD.md](docs/PRD.md) 的版本历史表。
 
+## [v6.3.1] - 2026-09-14 (文档与安全扫描，无功能变更)
+
+### 📚 文档
+
+- **README 徽章补齐与升级**：补 version 徽章、CI（Test Gate）徽章、tests-770 徽章；静态 version 换动态 release 徽章（自动跟 tag）、补 last-commit 徽章。
+
+### 🛡️ 安全（第三方自动审查，阶段 1）
+
+- **CodeQL 代码扫描**：新增 workflow（公共仓库免费），push/PR/每周例行语义分析。
+- **Dependabot**：每周扫描 npm + github-actions 依赖。
+- **Test Gate 补 npm audit 门禁**：依赖漏洞（实测当前 0 漏洞）。
+
+---
+
 ## [v6.3] - 2026-09-14 (v6.x 架构升级：Repository 分层 + Domain 规则层)
 
 ### 已实施
