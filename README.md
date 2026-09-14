@@ -258,7 +258,7 @@ npm run sync-sw
 
 ## 📈 更新日志
 
-### v6.3.1（当前版本）
+### v6.3.2（当前版本）
 
 - **v6.x 架构升级**：Repository 数据边界（9 个）+ Domain 规则层（task-domain）+ store.js 职责拆分（10 领域扩展文件）
 - **UX 修复**：状态下拉中文化、移动端日期时间、顶部时钟秒级跳动
@@ -348,6 +348,16 @@ Sonder520 是零依赖自研实现，但架构并非凭空发明——它站在�
 | [Cloudflare Pages](https://pages.cloudflare.com) | 免费静态托管（主站 https://sonder520.pages.dev/） |
 | [Netlify](https://www.netlify.com) | 免费静态托管（镜像站 https://sonder520.netlify.app/） |
 | [GitHub Actions](https://github.com/features/actions) | 免费 CI：测试/类型检查/lint/SW 指纹门禁 + E2E 三端矩阵 |
+
+### 安全扫描与审计（CI 门禁）
+
+| 项目 | 协议 | 说明 |
+|------|------|------|
+| [GitHub CodeQL](https://codeql.github.com) | — | 代码安全分析（必检门禁） |
+| [Semgrep](https://semgrep.dev) | LGPL-2.1 | 静态应用安全测试，SAST 规则（必检门禁） |
+| [OSV-Scanner](https://google.github.io/osv-scanner/) | Apache-2.0 | 依赖漏洞聚合扫描（OSV 数据库） |
+| [Socket Security](https://socket.dev) | — | 供应链依赖安全扫描（GitHub App） |
+| [Dependabot](https://github.com/dependabot) | — | 依赖漏洞告警与自动安全修复 |
 
 ### 特别致谢
 
