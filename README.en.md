@@ -292,6 +292,9 @@ This project uses the [MIT License](LICENSE) — free to use, modify, and distri
 
 ## 🙏 Acknowledgments & Dependencies
 
+> **"If I have seen further, it is by standing on the shoulders of giants."**
+> — Dedicated to the open-source community, browser standards, and the AI Agent that support Sonder520.
+
 Sonder520 stands on the shoulders of these open-source projects and browser standards. Without them, a zero-programming-background author could not have built this.
 
 ### Development & Testing Toolchain

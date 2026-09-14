@@ -299,6 +299,9 @@ npm run sync-sw
 
 ## 🙏 致谢与依赖
 
+> **"If I have seen further, it is by standing on the shoulders of giants."**
+> 我看得更远，是因为站在巨人的肩膀上。—— 送给支撑 Sonder520 的开源社区、浏览器标准与 AI Agent。
+
 Sonder520 站在这些开源项目和浏览器标准的肩膀上。没有它们，一个零编程基础的作者不可能做出这个项目。
 
 ### 开发与测试工具链
