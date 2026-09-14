@@ -11,6 +11,7 @@
 | [PRD.en.md](./PRD.en.md) | 产品需求文档（英文版：第 1-12 章当前规格英译，第 0 章历史保留中文） |
 | [AUTHOR.md](./AUTHOR.md) | 关于作者（中文） |
 | [AUTHOR.en.md](./AUTHOR.en.md) | 关于作者（英文） |
+| [DECISION_REVIEW.md](./DECISION_REVIEW.md) | 决策审查清单：不可逆/花钱/发布前必答的"决策三问"与拍板记录模板 |
 
 ## 架构决策记录（adr/）
 
