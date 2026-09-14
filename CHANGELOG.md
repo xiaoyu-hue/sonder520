@@ -3,6 +3,20 @@
 本项目所有重要变更均记录于此。格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循语义化版本（SemVer）。完整版本演进另见 [PRD.md](docs/PRD.md) 的版本历史表。
 
+## [v6.3] - 2026-09-14 (v6.x 架构升级：Repository 分层 + Domain 规则层)
+
+### 已实施
+
+- **架构升级 Phase 1-4（Repository 数据边界）**：新增 `js/repositories/` 9 个薄包装 Repository——`TaskRepository`（今日计划/首页任务，Phase 3 起页面数据访问全部经其委托 Store 领域方法）、`BookRepository`（阅读）、`DevRepository`（开发任务）、`SettingsRepository`（设置/游戏难度）、`ClientsRepository`（咨询子操作）、`GamesRepository`（游戏战绩），统一 `get/getAll/create/update/remove`（task 含 reorder），行为与直接调 Store 一致（含 commit/事件/undo）。
+- **架构升级 Phase 5（memos/news/designs 正式 Repository 化）**：三集合改走工厂封装 `createXRepository(store, config)`（对称薄包装，CONFIG 留在页面单源），页面引用与契约测试同步。
+- **架构升级 Phase 6（store.js 职责拆分，1831 → 约 1090 行）**：按职责拆出 4 个领域文件——`store-undo.js`（删除撤销）、`store-persistence.js`（持久化核心：LS/IDB 读写、save/_commit、写锁收口 `_storeWrite` ADR-013）、`store-migration.js`（legacy 拆分迁移 + IDB 读取）、`store-import-export.js`（备份导出/导入/清空）；红线（加密/快照辅助）保留在 store.js；文件头结构清单同步更新。
+- **架构升级 Phase 7（Domain 规则层）**：新增 `js/domain/task-domain.js`——任务完成/重开语义纯函数（`complete` 不可重复完成、`reopen` 不可重开，规则被拒页面回滚），today.js 勾选/取消改经 TaskDomain 裁决后落盘；修复 UMD 全局挂载（`var TaskDomain = window.SonderTaskDomain`）。
+- **fix(ui) 状态下拉中文化 + 移动端日期时间**：自媒体（草稿/排队/已发布）与新闻计划（待读/已读/收藏）下拉改全中文；移动端顶栏显示日期 + 时间独立一行。
+- **feat(ui) 顶部时钟每秒跳动**：顶栏时钟实时秒级更新 + 微动画，切页/回页立即刷新。
+- **feat(types) SonderModuleField.options 支持 `{value,label}` 对象**：select 下拉选项可携带独立显示文案（中文状态下拉的前提），typecheck 对齐。
+- **测试基线 706 → 770 项**：新增 Repository ×3（memo/news/design）、task-domain ×14 等；sw 缓存指纹随新增文件逐步升版至 sonder-v123。
+- **文档体系对齐**：PRD 架构段、README 分层图、CHANGELOG 与新增 `docs/ARCHITECTURE.md`（当前架构一页图）全部与代码现状一致；历史 ADR/plans 保持原样。
+
 ## [v6.2] - 2026-09-13 (液态玻璃 × 水墨视觉深化 · 方向 C)
 
 ### 已实施
