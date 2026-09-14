@@ -1,7 +1,7 @@
 # Personal Work & Life App · Product Requirements Document (PRD)
 
-> Version: v6.3
-> Status: v6.3 is the latest released version (see CHANGELOG)
+> Version: v6.3.1
+> Status: v6.3.1 is the latest released version (see CHANGELOG)
 > Online:
 >
 > Main site:
@@ -38,6 +38,7 @@ Historical records, kept in Chinese. See the Chinese `PRD.md`.
 | **v6.1** | 深度审查修复（10 项）：C-1 lint 补盲区（js 子目录 + .mjs 纳入检查）+ C-2 ESLint 8→9 迁移（flat config 等价，删除废弃 .eslintrc.json）+ C-4 memo 存储键统一（sonder_data_v1）+ C-7 自定义壁纸迁入 IndexedDB（释放 5MB LS 配额，旧数据自动迁移/降级）+ C-8 加密密码下限 4→6 位 + T-1 CI E2E 三端化 + U-1 Toast 无障碍（aria-live/role）+ U-2 导入覆盖确认按钮语义一致 + 测试稳定性根治（--test-force-exit + 超时 60s）+ 文档同步；测试基线 696 → 704 项 |
 | **v6.2** | 「液态玻璃 × 水墨」视觉深化（方向 C，大胆幅度）+ 2 项 UX 修复：①主题切换/壁纸操作生产环境弹"页面发生错误"横幅（applyTheme/applyWallpaper 误置测试门闩，移入常驻 hooks）；②壳层宣纸纹理（SVG 灰度纸粒+纵横纤维+纸角泛黄）与墨黑山水颗粒（双频墨粒+顶部微亮/底部压暗）；③玻璃卡片液态厚度精修（底部内影+顶部内发光+高光白芯，浅深分强度）；④水墨交互（hover 墨晕环+点击墨压+标题笔触线）；⑤动效统一（墨晕过渡/浮现走 --ease-ink）；全部视觉改动隔离于新增 css/style-glass-ink.css 可整体回滚；测试基线 706 项 + E2E 30 项全绿 |
 | **v6.3** | v6.x 架构升级（Repository 分层 + Domain 规则层 + store 职责拆分，Phase 1-7）：新增 js/repositories/ 9 个薄包装 Repository（task/book/dev/settings/clients/games/memos/news/design，统一 get/getAll/create/update/remove，行为与直调 Store 一致含 commit/事件/undo）+ js/domain/task-domain.js（任务完成/重开语义纯函数）+ store.js 按职责拆出 store-undo/store-persistence/store-migration/store-import-export（1831 → 约 1090 行，写锁收口 ADR-013 落于 store-persistence）+ 页面迁移（today/home/memos/news/designs/dev/reading/settings/consulting/games 分批经 Repository 边界）+ UX 修复（自媒体/新闻状态下拉中文化、移动端日期时间、顶部时钟秒级跳动）+ 文档体系对齐（新建 docs/ARCHITECTURE.md）；测试基线 706 → 770 项 |
+| **v6.3.1** | Docs & security scanning (no functional changes): README badge overhaul (static version → dynamic release badge + last-commit + CI + tests-770) + third-party automated review phase 1 (CodeQL scan + Dependabot weekly + npm audit gate in Test Gate; 0 known dependency vulnerabilities) |
 
 (Further historical summaries from v5.0 onward are kept in the Chinese PRD.)
 

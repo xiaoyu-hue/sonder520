@@ -40,7 +40,7 @@ I first deployed on Netlify — my first time completing a deployment on my own.
 
 Now sonder520 has nearly all the modules I need, but each module's content can be deepened further, and cross-module collaboration has a lot of room for improvement. I don't think it fits the label of "personal workspace" anymore — it's more like a personal OS.
 
-From v1.0 step by step to v5.2, and now v6.3, it's been a genuinely rewarding journey. Once I get a new device, I'll continue iterating.
+From v1.0 step by step to v5.2, and now v6.3.1, it's been a genuinely rewarding journey. Once I get a new device, I'll continue iterating.
 
 ---
 
