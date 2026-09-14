@@ -92,6 +92,14 @@ IDB（Primary） + localStorage（Fallback/元数据） + Crypto
 - 不确定的信息明确说"不确定"，禁止编造库名、API、版本号。
 - 完整反问清单与拍板记录模板见 `docs/DECISION_REVIEW.md`。
 
+## 文档与版本同步（发布必查）
+
+- 版本发布 / 功能变更 / CI 变更后，必须对照 `docs/DOC_SYNC.md` 逐项检查再合 PR。
+- 版本号唯一真源是 `package.json`，其他文档一律从它派生，禁止各写各的。
+- 测试数、文件数、SW 缓存版本等数字以实际输出为准，README 声明必须与实测一致。
+- 发布前必须跑旧版本号残留 grep，确认无遗漏后再发 tag / Release。
+- 违反同步规范导致"文档与代码不一致"的提交，作者有权要求返工。
+
 ## 命令速查
 
 - `npm test` 全量测试；`npm run typecheck`；`npm run lint`；`npm run test:e2e`（Playwright 冒烟）
