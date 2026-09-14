@@ -27,6 +27,8 @@ module.exports = [
           SonderCrypto: 'readonly',
           SonderGames: 'readonly',
           SonderQuotes: 'readonly',
+          /* Phase 7：任务领域规则全局（js/domain/task-domain.js 挂载） */
+          TaskDomain: 'readonly',
           importScripts: 'readonly',
           self: 'readonly'
         }

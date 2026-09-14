@@ -2,7 +2,8 @@
  * 已迁移至标准模块工厂（Sonder-Frame v0.1.2，试点二）——协议见 docs/adr/ADR-011：
  * 文件不改名不换位、Pages/DOM/store API 契约零变更、数据写同一 state.tasks；
  * CRUD 与排序经工厂模块（orderField: order + move），store.addTask 等保留给既有调用方；
- * done/doneAt 联动为业务规则，页面层显式传参（勾选写时间戳、取消置空）；
+ * done/doneAt 联动为业务规则（v6.x Phase 7 已提炼至 js/domain/task-domain.js 纯函数），
+ * 页面经 TaskDomain 裁决后落盘（已完成不可重复完成、未完成不可重开）；
  * 🍅 专注计时器为页面级瞬态（悬浮窗/通知/测试钩子），不进框架。
  */
 (function () {
@@ -191,8 +192,14 @@
       c.addEventListener('change', function () {
         var checked = c.checked;
         ensureMod({ store: store });
-        /* 业务规则：done 联动完成时间戳（已完成组按 doneAt 排序） */
-        mod.update(c.closest('[data-id]').dataset.id, { done: checked, doneAt: checked ? S._h.nowISO() : null });
+        /* 业务规则（Phase 7 提炼自页面层）：完成/重开语义经 TaskDomain 纯函数裁决，
+         * 页面只负责"读规则结果 + 落盘"——已完成任务不可重复完成（不覆盖原 doneAt）。 */
+        var t = store.state.tasks.find(function (x) { return x.id === c.closest('[data-id]').dataset.id; });
+        var patch = checked
+          ? TaskDomain.complete(t, S._h.nowISO())
+          : TaskDomain.reopen(t);
+        if (!patch) { c.checked = !checked; return; } /* 规则拒绝（无可完成/无可重开）：回滚 UI */
+        mod.update(c.closest('[data-id]').dataset.id, patch);
       });
     });
     container.querySelectorAll('[data-focus]').forEach(function (b) {

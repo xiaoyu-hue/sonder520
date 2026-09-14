@@ -490,6 +490,8 @@ interface Window {
   SonderGamesMini: SonderGamesMiniApi;
   SonderGamesBattle: SonderGamesBattleApi;
   SonderGamesPage: SonderGamesPageApi;
+  /* Phase 7：任务领域规则（纯函数，无 DOM/存储） */
+  SonderTaskDomain: SonderTaskDomainApi;
   SonderQuotes: { quoteOfDay(dateStr: string): string; quotes: string[] };
   UI: SonderUI;
   MOTION: SonderMotionApi;
@@ -685,6 +687,15 @@ declare var SonderStore: SonderStoreFactory;
 declare var SonderStats: SonderStatsFactory;
 declare var SonderModuleFactory: SonderModuleFactoryApi;
 declare var SonderBus: SonderBusApi;
+
+/* Phase 7：任务领域规则（纯函数，today.js 经此裁决完成/重开语义） */
+interface SonderTaskDomainApi {
+  /* 未完成 → 完成 patch；已完成 → null（不可重复完成，不覆盖原 doneAt） */
+  complete(task: SonderTask | null | undefined, now: string | null): { done: true; doneAt: string | null } | null;
+  /* 已完成 → 重开 patch；未完成 → null（无可重开） */
+  reopen(task: SonderTask | null | undefined): { done: false; doneAt: null } | null;
+}
+declare var TaskDomain: SonderTaskDomainApi;
 
 /* Repository 工厂与数据访问对象（过渡形态，行为委托旧 Store） */
 interface SonderTaskRepository {
