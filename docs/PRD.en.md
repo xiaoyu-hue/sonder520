@@ -4,9 +4,12 @@
 > Status: v6.3.2 is the latest released version (see CHANGELOG)
 > Online:
 >
-> Main site:
-> https://sonder520.netlify.app/
+> Main site (GitHub Pages, auto-deployed on push to main):
+> https://xiaoyu-hue.github.io/sonder520/
+> Backup mirror (Cloudflare Pages):
 > https://sonder520.pages.dev/
+> Mirror (Netlify, free tier has deployment-count limits, may lag):
+> https://sonder520.netlify.app/
 
 > Note: This is the English translation of `PRD.md`. The version history in
 > Section 0 is kept in Chinese (historical records, kept verbatim); all current
