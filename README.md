@@ -242,6 +242,7 @@ npm run sync-sw
 ## 📚 文档
 
 - **[PRD.md](docs/PRD.md)** - 产品需求文档（中文版，含版本历史、视觉设计、数据规范、验收标准）
+- **[ARCHITECTURE.md](docs/ARCHITECTURE.md)** - 当前技术架构一页图（分层/文件职责/加载顺序/红线）
 - **[AGENTS.md](AGENTS.md)** - 项目协作规则（AI Agent 开发规范）
 - **[CHANGELOG.md](CHANGELOG.md)** - 更新日志
 - **[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)** - 行为准则
