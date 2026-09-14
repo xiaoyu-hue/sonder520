@@ -301,6 +301,8 @@ Sonder520 stands on the shoulders of these open-source projects and browser stan
 
 | Project | License | Notes |
 |---------|---------|-------|
+| [Node.js](https://nodejs.org) | MIT | Dev/test runtime (node --test, tsc, eslint, playwright all run on it) |
+| [npm](https://www.npmjs.com) | Artistic-2.0 | Package management & scripts (zero runtime deps; dev-time only) |
 | [Playwright](https://playwright.dev) | Apache-2.0 | E2E testing (Desktop/Tablet/Phone) |
 | [ESLint](https://eslint.org) | MIT | Code linting |
 | [eslint-plugin-jsdoc](https://github.com/gajus/eslint-plugin-jsdoc) | BSD-3-Clause | JSDoc comment linting |
@@ -323,9 +325,23 @@ Sonder520 is a zero-dependency self-built implementation, but its architecture w
 | Community-wide module convention | UMD (Universal Module Definition) | All domain/Repository/Domain files load in both browser and Node |
 | [W3C / MDN open standards](https://developer.mozilla.org) | WebCrypto (PBKDF2 + AES-GCM-256), IndexedDB, Web Worker, Service Worker, backdrop-filter, CSS custom properties | Encryption, persistence, AI worker, PWA, liquid-glass visuals — all built on native browser capabilities |
 
+### Visual & Design Inspiration
+
+- **Glassmorphism**: frosted-glass cards, inner highlights, and translucent layering come from the community Glassmorphism design movement ([glassmorphism.com](https://glassmorphism.com) and countless UI design community practices).
+- **Ink-wash aesthetics**: the Rice Paper / Ink Black dual themes, cinnabar-red accents, and traditional Chinese painting palette come from traditional Chinese ink-wash art — a cultural gift, not open-source code, but equally respected.
+
+### Hosting & CI Platforms
+
+| Platform | Notes |
+|---------|-------|
+| [Cloudflare Pages](https://pages.cloudflare.com) | Free static hosting (main site https://sonder520.pages.dev/) |
+| [Netlify](https://www.netlify.com) | Free static hosting (mirror site https://sonder520.netlify.app/) |
+| [GitHub Actions](https://github.com/features/actions) | Free CI: tests / typecheck / lint / SW fingerprint gate + E2E 3-device matrix |
+
 ### Special Thanks
 
 - **Browser-native capabilities** (see the W3C/MDN row above): Sonder520 has zero runtime dependencies; every feature is built on browser-native APIs.
+- **Browser vendors**: the Chromium (Chrome/Edge), Firefox (Gecko), and WebKit (Safari) teams — standards like WebCrypto, backdrop-filter, and PWA are implemented and pushed forward by them; the W3C/MDN that write the standards and the vendors that ship them are both indispensable.
 - **AI Agent**: Project development assisted by AI Agent
 - **Everyone who contributes code, documentation, and time to the open-source community.**
 

@@ -308,6 +308,8 @@ Sonder520 站在这些开源项目和浏览器标准的肩膀上。没有它们�
 
 | 项目 | 协议 | 说明 |
 |------|------|------|
+| [Node.js](https://nodejs.org) | MIT | 开发/测试运行时（node --test、tsc、eslint、playwright 全部跑在它上面） |
+| [npm](https://www.npmjs.com) | Artistic-2.0 | 包管理与脚本执行（零运行时依赖，仅开发期使用） |
 | [Playwright](https://playwright.dev) | Apache-2.0 | E2E 测试（桌面/平板/手机三端） |
 | [ESLint](https://eslint.org) | MIT | 代码规范检查 |
 | [eslint-plugin-jsdoc](https://github.com/gajus/eslint-plugin-jsdoc) | BSD-3-Clause | JSDoc 注释规范检查 |
@@ -330,9 +332,23 @@ Sonder520 是零依赖自研实现，但架构并非凭空发明——它站在�
 | 社区通用模块规范 | UMD（Universal Module Definition） | 全部领域/Repository/Domain 文件浏览器 + Node 双环境可加载 |
 | [W3C / MDN 开放标准](https://developer.mozilla.org) | WebCrypto（PBKDF2 + AES-GCM-256）、IndexedDB、Web Worker、Service Worker、backdrop-filter、CSS 自定义属性 | 加密、持久化、AI Worker、PWA、液态玻璃视觉全部基于浏览器原生能力 |
 
+### 视觉与设计灵感
+
+- **液态玻璃（Glassmorphism）**：磨砂玻璃卡片、高光内边、通透层次来自社区流行的 Glassmorphism 设计运动（[glassmorphism.com](https://glassmorphism.com) 与众多 UI 设计社区实践）。
+- **水墨美学**：宣纸/墨黑双主题、朱砂红强调、国画颜料色谱来自中国传统水墨艺术——这是文化的馈赠，不是开源代码，同样心怀敬意。
+
+### 部署与 CI 平台
+
+| 平台 | 说明 |
+|------|------|
+| [Cloudflare Pages](https://pages.cloudflare.com) | 免费静态托管（主站 https://sonder520.pages.dev/） |
+| [Netlify](https://www.netlify.com) | 免费静态托管（镜像站 https://sonder520.netlify.app/） |
+| [GitHub Actions](https://github.com/features/actions) | 免费 CI：测试/类型检查/lint/SW 指纹门禁 + E2E 三端矩阵 |
+
 ### 特别致谢
 
 - **浏览器原生能力**（详见上表 W3C/MDN 标准行）：Sonder520 零运行时依赖，所有功能基于浏览器原生 API 实现。
+- **浏览器厂商**：Chromium（Chrome/Edge）、Firefox（Gecko）、WebKit（Safari）团队——WebCrypto、backdrop-filter、PWA 等标准由他们实现并推进，写标准的 W3C/MDN 与实现标准的厂商缺一不可。
 - **AI Agent**：项目开发由 AI Agent 辅助完成
 - **所有为开源社区贡献代码、文档和时间的人。**
 
