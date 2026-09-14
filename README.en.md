@@ -246,13 +246,12 @@ npm run sync-sw
 
 ## 📈 Changelog
 
-### v6.0 (Current)
+### v6.3 (Current)
 
-- **Sonder-Frame Progressive Framework**
-- **IndexedDB Source-of-Truth Reversal** (IDB primary, LS fallback)
-- **Desktop Pet Module** (3 characters + coins + shop + feeding + achievements)
-- **Offline Status Indicator**
-- **Three-Device Adaptation** (Desktop/Tablet/Phone)
+- **v6.x Architecture Upgrade**: Repository data boundary (9) + Domain rule layer (task-domain) + store.js responsibility split (10 domain extension files)
+- **UX fixes**: Chinese status dropdowns, mobile date/time, per-second clock tick
+
+### v6.0 (Architecture foundation & visual)
 
 ### History
 
