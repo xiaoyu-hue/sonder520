@@ -16,6 +16,8 @@
   var viewDay = null; /* 日期筛选状态：null = 跟随今天（状态提升，切页/刷新后保留） */
   var mod = null;
   var unsubs = [];
+  /* Phase 7：任务领域规则（window.SonderTaskDomain 由 js/domain/task-domain.js 挂载） */
+  var TaskDomain = window.SonderTaskDomain;
 
   function routeIs() {
     return (location.hash || '').replace(/^#\/?/, '').split('/')[0] === 'today';
