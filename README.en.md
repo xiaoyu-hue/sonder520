@@ -235,6 +235,7 @@ npm run sync-sw
 ## 📚 Documentation
 
 - **[PRD.md](docs/PRD.md)** - Product requirements (Chinese, contains version history, visual design, data specs, acceptance criteria)
+- **[PRD.en.md](docs/PRD.en.md)** - Product requirements (English translation; Sections 1-12 current spec, Section 0 history kept in Chinese)
 - **[AGENTS.md](AGENTS.md)** - Project collaboration rules (AI Agent development spec)
 - **[CHANGELOG.md](CHANGELOG.md)** - Update log
 - **[CODE_OF_CONDUCT.en.md](CODE_OF_CONDUCT.en.md)** - Code of conduct
