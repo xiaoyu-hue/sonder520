@@ -1522,6 +1522,18 @@
   AnimationLoop.prototype._tick = function (t) {
     if (!this._running) return;
     var now = typeof t === 'number' ? t : Date.now();
+    /* 帧率节流：尊重 html[data-frame] 设置，与 motion.js 双保险一致
+     * data-frame="60" 跳过每帧（实际 ~30fps），data-frame="90" 跳过 2/3（实际 ~40fps），
+     * data-frame="120" 全速运行。避免低端设备 120Hz 屏上动画循环过载。 */
+    var frameAttr = (typeof document !== 'undefined' && document.documentElement) ? document.documentElement.getAttribute('data-frame') : null;
+    if (frameAttr === '60') {
+      this._frameSkip = (this._frameSkip == null) ? 0 : (this._frameSkip + 1) % 2;
+      if (this._frameSkip === 0) { /* 仅奇数帧执行，偶数帧跳过 */ }
+      else { this._raf = requestFrame(this._boundTick); return; }
+    } else if (frameAttr === '90') {
+      this._frameSkip = (this._frameSkip == null) ? 0 : (this._frameSkip + 1) % 3;
+      if (this._frameSkip !== 0) { this._raf = requestFrame(this._boundTick); return; }
+    }
     var dt = this._last ? Math.min((now - this._last) / 1000, 0.05) : 0;
     this._last = now;
     var list = this.instances.slice();
