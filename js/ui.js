@@ -5,9 +5,9 @@
 })(typeof self !== 'undefined' ? self : this, function () {
   'use strict';
 
-  const overlayRoot = function () { return document.getElementById('overlayRoot'); };
-  const toastWrap = function () {
-    let w = document.getElementById('toastWrap');
+  var overlayRoot = function () { return document.getElementById('overlayRoot'); };
+  var toastWrap = function () {
+    var w = document.getElementById('toastWrap');
     if (!w) {
       w = document.createElement('div');
       w.id = 'toastWrap';
@@ -34,18 +34,18 @@
   }
 
   function sanitizeUrl(u) {
-    let s = String(u === null || u === undefined ? '' : u);
+    var s = String(u === null || u === undefined ? '' : u);
     /* 先剥控制字符：浏览器解析 href 会剥离 \t\r\n 等控制字符，不剥离则黑名单可被 java\tscript: 绕过
      * （以字符码过滤实现，规避 no-control-regex） */
     s = s.split('').filter(function (ch) {
-      const c = ch.charCodeAt(0);
+      var c = ch.charCodeAt(0);
       return c > 31 && c !== 127;
     }).join('').trim();
     if (!s) return '';
     /* 白名单放行（与注释一致的真白名单，替代旧黑名单）：
      * ① http/https/mailto 绝对地址；② 站内相对路径（/开头非//、./ ../、或完全无 scheme）。 */
-    const hasScheme = /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(s);
-    const allowed = /^https?:/i.test(s) || /^mailto:/i.test(s)
+    var hasScheme = /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(s);
+    var allowed = /^https?:/i.test(s) || /^mailto:/i.test(s)
       || (s.charAt(0) === '/' && s.charAt(1) !== '/')
       || (!hasScheme && !/^\/\//.test(s));
     if (!allowed) return '';
@@ -55,7 +55,7 @@
 
   /** @param {string} html @returns {HTMLElement} */
   function el(html) {
-    const t = document.createElement('template');
+    var t = document.createElement('template');
     t.innerHTML = html.trim();
     return /** @type {HTMLElement} */ (t.content.firstChild);
   }
@@ -63,9 +63,9 @@
   /* action: { label, onClick } 可选操作按钮（如删除撤销） */
   function toast(msg, type, action) {
     /* U-1：错误 toast 用 role=alert（断言式活动区），及时打断播报；普通 toast 由容器 aria-live 兜底 */
-    let node = el('<div class="toast' + (type === 'err' ? ' err' : '') + '"' + (type === 'err' ? ' role="alert"' : '') + '><span>' + esc(msg) + '</span></div>');
+    var node = el('<div class="toast' + (type === 'err' ? ' err' : '') + '"' + (type === 'err' ? ' role="alert"' : '') + '><span>' + esc(msg) + '</span></div>');
     if (action) {
-      const btn = el('<button type="button" class="toast-act">' + esc(action.label) + '</button>');
+      var btn = el('<button type="button" class="toast-act">' + esc(action.label) + '</button>');
       btn.onclick = function () {
         if (node.parentNode) node.parentNode.removeChild(node);
         if (action.onClick) action.onClick();
@@ -79,12 +79,12 @@
 
   /** @returns {HTMLElement & { _sonderClose(): void }} */
   function overlay(innerHtml, onClose) {
-    const root = overlayRoot();
-    let ov = /** @type {HTMLElement & { _sonderClose(): void }} */ (el('<div class="overlay"></div>'));
+    var root = overlayRoot();
+    var ov = /** @type {HTMLElement & { _sonderClose(): void }} */ (el('<div class="overlay"></div>'));
     ov.appendChild(el(innerHtml));
     root.appendChild(ov);
-    const opener = /** @type {HTMLElement | null} */ (document.activeElement); /* P4b：记录触发元素，关闭后归还焦点 */
-    const onKey = function (e) {
+    var opener = /** @type {HTMLElement | null} */ (document.activeElement); /* P4b：记录触发元素，关闭后归还焦点 */
+    var onKey = function (e) {
       if (e.key === 'Escape') {
         closeOverlay(onClose);
       } else if (e.key === 'Tab') {
@@ -104,7 +104,7 @@
     document.addEventListener('keydown', onKey);
     ov._sonderClose = function () { closeOverlay(null); };
     /* P4b：焦点落入弹层内第一个可聚焦元素（无则落遮罩本身） */
-    const firstFocusable = ov.querySelector('button, input, select, textarea, [tabindex]:not([tabindex="-1"])');
+    var firstFocusable = ov.querySelector('button, input, select, textarea, [tabindex]:not([tabindex="-1"])');
     if (firstFocusable) {
       /** @type {HTMLElement} */ (firstFocusable).focus();
     } else {
@@ -116,11 +116,11 @@
 
   /* P4b：焦点陷阱——Tab 在弹层可聚焦元素间循环，不落入背景页面 */
   function trapFocus(e, ov) {
-    const f = ov.querySelectorAll('button, input, select, textarea, [tabindex]:not([tabindex="-1"])');
+    var f = ov.querySelectorAll('button, input, select, textarea, [tabindex]:not([tabindex="-1"])');
     if (!f.length) return;
-    let first = /** @type {HTMLElement} */ (f[0]);
-    const last = /** @type {HTMLElement} */ (f[f.length - 1]);
-    const cur = /** @type {HTMLElement | null} */ (document.activeElement);
+    var first = /** @type {HTMLElement} */ (f[0]);
+    var last = /** @type {HTMLElement} */ (f[f.length - 1]);
+    var cur = /** @type {HTMLElement | null} */ (document.activeElement);
     if (e.shiftKey) {
       if (cur === first || !ov.contains(cur)) { e.preventDefault(); last.focus(); }
     } else if (cur === last || !ov.contains(cur)) {
@@ -132,7 +132,7 @@
   /* 确认框：返回 Promise<boolean> */
   function confirmBox(message, okText) {
     return new Promise(function (resolve) {
-      let ov = overlay(
+      var ov = overlay(
         '<div class="modal"><h3>确认操作</h3>' +
         '<div class="body"><p style="margin:0">' + esc(message) + '</p></div>' +
         '<div class="foot">' +
@@ -148,7 +148,7 @@
 
   /* 轻量提示框：仅一个按钮，点击/Esc/点遮罩关闭 */
   function alertBox(message, confirmText) {
-    let ov = overlay(
+    var ov = overlay(
       '<div class="modal"><h3>提示</h3>' +
       '<div class="body"><p style="margin:0">' + esc(message) + '</p></div>' +
       '<div class="foot"><button class="btn primary" data-act="ok">' + esc(confirmText || '知道了') + '</button></div></div>'
@@ -161,15 +161,15 @@
    * onSubmit(values) -> true 关闭；返回字符串则作为错误提示显示
    */
   function formModal(opts) {
-    const fields = opts.fields || [];
-    const body = fields.map(function (f) {
-      const html = '<div class="field"><label>' + esc(f.label || f.key) + '</label>';
-      let val = f.value === undefined || f.value === null ? '' : f.value;
+    var fields = opts.fields || [];
+    var body = fields.map(function (f) {
+      var html = '<div class="field"><label>' + esc(f.label || f.key) + '</label>';
+      var val = f.value === undefined || f.value === null ? '' : f.value;
       if (f.type === 'select') {
         html += '<select data-k="' + esc(f.key) + '">';
         (f.options || []).forEach(function (o) {
-          let ov = (typeof o === 'object') ? o.value : o;
-          const ol = (typeof o === 'object') ? o.label : o;
+          var ov = (typeof o === 'object') ? o.value : o;
+          var ol = (typeof o === 'object') ? o.label : o;
           html += '<option value="' + esc(ov) + '"' + (String(ov) === String(val) ? ' selected' : '') + '>' + esc(ol) + '</option>';
         });
         html += '</select>';
@@ -184,7 +184,7 @@
       return html;
     }).join('');
 
-    const ov = overlay(
+    var ov = overlay(
       '<div class="modal"><h3>' + esc(opts.title) + '</h3>' +
       '<div class="body">' + body + '</div>' +
       '<div class="foot">' +
@@ -194,17 +194,17 @@
     );
 
     function collect() {
-      const v = {};
-      const badNodes = [];
-      const nodes = Array.prototype.slice.call(ov.querySelectorAll('[data-k]'));
+      var v = {};
+      var badNodes = [];
+      var nodes = Array.prototype.slice.call(ov.querySelectorAll('[data-k]'));
       fields.forEach(function (f) {
-        let node = null;
+        var node = null;
         for (var i = 0; i < nodes.length; i++) {
           if (nodes[i].getAttribute('data-k') === f.key) { node = nodes[i]; break; }
         }
-        const val = node ? node.value : '';
+        var val = node ? node.value : '';
         if (f.type === 'number') {
-          const num = Number(val);
+          var num = Number(val);
           if (val.trim() === '') {
             v[f.key] = null;
           } else if (!isFinite(num)) {
@@ -223,19 +223,19 @@
 
     function showErr(node, msg) {
       if (!node) return;
-      const hint = node.parentNode.querySelector('.hint');
+      var hint = node.parentNode.querySelector('.hint');
       hint.textContent = msg;
       hint.style.display = 'block';
     }
 
     /** @type {HTMLButtonElement} */ (ov.querySelector('[data-act="cancel"]')).onclick = function () { ov._sonderClose(); };
     /** @type {HTMLButtonElement} */ (ov.querySelector('[data-act="ok"]')).onclick = function () {
-      const r = collect();
+      var r = collect();
       if (r.badNodes.length) {
         r.badNodes.forEach(function (b) { showErr(b.node, b.msg || '请填写' + b.label); });
         return;
       }
-      const res = opts.onSubmit(r.v);
+      var res = opts.onSubmit(r.v);
       if (res && typeof res.then === 'function') {
         /* 异步提交：成功后调用方自行关闭或返回 true；失败返回错误字符串 */
         res.then(function (ok) {
@@ -248,11 +248,11 @@
       }
       if (res === true) { ov._sonderClose(); }
       else if (typeof res === 'string' && res.length) {
-        const first = /** @type {HTMLElement|null} */ (ov.querySelector('.hint'));
+        var first = /** @type {HTMLElement|null} */ (ov.querySelector('.hint'));
         if (first) { first.textContent = res; first.style.display = 'block'; }
       }
     };
-    const firstInput = /** @type {HTMLElement|null} */ (ov.querySelector('input,select,textarea'));
+    var firstInput = /** @type {HTMLElement|null} */ (ov.querySelector('input,select,textarea'));
     if (firstInput) { firstInput.focus(); }
     ov.querySelector('.modal').addEventListener('keydown', /** @param {KeyboardEvent} e */ function (e) {
       if (e.key === 'Enter' && /** @type {HTMLElement} */ (e.target).tagName !== 'TEXTAREA') {
@@ -266,7 +266,7 @@
   /* 一键复制：Clipboard API 优先，execCommand 兜底（原 dev.js/settings.js 各自实现已收敛至此） */
   function copyText(text) {
     function fallback() {
-      const ta = document.createElement('textarea');
+      var ta = document.createElement('textarea');
       ta.value = text;
       ta.setAttribute('readonly', '');
       ta.style.cssText = 'position:fixed;opacity:0;top:0';
@@ -285,9 +285,9 @@
   }
 
   function emptyState(text, actionLabel, actionFn) {
-    const d = el('<div class="empty"><div class="big">🗂</div><div>' + esc(text) + '</div></div>');
+    var d = el('<div class="empty"><div class="big">🗂</div><div>' + esc(text) + '</div></div>');
     if (actionLabel) {
-      const b = el('<button class="btn primary">' + esc(actionLabel) + '</button>');
+      var b = el('<button class="btn primary">' + esc(actionLabel) + '</button>');
       b.onclick = actionFn;
       d.appendChild(b);
     }

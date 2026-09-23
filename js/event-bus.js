@@ -28,7 +28,7 @@
   'use strict';
 
   /* 事件名常量表（冻结）：新代码唯一事件名真源 */
-  const EVENT = {
+  var EVENT = {
     DATA_ALL: '/data/all',
     STORE_YIELDED: '/store/yielded',
     /* /data/<集合> 路径生成器：与 store._emitChange 广播完全等价 */
@@ -43,13 +43,13 @@
   function matches(pattern, path) {
     if (pattern === path) return true;
     if (pattern.indexOf('*') === -1) return false;
-    const pa = pattern.replace(/^\/+|\/+$/g, '').split('/');
-    const pp = path.replace(/^\/+|\/+$/g, '').split('/');
-    const pi = 0, hi = 0;
+    var pa = pattern.replace(/^\/+|\/+$/g, '').split('/');
+    var pp = path.replace(/^\/+|\/+$/g, '').split('/');
+    var pi = 0, hi = 0;
     while (pi < pa.length) {
       if (pa[pi] === '*') {
         if (pi === pa.length - 1) return true; /* 尾部 *：吞掉剩余任意层 */
-        const next = pa[pi + 1]; /* 中部 *：贪心跨层找下一个固定段 */
+        var next = pa[pi + 1]; /* 中部 *：贪心跨层找下一个固定段 */
         while (hi < pp.length && pp[hi] !== next) hi++;
         if (hi >= pp.length) return false;
         pi += 2; hi += 1;
@@ -77,26 +77,26 @@
     if (!this._map[pattern]) this._map[pattern] = [];
     this._map[pattern].push(fn);
     this.counts.on++;
-    const self = this;
+    var self = this;
     return function () { self.off(pattern, fn); };
   };
 
   Bus.prototype.off = function (pattern, fn) {
-    let list = this._map[pattern];
+    var list = this._map[pattern];
     if (!list) return;
-    let i = list.indexOf(fn);
+    var i = list.indexOf(fn);
     if (i !== -1) list.splice(i, 1);
   };
 
   /* 广播：同步调用所有匹配 pattern 的订阅者 fn(path, detail) */
   Bus.prototype.emit = function (path, detail) {
     this.counts.emit++;
-    const keys = Object.keys(this._map);
+    var keys = Object.keys(this._map);
     for (var i = 0; i < keys.length; i++) {
       if (!matches(keys[i], path)) continue;
-      const list = this._map[keys[i]];
+      var list = this._map[keys[i]];
       /* 快照遍历：订阅者内可能再次 on/off，避免迭代器越界 */
-      const fns = list.slice();
+      var fns = list.slice();
       for (var j = 0; j < fns.length; j++) {
         try { fns[j](path, detail); } catch (e) { /* 单订阅者异常不拖垮广播 */ }
       }
@@ -110,7 +110,7 @@
     this.counts.emit = 0;
   };
 
-  const bus = new Bus();
+  var bus = new Bus();
 
   return {
     bus: bus,

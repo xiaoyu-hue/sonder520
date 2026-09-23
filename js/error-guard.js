@@ -7,12 +7,12 @@
 (function () {
   'use strict';
 
-  const MAX_KEEP = 20;        /* 内存中保留的最近错误数 */
-  const TOAST_GAP_MS = 3000;  /* 两次错误提示的最小间隔 */
+  var MAX_KEEP = 20;        /* 内存中保留的最近错误数 */
+  var TOAST_GAP_MS = 3000;  /* 两次错误提示的最小间隔 */
 
-  const list = [];
-  let total = 0;
-  let lastToastAt = 0;
+  var list = [];
+  var total = 0;
+  var lastToastAt = 0;
 
   function record(entry) {
     list.push(entry);
@@ -23,7 +23,7 @@
   function notify() {
     try {
       if (!window.UI || typeof window.UI.toast !== 'function') return;
-      const now = Date.now();
+      var now = Date.now();
       if (now - lastToastAt <= TOAST_GAP_MS) return;
       lastToastAt = now;
       window.UI.toast('⚠ 页面发生错误，详见控制台', 'err');
@@ -50,9 +50,9 @@
   /* 捕获阶段监听，才能收到不冒泡的资源 error（img/script/link） */
   window.addEventListener('error', function (e) {
     if (e && e.target) {
-      const t = /** @type {any} */ (e.target);
+      var t = /** @type {any} */ (e.target);
       if (t !== window && t.tagName) {
-        const src = String(t.currentSrc || t.src || t.href || '');
+        var src = String(t.currentSrc || t.src || t.href || '');
         report({ time: new Date().toISOString(), type: 'resource', message: '资源加载失败: ' + src, stack: null });
         return;
       }
@@ -67,7 +67,7 @@
   }, true);
 
   window.addEventListener('unhandledrejection', function (e) {
-    const reason = e && e.reason ? e.reason : null;
+    var reason = e && e.reason ? e.reason : null;
     report({
       time: new Date().toISOString(),
       type: 'unhandledrejection',
@@ -84,8 +84,8 @@
      * 参数可以是 Error 实例（自动提取 message/stack）或字符串。
      * 与全局 error 事件共用记录/控制台/toast 节流，不额外打扰用户。 */
     report: function (errOrMsg, type) {
-      const message = (errOrMsg instanceof Error) ? errOrMsg.message : String(errOrMsg);
-      const stack = (errOrMsg instanceof Error) ? String(errOrMsg.stack || '') : null;
+      var message = (errOrMsg instanceof Error) ? errOrMsg.message : String(errOrMsg);
+      var stack = (errOrMsg instanceof Error) ? String(errOrMsg.stack || '') : null;
       report({ time: new Date().toISOString(), type: type || 'reported', message: message, stack: stack });
     }
   };

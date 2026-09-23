@@ -1,12 +1,12 @@
 /* home.js - 首页总览（现代化卡片版本） */
 (function () {
   'use strict';
-  const Pages = window.Pages = window.Pages || {};
-  const S = window.SonderStore;
-  let currentEl = null, currentCtx = null;
+  var Pages = window.Pages = window.Pages || {};
+  var S = window.SonderStore;
+  var currentEl = null, currentCtx = null;
 
   function greeting() {
-    let h = new Date().getHours();
+    var h = new Date().getHours();
     if (h < 6) return '夜深了，注意休息';
     if (h < 12) return '早上好，开始今天吧';
     if (h < 14) return '中午好';
@@ -14,19 +14,19 @@
     return '晚上好';
   }
 
-  const lastNums = {};
+  var lastNums = {};
 
   function render(container, ctx) {
-    const UI = ctx.UI, store = ctx.store;
+    var UI = ctx.UI, store = ctx.store;
     currentEl = container; currentCtx = ctx;
     /* v6.x 架构升级 Phase 3：任务数据访问经 TaskRepository 边界，不再直连 Store 任务方法 */
-    const repo = window.SonderTaskRepository.createTaskRepository(store);
-    const sum = store.summarize();
-    const day = S.todayStr();
+    var repo = window.SonderTaskRepository.createTaskRepository(store);
+    var sum = store.summarize();
+    var day = S.todayStr();
     
     /* 每日金句 */
-    const ex = S.dailyExcerpt(store.state.excerpts, day);
-    const quote = (window.SonderQuotes && typeof window.SonderQuotes.quoteOfDay === 'function')
+    var ex = S.dailyExcerpt(store.state.excerpts, day);
+    var quote = (window.SonderQuotes && typeof window.SonderQuotes.quoteOfDay === 'function')
       ? UI.esc(window.SonderQuotes.quoteOfDay(day))
       : '';
     var quoteHtml;
@@ -37,10 +37,10 @@
       quoteHtml = quote ? '<div class="quote-card">「' + quote + '」</div>' : '';
     }
     
-    const g = S.groupTasks(repo.getAll(), day);
-    const todayList = g.now.slice(0, 6);
+    var g = S.groupTasks(repo.getAll(), day);
+    var todayList = g.now.slice(0, 6);
 
-    const taskInner = todayList.length
+    var taskInner = todayList.length
       ? todayList.map(function (t) {
         return '<div class="stat-row" style="padding:4px 0" data-tid="' + t.id + '">' +
           '<input type="checkbox" class="hm-done" ' + (t.done ? 'checked' : '') + '>' +
@@ -48,8 +48,8 @@
       }).join('')
       : '<div class="muted small">今天暂无待办，去"今日计划"安排吧</div>';
 
-    const memos = store.state.memos.filter(function (m) { return !m.archived; });
-    const lastMemo = memos.length ? memos[0].text : '暂无备忘';
+    var memos = store.state.memos.filter(function (m) { return !m.archived; });
+    var lastMemo = memos.length ? memos[0].text : '暂无备忘';
 
     /* 使用现代化卡片布局 */
     container.innerHTML = [
@@ -112,9 +112,9 @@
 
     /* 数字跳动（v6.2 微交互 ②）：统计值变化时墨滴弹跳（首次渲染只记录不跳） */
     container.querySelectorAll('.module-stat-num').forEach(function (el) {
-      const card = el.closest('[data-go]');
-      let go = card ? card.getAttribute('data-go') : '_';
-      let num = el.getAttribute('data-num');
+      var card = el.closest('[data-go]');
+      var go = card ? card.getAttribute('data-go') : '_';
+      var num = el.getAttribute('data-num');
       if (lastNums[go] !== undefined && lastNums[go] !== num) {
         el.classList.add('num-bump');
       }
@@ -123,7 +123,7 @@
 
     /* 事件绑定 */
     container.querySelector('#hmSave').addEventListener('click', function () {
-      const v = container.querySelector('#hmMemo').value;
+      var v = container.querySelector('#hmMemo').value;
       if (!String(v).trim()) { UI.toast('请输入内容', 'err'); return; }
       store.addMemo(v);
       container.querySelector('#hmMemo').value = '';
@@ -161,11 +161,11 @@
 
   /* 数据变更自动重绘 */
   (function () {
-    const bus = globalThis.SonderBus && globalThis.SonderBus.bus;
+    var bus = globalThis.SonderBus && globalThis.SonderBus.bus;
     if (!bus) return;
     bus.on('/data/*', function () {
-      const h = (location.hash || '').replace(/^#\/?/, '');
-      const clean = h.split('/')[0];
+      var h = (location.hash || '').replace(/^#\/?/, '');
+      var clean = h.split('/')[0];
       if (currentEl && currentCtx && (clean === '' || clean === 'home')) {
         render(currentEl, currentCtx);
       }
