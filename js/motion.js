@@ -16,6 +16,8 @@
   var TRANSIT_REMOVE_MS = 600;   /* 略长于 inkTransit 动画，防动画未播完被移除 */
   var RIPPLE_REMOVE_MS = 600;
   var COUNT_DURATION_MS = 600;
+  var RAF_FALLBACK_MS = 16;      /* jsdom 无 rAF 时降级为 setTimeout 的间隔 */
+  var BUS_DEBOUNCE_MS = 60;      /* 总线联动后补滚数的延迟（合并密集变更） */
 
   function motionDisabled() {
     try {
@@ -74,7 +76,7 @@
 
   function raf(cb) {
     if (typeof requestAnimationFrame === 'function') requestAnimationFrame(cb);
-    else setTimeout(function () { cb(Date.now()); }, 16);
+    else setTimeout(function () { cb(Date.now()); }, RAF_FALLBACK_MS);
   }
 
   /* 单个数字滚数：ease-out 三次方，600ms 从 0 滚至 target；门控时直接落终值 */
@@ -124,7 +126,7 @@
       busTimer = setTimeout(function () {
         var c = document.getElementById('content');
         if (c) afterRender(c);
-      }, 60);
+      }, BUS_DEBOUNCE_MS);
     });
   })();
 
