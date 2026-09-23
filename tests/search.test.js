@@ -34,9 +34,15 @@ function type(h, q) {
   return input;
 }
 
-test('搜索：输入即分组展示（组头含模块名与条数）', () => {
+/* 等待防抖完成（200ms） */
+async function typeAndWait(h, q) {
+  type(h, q);
+  await new Promise(r => setTimeout(r, 250));
+}
+
+test('搜索：输入即分组展示（组头含模块名与条数）', async () => {
   const h = boot({ seed: seed() });
-  type(h, '水墨');
+  await typeAndWait(h, '水墨');
   const panel = h.$('#gsearchPanel');
   assert.ok(!panel.hidden, '面板应显示');
   const txt = panel.textContent;
@@ -47,9 +53,9 @@ test('搜索：输入即分组展示（组头含模块名与条数）', () => {
   assert.ok(txt.includes('写水墨风插件'), '应列出命中条目');
 });
 
-test('搜索：开发工作命中项目名与任务笔记', () => {
+test('搜索：开发工作命中项目名与任务笔记', async () => {
   const h = boot({ seed: seed() });
-  type(h, '全局搜索');
+  await typeAndWait(h, '全局搜索');
   const txt = h.$('#gsearchPanel').textContent;
   assert.ok(txt.includes('在【开发工作】中找到 1 条'), '缺开发组头');
   assert.ok(txt.includes('Sonder · 实现全局搜索'), '应显示项目名·任务名');
@@ -57,21 +63,21 @@ test('搜索：开发工作命中项目名与任务笔记', () => {
   assert.ok(h.$('#gsearchPanel').textContent.includes('开发工作'), '项目备注也应命中');
 });
 
-test('搜索：无结果显示水墨风空提示', () => {
+test('搜索：无结果显示水墨风空提示', async () => {
   const h = boot({ seed: seed() });
-  type(h, '绝对不存在的关键词xyz');
+  await typeAndWait(h, '绝对不存在的关键词xyz');
   assert.ok(h.$('#gsearchPanel').textContent.includes('空谷无音，换个词试试吧'), '应有温柔空提示');
 });
 
-test('搜索：大小写不敏感', () => {
+test('搜索：大小写不敏感', async () => {
   const h = boot({ seed: seed() });
-  type(h, 'SONDER');
+  await typeAndWait(h, 'SONDER');
   assert.ok(h.$('#gsearchPanel').textContent.includes('开发工作'), '大写应命中小写数据');
 });
 
 test('搜索：点击结果跳转对应模块并高亮该条目', async () => {
   const h = boot({ seed: seed() });
-  type(h, '水墨');
+  await typeAndWait(h, '水墨');
   const item = h.$('#gsearchPanel .gsearch-item[data-module="reading"]');
   assert.ok(item, '应有阅读模块结果');
   item.click();
@@ -84,7 +90,7 @@ test('搜索：点击结果跳转对应模块并高亮该条目', async () => {
 
 test('搜索：多词查询跳转后任一词命中即高亮（原整串匹配常落空）', async () => {
   const h = boot({ seed: seed() });
-  type(h, '入门 周某');
+  await typeAndWait(h, '入门 周某');
   const item = h.$('#gsearchPanel .gsearch-item[data-module="reading"]');
   assert.ok(item, '多词 AND 应命中阅读条目');
   item.click();
@@ -96,7 +102,7 @@ test('搜索：多词查询跳转后任一词命中即高亮（原整串匹配�
 
 test('搜索：连续点击两个结果，最终只高亮后一次跳转的条目', async () => {
   const h = boot({ seed: seed() });
-  type(h, '水墨');
+  await typeAndWait(h, '水墨');
   const first = h.$('#gsearchPanel .gsearch-item[data-module="reading"]');
   const second = h.$('#gsearchPanel .gsearch-item[data-module="today"]');
   first.click();
@@ -109,18 +115,18 @@ test('搜索：连续点击两个结果，最终只高亮后一次跳转的条�
   assert.ok(flash.textContent.indexOf('写水墨风插件') >= 0, '高亮的应是最后跳转的目标');
 });
 
-test('搜索：Escape 关闭面板', () => {
+test('搜索：Escape 关闭面板', async () => {
   const h = boot({ seed: seed() });
-  type(h, '水墨');
+  await typeAndWait(h, '水墨');
   assert.ok(!h.$('#gsearchPanel').hidden, '面板应打开');
   const input = h.$('#globalSearch');
   input.dispatchEvent(new h.window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
   assert.ok(h.$('#gsearchPanel').hidden, 'Esc 应关闭面板');
 });
 
-test('搜索：同查询重复触发不重建面板（结果缓存，_rev 未变直接复用；数据变化后自动失效）', () => {
+test('搜索：同查询重复触发不重建面板（结果缓存，_rev 未变直接复用；数据变化后自动失效）', async () => {
   const h = boot({ seed: seed() });
-  type(h, '水墨');
+  await typeAndWait(h, '水墨');
   const item = h.$('#gsearchPanel .gsearch-item');
   assert.ok(item, '首轮应有结果');
   type(h, '水墨');
@@ -132,7 +138,7 @@ test('搜索：同查询重复触发不重建面板（结果缓存，_rev 未变
   assert.ok(items.length >= 2, '数据版本变化后同查询应重新过滤并含新增条目');
 });
 
-test('搜索：书摘与游戏战绩同样可检索、可跳转', () => {
+test('搜索：书摘与游戏战绩同样可检索、可跳转', async () => {
   const sd = seed();
   sd.excerpts = [
     { id: 'e1', bookId: 'b1', bookTitle: '水墨画入门', text: '留白不是没有，而是给想象留位', page: 5, time: '2026-08-10T08:00:00.000Z' }
@@ -141,15 +147,19 @@ test('搜索：书摘与游戏战绩同样可检索、可跳转', () => {
     { id: 'g1', kind: 'minesweeper', mode: 'solo', player: 'player', winner: 'player', note: '经典 9x9 首胜', date: '2026-08-10', time: '', byResign: false }
   ];
   const h = boot({ seed: sd });
-  type(h, '留白');
+  await typeAndWait(h, '留白');
   let panel = h.$('#gsearchPanel');
   assert.ok(panel.textContent.includes('在【我的书摘】中找到 1 条'), '书摘应被索引');
   assert.ok(h.$('#gsearchPanel .gsearch-item[data-module="excerpts"]'), '书摘条目应带 excerpts 模块');
-  type(h, '首胜');
+
+  // 等待防抖完成后检查游戏战绩
+  await typeAndWait(h, '首胜');
   panel = h.$('#gsearchPanel');
   assert.ok(panel.textContent.includes('在【娱乐游戏】中找到 1 条'), '游戏战绩应被索引');
   assert.ok(h.$('#gsearchPanel .gsearch-item[data-module="game"]'), '游戏条目应带 game 模块');
-  type(h, '扫雷');
+
+  // 扫雷类别名也应命中
+  await typeAndWait(h, '扫雷');
   panel = h.$('#gsearchPanel');
   assert.ok(panel.textContent.includes('娱乐游戏'), '游戏类别名（扫雷）也应能命中');
 });
