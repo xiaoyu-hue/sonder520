@@ -129,13 +129,16 @@ test('搜索：同查询重复触发不重建面板（结果缓存，_rev 未变
   await typeAndWait(h, '水墨');
   const item = h.$('#gsearchPanel .gsearch-item');
   assert.ok(item, '首轮应有结果');
-  type(h, '水墨');
+  // 同查询重复输入（等待防抖）
+  await typeAndWait(h, '水墨');
   assert.strictEqual(h.$('#gsearchPanel .gsearch-item'), item, '同查询同版本重复输入不应重建面板节点');
+  // 修改数据后，_rev 变化，缓存失效
   const hooks = h.window.__sonderHooks;
   hooks.store.addTask({ title: '再写一篇水墨教程', note: '', date: '2026-08-10', priority: '低' });
-  type(h, '水墨');
+  // 等待防抖后再次查询
+  await typeAndWait(h, '水墨');
   const items = h.$('#gsearchPanel').querySelectorAll('.gsearch-item');
-  assert.ok(items.length >= 2, '数据版本变化后同查询应重新过滤并含新增条目');
+  assert.ok(items.length >= 2, '数据版本变化后同查询应重新过滤并含新增条目，实际: ' + items.length + ', text: ' + h.$('#gsearchPanel').textContent.substring(0, 100));
 });
 
 test('搜索：书摘与游戏战绩同样可检索、可跳转', async () => {
