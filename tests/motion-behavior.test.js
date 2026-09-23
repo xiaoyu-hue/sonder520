@@ -105,8 +105,10 @@ test('总线联动：SonderBus 数据变更重绘后数字重新滚数（空窗�
    * afterRender 补滚数动画（测试中直接调用以避开 jsdom hashchange 不稳定问题）。
    * 核心验证：重绘后数字能从旧值滚到新值。 */
   h.store.addGameRecord({ kind: 'gomoku', mode: 'ai', player: 'X', winner: 'X', byResign: false });
-  /* 手动调 navigate 触发 app.js 的 onHash→render，等价于 bus 重绘链路 */
-  h.window.location.hash = '#/home';
+  /* 切到锚点再切回 home，强制 hashchange 重渲 */
+  h.goto('_zzz');
+  h.window.dispatchEvent(new h.window.HashChangeEvent('hashchange'));
+  h.goto('home');
   h.window.dispatchEvent(new h.window.HashChangeEvent('hashchange'));
   await wait(200);
   assert.equal(gameNum().textContent, '1', '总线联动后数字应滚至 1，实际: ' + gameNum().textContent);

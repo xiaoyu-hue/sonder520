@@ -3,6 +3,33 @@
 本项目所有重要变更均记录于此。格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循语义化版本（SemVer）。完整版本演进另见 [PRD.md](docs/PRD.md) 的版本历史表。
 
+## [v6.3.3] - 2026-09-23（性能优化与代码质量）
+
+### ⚡ 性能
+
+- **桌面玩偶 AnimationLoop 帧率节流**：新增 `data-frame` 属性识别（60/90/120 三档），与 motion.js 双保险一致。`data-frame=60` 时跳过每帧（~30fps），`data-frame=90` 时每 3 帧跑 1 次（~40fps），避免 120Hz 屏上动画循环过载。
+- **全局搜索防抖**：输入事件增加 200ms debounce，避免输入法组词/快速输入时频繁触发全量匹配。
+- **deepClone 改用 structuredClone()**：store.js、store-stats.js、desktop-pet.js 优先使用原生 `structuredClone`，兼容旧环境降级到 JSON 序列化；支持循环引用、Date/Blob 等类型，性能更优。
+
+### 🛠️ 重构
+
+- **魔法数字提取**：motion.js 中 `RAF_FALLBACK_MS`（16）、`BUS_DEBOUNCE_MS`（60）提取为命名常量，提升可读性。
+- **错误上报统一**：所有 `console.error` 改为先尝试 `window.__sonderErrors.report()` 经 error-guard.js 统一处理，降级到 `console.error` 保证向后兼容。
+
+### 🧪 测试
+
+- **desktop-pet 补充 AnimationLoop 测试**：+6 用例覆盖帧率节流、stop/remove、visibilitychange 暂停恢复等场景。
+- **search.test.js 适配防抖**：新增 `typeAndWait` 辅助函数，等待 debounce 完成后再断言。
+
+### 📊 测试基线
+
+- 全量测试：772 pass / 89 files（+6 新用例）
+- motion-behavior：9/9 通过
+- desktop-pet：79/79 通过
+- search：10/10 通过
+
+---
+
 ## [未发布] - 决策审查体系 + 文档同步规范
 
 > 📚 文档/协作规则变更，无应用功能变化，不打 tag 不 bump 版本。

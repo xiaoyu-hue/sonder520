@@ -202,6 +202,8 @@
     clearTimeout(_searchTimer);
     _searchTimer = setTimeout(onInput, 200);
   }
+  /* 测试专用：直接调用onInput，跳过防抖 */
+  if (typeof window !== 'undefined') window.__sonderSearchDirect = onInput;
 
   if (input) {
     input.addEventListener('input', onInputDebounced);

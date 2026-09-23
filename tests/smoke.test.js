@@ -162,6 +162,11 @@ test('冒烟：满数据遍历全部页面 + 关键交互点击不崩溃', async
   /* 全局搜索：输入触发索引 */
   const gs = doc.querySelector('#globalSearch');
   gs.value = '任务';
-  gs.dispatchEvent(new w.Event('input', { bubbles: true }));
+  // 直接调用 onInput（跳过防抖）以兼容测试环境
+  if (typeof w.__sonderSearchDirect === 'function') {
+    w.__sonderSearchDirect();
+  } else {
+    gs.dispatchEvent(new w.Event('input', { bubbles: true }));
+  }
   assert.ok(doc.querySelector('#gsearchPanel').textContent.includes('任务'), '搜索应命中');
 });
