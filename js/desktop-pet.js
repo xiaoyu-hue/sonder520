@@ -2507,6 +2507,7 @@
     DIALOGUES: DIALOGUES,
     QUOTES: QUOTES,
     Pet: Pet,
+    AnimationLoop: AnimationLoop,
     createPet: createPet,
     PetFamily: PetFamily,
     createFamily: createFamily,
