@@ -76,7 +76,10 @@
 
   function cloneJson(o) {
     if (o === undefined || o === null) return null;
-    try { return JSON.parse(JSON.stringify(o)); } catch (e) { return null; }
+    try {
+      if (typeof structuredClone === 'function') return structuredClone(o);
+      return JSON.parse(JSON.stringify(o));
+    } catch (e) { return null; }
   }
 
   /* 深合并原始 desktopPet 块 → 完整默认配置（未知字段丢弃、数值边界约束）。

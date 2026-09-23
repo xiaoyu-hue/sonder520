@@ -177,6 +177,9 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     return d.getFullYear() + '-' + m + '-' + day;
   }
   function deepClone(v) {
+    /* structuredClone 比 JSON.parse/stringify 更快且支持循环引用、Date/Blob 等类型；
+     * 降级：旧环境用 JSON 兜底 */
+    if (typeof structuredClone === 'function') return structuredClone(v);
     return JSON.parse(JSON.stringify(v));
   }
   function isPlainObject(v) {
