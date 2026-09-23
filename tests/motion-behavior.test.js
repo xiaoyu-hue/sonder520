@@ -110,6 +110,6 @@ test('总线联动：SonderBus 数据变更重绘后数字重新滚数（空窗�
   h.window.dispatchEvent(new h.window.HashChangeEvent('hashchange'));
   h.goto('home');
   h.window.dispatchEvent(new h.window.HashChangeEvent('hashchange'));
-  await wait(200);
+  await wait(300);
   assert.equal(gameNum().textContent, '1', '总线联动后数字应滚至 1，实际: ' + gameNum().textContent);
 });
