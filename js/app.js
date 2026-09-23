@@ -88,7 +88,7 @@
         nav.appendChild(b);
       } catch (e) {
         /* 单模块缺失/报错不拖垮整壳：跳过该导航项并上报（如 SW 陈旧缓存致 js 404） */
-        try { console.error('[Sonder] 导航模块不可用', key, e); } catch (x) { /* 忽略 */ }
+        try { (window.__sonderErrors && window.__sonderErrors.report) ? window.__sonderErrors.report('[Sonder] 导航模块不可用: ' + key, 'warning') : console.error('[Sonder] 导航模块不可用', key, e); } catch (x) { /* 忽略 */ }
       }
     });
   }
@@ -165,7 +165,7 @@
         }
         render();
       }).catch(function (err) {
-        try { console.error('[Sonder] IDB 迁移失败', err); } catch (e) { /* 忽略 */ }
+        try { (window.__sonderErrors && window.__sonderErrors.report) ? window.__sonderErrors.report(err, 'warning') : console.error('[Sonder] IDB 迁移失败', err); } catch (e) { /* 忽略 */ }
         UI.toast('迁移失败，请导出备份', 'err');
         render();
       });
@@ -197,7 +197,7 @@
       if (applied) onHash();
       return applied;
     }).catch(function (err) {
-      try { console.error('[Sonder] IDB 启动加载失败，回退 localStorage', err); } catch (e) { /* 忽略 */ }
+      try { (window.__sonderErrors && window.__sonderErrors.report) ? window.__sonderErrors.report(err, 'warning') : console.error('[Sonder] IDB 启动加载失败，回退 localStorage', err); } catch (e) { /* 忽略 */ }
       return false;
     })
   };
@@ -303,7 +303,7 @@
       }).catch(function (err) {
         busy = false;
         btn.disabled = false;
-        try { console.error('[Sonder] 解锁失败', err); } catch (e) { /* 忽略 */ }
+        try { (window.__sonderErrors && window.__sonderErrors.report) ? window.__sonderErrors.report(err, 'warning') : console.error('[Sonder] 解锁失败', err); } catch (e) { /* 忽略 */ }
         lockErrEl.textContent = '解锁失败，请重试';
       });
     }
@@ -325,7 +325,7 @@
         showLockScreen();
       }
     }).catch(function (err) {
-      try { console.error('[Sonder] 免密自动解锁失败', err); } catch (e) { /* 忽略 */ }
+      try { (window.__sonderErrors && window.__sonderErrors.report) ? window.__sonderErrors.report(err, 'warning') : console.error('[Sonder] 免密自动解锁失败', err); } catch (e) { /* 忽略 */ }
       showLockScreen();
     });
   }

@@ -178,7 +178,7 @@
       /* IDB 主快照写入失败：localStorage 副本仍兜底（数据安全），记失败标记并上报便于发现环境问题 */
       self._idbFailed = true;
       if (!self._statusReason) self._statusReason = 'indexeddb_write_failed';
-      try { console.error('[Sonder] IndexedDB 写入失败', err); } catch (e) { /* 忽略 */ }
+      try { (window.__sonderErrors && window.__sonderErrors.report) ? window.__sonderErrors.report(err, 'warning') : console.error('[Sonder] IndexedDB 写入失败', err); } catch (e) { /* 忽略 */ }
     });
   };
 
@@ -227,7 +227,7 @@
     if (this._encKey) {
       this._encSave(map).catch(function (err) {
         /* 加密写盘失败：下次 save 会重试；上报便于发现（数据仍在上次持久化版本） */
-        try { console.error('[Sonder] 加密持久化失败', err); } catch (e) { /* 忽略 */ }
+        try { (window.__sonderErrors && window.__sonderErrors.report) ? window.__sonderErrors.report(err, 'warning') : console.error('[Sonder] 加密持久化失败', err); } catch (e) { /* 忽略 */ }
       });
       return;
     }
@@ -254,7 +254,7 @@
     map[col] = json;
     if (this._encKey) {
       this._encSave(map).catch(function (err) {
-        try { console.error('[Sonder] 加密持久化失败', err); } catch (e) { /* 忽略 */ }
+        try { (window.__sonderErrors && window.__sonderErrors.report) ? window.__sonderErrors.report(err, 'warning') : console.error('[Sonder] 加密持久化失败', err); } catch (e) { /* 忽略 */ }
       });
       return;
     }

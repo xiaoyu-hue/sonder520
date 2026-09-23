@@ -651,7 +651,7 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     }).catch(function (err) {
       /* 加密失败：存储停留在上次成功版本，后续变更会继续重试；上报便于发现 */
       if (!self._statusReason) self._statusReason = 'encryption_failed';
-      try { console.error('[Sonder] 加密持久化失败', err); } catch (e) { /* 忽略 */ }
+      try { (window.__sonderErrors && window.__sonderErrors.report) ? window.__sonderErrors.report(err, 'warning') : console.error('[Sonder] 加密持久化失败', err); } catch (e) { /* 忽略 */ }
     });
     return self._encChain;
   };
@@ -865,7 +865,7 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
         return self._verifySnapshotIntegrity(key).then(function (intact) {
           if (!intact) {
             self._statusReason = 'snapshot_corrupted';
-            try { console.error('[Sonder] 快照完整性预检失败：存在解密失败的加密集合，已拒绝解锁以保护原始数据'); } catch (e) { /* 忽略 */ }
+            try { (window.__sonderErrors && window.__sonderErrors.report) ? window.__sonderErrors.report('快照完整性预检失败：存在解密失败的加密集合，已拒绝解锁以保护原始数据', 'warning') : console.error('[Sonder] 快照完整性预检失败'); } catch (e) { /* 忽略 */ }
             return false;
           }
           self._encKey = key;
