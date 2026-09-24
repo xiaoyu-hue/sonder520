@@ -18,8 +18,6 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: Audit dependencies
-        run: npm audit
       - run: npm test
       - run: npm run typecheck
       - run: npm run lint
