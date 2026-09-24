@@ -82,10 +82,13 @@ test('性能：搜索索引按 _rev 缓存，重复查询不重建', () => {
   const input = doc.getElementById('globalSearch');
   const set = v => { input.value = v; input.dispatchEvent(new w.Event('input', { bubbles: true })); };
   set('缓存');
+  // 防抖等待 300ms
+  await new Promise(r => setTimeout(r, 300));
   assert.ok(doc.getElementById('gsearchPanel').textContent.includes('缓存实验'), '首查应命中');
   const store = w.__sonderHooks.store;
   assert.ok(store, '共享实例应暴露于 hooks');
   set('缓存实');
+  await new Promise(r => setTimeout(r, 300));
   assert.ok(doc.getElementById('gsearchPanel').textContent.includes('缓存实验'), '再查应命中');
   set('不存在的词xyz');
   assert.ok(doc.getElementById('gsearchPanel').textContent.includes('空谷无音'), '空结果正常');
