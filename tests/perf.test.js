@@ -78,20 +78,20 @@ test('性能：搜索索引按 _rev 缓存，重复查询不重建', async () =>
       memos: [], posts: [], devProjects: [], clients: [], books: [], news: [], designs: [], gameRecords: []
     }
   });
-  const w = h.window, doc = w.document;
-  const input = doc.getElementById('globalSearch');
-  const set = v => { input.value = v; input.dispatchEvent(new w.Event('input', { bubbles: true })); };
-  set('缓存');
-  await new Promise(r => setTimeout(r, 100));
-  assert.ok(doc.getElementById('gsearchPanel').textContent.includes('缓存实验'), '首查应命中');
-  const store = w.__sonderHooks.store;
+  const input = h.$('#globalSearch');
+  const typeAndWait = (q) => {
+    input.value = q;
+    input.dispatchEvent(new h.window.Event('input', { bubbles: true }));
+    return new Promise(r => setTimeout(r, 250));
+  };
+  await typeAndWait('缓存');
+  assert.ok(h.$('#gsearchPanel').textContent.includes('缓存实验'), '首查应命中');
+  const store = h.window.__sonderHooks.store;
   assert.ok(store, '共享实例应暴露于 hooks');
-  set('缓存实');
-  await new Promise(r => setTimeout(r, 100));
-  assert.ok(doc.getElementById('gsearchPanel').textContent.includes('缓存实验'), '再查应命中');
-  set('不存在的词xyz');
-  await new Promise(r => setTimeout(r, 100));
-  assert.ok(doc.getElementById('gsearchPanel').textContent.includes('空谷无音'), '空结果正常');
+  await typeAndWait('缓存实');
+  assert.ok(h.$('#gsearchPanel').textContent.includes('缓存实验'), '再查应命中');
+  await typeAndWait('不存在的词xyz');
+  assert.ok(h.$('#gsearchPanel').textContent.includes('空谷无音，换个词试试吧'), '空结果正常');
 });
 
 test('性能：困难五子棋候选剪枝（终盘候选超 16 时只对高分组前瞻）', () => {
