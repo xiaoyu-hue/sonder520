@@ -18,7 +18,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npm test -- --test-timeout=120000 -- --test-timeout=120000
+      - run: npm test -- --test-timeout=120000
       - run: npm run typecheck
       - run: npm run lint
       - name: SW 缓存一致性门禁（改动文件后必须 sync-sw）
