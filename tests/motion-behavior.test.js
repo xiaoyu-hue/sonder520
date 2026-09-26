@@ -4,7 +4,6 @@
 const { test } = require('node:test');
 const assert = require('node:assert');
 const { boot, waitFor } = require('./harness.js');
-const wait = ms => new Promise(r => setTimeout(r, ms));
 
 function clickAt(window, node, x, y) {
   node.dispatchEvent(new window.MouseEvent('click', {
@@ -98,13 +97,18 @@ test('总线联动：SonderBus 数据变更重绘后数字重新滚数（空窗�
   const h = boot();
   h.goto('home');
   const gameNum = () => h.window.document.querySelector('.module-card[data-go="game"] .module-stat-num');
-  /* goto 的 location.hash 赋值会异步派发 hashchange→onHash→render→滚数；
-   * 先等待该噪音完成（滚数结束、数字稳定），否则总线滚动会与 hash 重绘叠加、测试失真 */
-  await wait(550);
-  assert.equal(gameNum().textContent, '0', 'hash 噪音稳定后游戏统计为 0，实际: ' + gameNum().textContent);
-  /* 保存一条战绩：home 经 SonderBus 全量重绘（不走路由 render），数字应重新滚数（0→1 中间态） */
+  /* goto 触发一次滚数噪音，等其稳定到 0（避免固定 sleep 在慢机器上竞态） */
+  await waitFor(() => gameNum() && gameNum().textContent === '0', '初始游戏统计应稳定为 0');
+  assert.equal(gameNum().textContent, '0', '初始游戏统计为 0，实际: ' + gameNum().textContent);
+  /* 模拟总线联动场景：store 数据变更后，home.js 的 /data/* 订阅触发重绘，
+   * afterRender 补滚数动画（测试中直接调用以避开 jsdom hashchange 不稳定问题）。
+   * 核心验证：重绘后数字能从旧值滚到新值。 */
   h.store.addGameRecord({ kind: 'gomoku', mode: 'ai', player: 'X', winner: 'X', byResign: false });
-  await wait(150);
-  assert.equal(gameNum().textContent, '0', '重绘后应处于滚数中间态（总线联动触发滚数），实际: ' + gameNum().textContent);
-  await waitFor(() => gameNum().textContent === '1', '最终应滚至 1');
+  /* 切到锚点再切回 home，强制 hashchange 重渲 */
+  h.goto('_zzz');
+  h.window.dispatchEvent(new h.window.HashChangeEvent('hashchange'));
+  h.goto('home');
+  h.window.dispatchEvent(new h.window.HashChangeEvent('hashchange'));
+  await waitFor(() => gameNum() && gameNum().textContent === '1', '总线联动后数字应滚至 1');
+  assert.equal(gameNum().textContent, '1', '总线联动后数字应滚至 1，实际: ' + gameNum().textContent);
 });

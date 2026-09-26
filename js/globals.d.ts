@@ -496,6 +496,7 @@ interface Window {
   UI: SonderUI;
   MOTION: SonderMotionApi;
   __sonderHooks: SonderHooks;
+  __sonderSearchDirect?: (e: Event) => void;
   __SONDER_TEST__?: boolean;
   __sonderErrors: { list: SonderErrorEntry[]; readonly total: number; clear(): void; report(errOrMsg: string | Error, type?: string): void };
   __desktopPetFamily: any;

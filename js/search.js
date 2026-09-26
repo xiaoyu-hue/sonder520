@@ -196,8 +196,17 @@
     setTimeout(function () { target.classList.remove('search-flash'); }, 2600);
   }
 
+  /* 搜索防抖：200ms 内只执行一次，避免输入法组词时频繁触发全量匹配 */
+  var _searchTimer = null;
+  function onInputDebounced() {
+    clearTimeout(_searchTimer);
+    _searchTimer = setTimeout(onInput, 200);
+  }
+  /* 测试专用：直接调用onInput，跳过防抖 */
+  if (typeof window !== 'undefined') window.__sonderSearchDirect = onInput;
+
   if (input) {
-    input.addEventListener('input', onInput);
+    input.addEventListener('input', onInputDebounced);
     input.addEventListener('focus', function () { if (terms(input.value).length) onInput(); });
     input.addEventListener('keydown', function (e) { if (e.key === 'Escape') { hidePanel(); input.blur(); } });
     document.addEventListener('click', function (e) {

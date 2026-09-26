@@ -14,7 +14,10 @@
     return d.getFullYear() + '-' + m + '-' + day;
   }
   function todayStr() { return fmtDate(new Date()); }
-  function clone(v) { return JSON.parse(JSON.stringify(v)); }
+  function clone(v) {
+    if (typeof structuredClone === 'function') return structuredClone(v);
+    return JSON.parse(JSON.stringify(v));
+  }
   function num0(v) { var n = Number(v); return isNaN(n) ? 0 : Math.max(0, n); }
   /* 字符串哈希（djb2 变体）：供每日金句等按日期种子稳定取数 */
   function hashStr(s) {

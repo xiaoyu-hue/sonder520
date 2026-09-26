@@ -1,7 +1,7 @@
 'use strict';
 const { test } = require('node:test');
 const assert = require('node:assert');
-const { boot } = require('./harness.js');
+const { boot, waitFor } = require('./harness.js');
 const S = require('../js/store.js');
 const TODAY = S.todayStr();
 
@@ -71,10 +71,9 @@ test('设置：导入恢复覆盖数据，非法文件报错', async () => {
   const file = new h.window.File([backup], 'backup.json', { type: 'application/json' });
   Object.defineProperty(input, 'files', { value: [file] });
   input.dispatchEvent(new h.window.Event('change', { bubbles: true }));
-  // 确认覆盖
-  await new Promise(r => setTimeout(r, 20));
+  await waitFor(() => doc.querySelector('[data-act="yes"]'), '覆盖确认对话框应出现');
   doc.querySelector('[data-act="yes"]').click();
-  await new Promise(r => setTimeout(r, 80));
+  await waitFor(() => h.store.state.tasks.length === 1 && h.store.state.tasks[0].title === '恢复的任务', '导入恢复后应覆盖为 1 条恢复的任务');
   assert.equal(h.store.state.tasks.length, 1);
   assert.equal(h.store.state.tasks[0].title, '恢复的任务');
 });
@@ -88,9 +87,9 @@ test('设置：导入非法文件提示错误且数据不变', async () => {
   const file = new h.window.File(['not-json{'], 'bad.json', { type: 'application/json' });
   Object.defineProperty(input, 'files', { value: [file] });
   input.dispatchEvent(new h.window.Event('change', { bubbles: true }));
-  await new Promise(r => setTimeout(r, 20));
+  await waitFor(() => doc.querySelector('[data-act="yes"]'), '覆盖确认对话框应出现');
   doc.querySelector('[data-act="yes"]').click();
-  await new Promise(r => setTimeout(r, 80));
+  await waitFor(() => h.store.state.tasks.length === 1 && Array.from(h.window.document.querySelectorAll('#toastWrap .toast')).some(t => t.classList.contains('err')), '导入非法文件应报错且数据不变');
   assert.equal(h.store.state.tasks.length, 1, '导入失败不应清空数据');
   const toasts = Array.from(h.window.document.querySelectorAll('#toastWrap .toast'));
   assert.ok(toasts.some(t => t.classList.contains('err')), '应有错误提示');

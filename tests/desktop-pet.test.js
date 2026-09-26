@@ -1526,3 +1526,146 @@ test('desktop-pet: CSS barsGrow 动画定义', () => {
   const css = fs.readFileSync(path.resolve(__dirname, '../css/desktop-pet.css'), 'utf8');
   assert.ok(css.includes('@keyframes barsGrow'), 'CSS 中定义了 @keyframes barsGrow');
 });
+
+/* ============================================================
+ * 补充测试：AnimationLoop 帧率节流（data-frame 门控）
+ * 契约依据：motion.js 双保险原则——JS 侧节流 + CSS 侧覆盖
+ * ============================================================ */
+
+test('desktop-pet: AnimationLoop _tick 在 data-frame=60 下跳帧（不连续执行）', () => {
+  const { window } = boot();
+  const C = window.DesktopPetCore;
+  assert.ok(C && C.AnimationLoop, 'AnimationLoop 应暴露');
+  var doc = window.document.documentElement;
+
+  // data-frame=60：每 2 帧跑 1 次，执行次数约为总帧数的一半
+  doc.setAttribute('data-frame', '60');
+  try {
+    var loop = new C.AnimationLoop();
+    var tickCount = 0;
+    var mockPet = { _tick: function () { tickCount++; } };
+    loop.add(mockPet);
+    // 手动驱动 6 帧（模拟 6 次 rAF 回调）
+    var t = Date.now();
+    loop._tick(t);      // 第 1 帧：skip=0 → 跳过（偶数位）
+    loop._tick(t + 16); // 第 2 帧：skip=1 → 执行  tickCount=1
+    loop._tick(t + 32); // 第 3 帧：skip=0 → 跳过
+    loop._tick(t + 48); // 第 4 帧：skip=1 → 执行  tickCount=2
+    loop._tick(t + 64); // 第 5 帧：skip=0 → 跳过
+    loop._tick(t + 80); // 第 6 帧：skip=1 → 执行  tickCount=3
+    assert.strictEqual(tickCount, 3, 'data-frame=60 下 6 帧应执行 3 次（跳帧）');
+    loop.stop();
+  } finally {
+    doc.removeAttribute('data-frame');
+  }
+});
+
+test('desktop-pet: AnimationLoop _tick 在 data-frame=90 下 3 帧跑 1 次', () => {
+  const { window } = boot();
+  const C = window.DesktopPetCore;
+  assert.ok(C && C.AnimationLoop, 'AnimationLoop 应暴露');
+  var doc = window.document.documentElement;
+
+  // data-frame=90：每 3 帧跑 1 次
+  doc.setAttribute('data-frame', '90');
+  try {
+    var loop = new C.AnimationLoop();
+    var tickCount = 0;
+    var mockPet = { _tick: function () { tickCount++; } };
+    loop.add(mockPet);
+    var t = Date.now();
+    loop._tick(t);       // skip=0 → 执行  tickCount=1
+    loop._tick(t + 16);  // skip=1 → 跳过
+    loop._tick(t + 32);  // skip=2 → 跳过
+    loop._tick(t + 48);  // skip=0 → 执行  tickCount=2
+    loop._tick(t + 64);  // skip=1 → 跳过
+    loop._tick(t + 80);  // skip=2 → 跳过
+    loop._tick(t + 96);  // skip=0 → 执行  tickCount=3
+    assert.strictEqual(tickCount, 3, 'data-frame=90 下 9 帧应执行 3 次（每 3 帧跑 1 次）');
+    loop.stop();
+  } finally {
+    doc.removeAttribute('data-frame');
+  }
+});
+
+test('desktop-pet: AnimationLoop _tick 在无 data-frame 时全速运行', () => {
+  const { window } = boot();
+  const C = window.DesktopPetCore;
+  assert.ok(C && C.AnimationLoop, 'AnimationLoop 应暴露');
+  var doc = window.document.documentElement;
+  doc.removeAttribute('data-frame');
+
+  var loop = new C.AnimationLoop();
+  var tickCount = 0;
+  var mockPet = { _tick: function () { tickCount++; } };
+  loop.add(mockPet);
+  var t = Date.now();
+  loop._tick(t);
+  loop._tick(t + 16);
+  loop._tick(t + 32);
+  assert.strictEqual(tickCount, 3, '无 data-frame 时应全速执行 3 次');
+  loop.stop();
+});
+
+test('desktop-pet: AnimationLoop stop 后不再执行 _tick', () => {
+  const { window } = boot();
+  const C = window.DesktopPetCore;
+  assert.ok(C && C.AnimationLoop, 'AnimationLoop 应暴露');
+  var doc = window.document.documentElement;
+  doc.removeAttribute('data-frame');
+
+  var loop = new C.AnimationLoop();
+  var tickCount = 0;
+  var mockPet = { _tick: function () { tickCount++; } };
+  loop.add(mockPet);
+  loop.stop();
+  loop._tick(Date.now());
+  loop._tick(Date.now() + 16);
+  assert.strictEqual(tickCount, 0, 'stop 后 _tick 不应执行');
+});
+
+test('desktop-pet: AnimationLoop remove 后实例不再被 tick', () => {
+  const { window } = boot();
+  const C = window.DesktopPetCore;
+  assert.ok(C && C.AnimationLoop, 'AnimationLoop 应暴露');
+  var doc = window.document.documentElement;
+  doc.removeAttribute('data-frame');
+
+  var loop = new C.AnimationLoop();
+  var tickCount = 0;
+  var mockPet = { _tick: function () { tickCount++; } };
+  loop.add(mockPet);
+  loop.remove(mockPet);
+  loop._tick(Date.now());
+  loop._tick(Date.now() + 16);
+  assert.strictEqual(tickCount, 0, 'remove 后实例不应再被 tick');
+  loop.stop();
+});
+
+test('desktop-pet: AnimationLoop visibilitychange 暂停后恢复 dt 重置', () => {
+  const { window } = boot();
+  const C = window.DesktopPetCore;
+  assert.ok(C && C.AnimationLoop, 'AnimationLoop 应暴露');
+
+  var loop = new C.AnimationLoop();
+  var dts = [];
+  var mockPet = { _tick: function (dt) { dts.push(dt); } };
+  loop.add(mockPet);
+  loop.start();
+
+  // 模拟 visibilitychange: hidden
+  var doc = window.document;
+  Object.defineProperty(doc, 'hidden', { value: true, writable: true, configurable: true });
+  doc.dispatchEvent(new window.Event('visibilitychange'));
+
+  // 应该已经停止
+  assert.strictEqual(loop._running, false, 'hidden 后 _running 应为 false');
+
+  // 模拟 visibilitychange: visible
+  Object.defineProperty(doc, 'hidden', { value: false, writable: true, configurable: true });
+  doc.dispatchEvent(new window.Event('visibilitychange'));
+  assert.strictEqual(loop._running, true, 'visible 后 _running 应为 true');
+  assert.strictEqual(loop._last, 0, '恢复后 _last 应重置为 0（dt 不从隐藏期计算）');
+
+  loop.stop();
+});
