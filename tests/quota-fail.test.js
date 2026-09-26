@@ -5,10 +5,9 @@
 const { test } = require('node:test');
 const assert = require('node:assert');
 const { IDBFactory, IDBKeyRange } = require('fake-indexeddb');
-const { boot } = require('./harness.js');
+const { boot, waitFor } = require('./harness.js');
 
 const withIdb = f => ({ idb: f, idbKeyRange: IDBKeyRange });
-const wait = ms => new Promise(r => setTimeout(r, ms));
 
 function quotaErr(name, msg) {
   const e = new Error(msg || name);
@@ -42,13 +41,13 @@ test('持久化危机：localStorage 写满（QuotaExceededError）且无 IDB �
   const h = boot(); /* 无 IDB 环境 */
   h.store._storage = flaky(h.window.localStorage, 1);
   h.store.addMemo('一条备忘'); /* 触发 save → idle flush 写失败 */
-  await wait(60);
+  await waitFor(() => h.store.hasPersistIssue() === true, 'LS 写失败且无 IDB 兜底应报危机');
   assert.equal(h.store.hasPersistIssue(), true, 'LS 写失败且无 IDB 兜底应报危机');
   assert.ok(h.store.persistIssueDetail(), '应保留最近一次错误对象供诊断');
 
   h.store._storage = h.window.localStorage; /* 存储恢复（模拟清理出空间） */
   h.store.addMemo('恢复后的备忘');
-  await wait(60);
+  await waitFor(() => h.store.hasPersistIssue() === false, '再次写成功应自动解除危机');
   assert.equal(h.store.hasPersistIssue(), false, '再次写成功应自动解除危机');
 });
 
@@ -57,7 +56,7 @@ test('持久化危机：LS 写失败但 IDB 兜底可用 → 不报告危机，�
   const h = boot(withIdb(f));
   h.store._storage = flaky(h.window.localStorage, 999); /* LS 持续写失败 */
   h.store.addMemo('双写中的备忘');
-  await wait(80);
+  await waitFor(() => h.store.hasPersistIssue() === false, 'IDB 兜底成功不应报危机');
   assert.equal(h.store.hasPersistIssue(), false, 'IDB 兜底成功不应报危机');
 
   const h2 = boot(withIdb(f)); /* 全新 localStorage，仅靠 IDB */
@@ -70,13 +69,14 @@ test('持久化危机：LS 与 IDB 同时失败 = 危机，IDB 恢复后自动�
   const h = boot(withIdb(f));
   h.store._storage = flaky(h.window.localStorage, 999);
   h.store.addMemo('危险数据');
-  await wait(60);
+  await waitFor(() => h.store.hasPersistIssue() === false, '仅 LS 失败、IDB 正常时不报危机');
   assert.equal(h.store.hasPersistIssue(), false, '仅 LS 失败、IDB 正常时不报危机');
   h.store._idbFailed = true; /* 模拟 IDB 侧进入失败（存储分区/配额） */
   assert.equal(h.store.hasPersistIssue(), true, '双失败应报危机');
 
   h.store.addMemo('又一条'); /* 新写入：IDB 侧成功 → 失败标记复位 */
-  await wait(60);
+  await waitFor(() => h.store._idbFailed === false, 'IDB 写入成功后应复位失败标记');
+  await waitFor(() => h.store.hasPersistIssue() === false, 'IDB 恢复后危机应解除');
   assert.equal(h.store._idbFailed, false, 'IDB 写入成功后应复位失败标记');
   assert.equal(h.store.hasPersistIssue(), false, 'IDB 恢复后危机应解除');
 });
@@ -85,7 +85,7 @@ test('持久化危机：Firefox 风格 NS_ERROR_DOM_QUOTA_REACHED 同样识别',
   const h = boot();
   h.store._storage = flakyName(h.window.localStorage, quotaErr('NS_ERROR_DOM_QUOTA_REACHED', 'Persistent storage maximum size reached'));
   h.store.addMemo('x');
-  await wait(60);
+  await waitFor(() => h.store.hasPersistIssue() === true, 'Firefox 配额错误同样触发危机');
   assert.equal(h.store.hasPersistIssue(), true, 'Firefox 配额错误同样触发危机');
 });
 
@@ -96,7 +96,7 @@ test('警示条：写入失败显示危机提示（红色/导出优先/迁移隐
 
   h.store._storage = flaky(h.window.localStorage, 999);
   h.store.addMemo('触发失败');
-  await wait(60);
+  await waitFor(() => h.store.hasPersistIssue() === true, '写入失败应报危机');
   h.goto('settings'); /* 触发 app.render → quotaCheck */
 
   const bar = h.$('#quotaBar');
@@ -117,7 +117,7 @@ test('警示条：写入失败显示危机提示（红色/导出优先/迁移隐
 
   h.store._storage = h.window.localStorage; /* 存储恢复 */
   h.store.addMemo('恢复');
-  await wait(60);
+  await waitFor(() => h.store.hasPersistIssue() === false, '恢复后危机应解除');
   h.goto('home');
   const bar2 = h.$('#quotaBar');
   assert.equal(bar2.hidden, true, '恢复后警示消失');

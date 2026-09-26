@@ -4,7 +4,6 @@
 const { test } = require('node:test');
 const assert = require('node:assert');
 const { boot, waitFor } = require('./harness.js');
-const wait = ms => new Promise(r => setTimeout(r, ms));
 
 function clickAt(window, node, x, y) {
   node.dispatchEvent(new window.MouseEvent('click', {
@@ -98,8 +97,8 @@ test('总线联动：SonderBus 数据变更重绘后数字重新滚数（空窗�
   const h = boot();
   h.goto('home');
   const gameNum = () => h.window.document.querySelector('.module-card[data-go="game"] .module-stat-num');
-  /* goto 触发一次滚数噪音，等其完成 */
-  await wait(200);
+  /* goto 触发一次滚数噪音，等其稳定到 0（避免固定 sleep 在慢机器上竞态） */
+  await waitFor(() => gameNum() && gameNum().textContent === '0', '初始游戏统计应稳定为 0');
   assert.equal(gameNum().textContent, '0', '初始游戏统计为 0，实际: ' + gameNum().textContent);
   /* 模拟总线联动场景：store 数据变更后，home.js 的 /data/* 订阅触发重绘，
    * afterRender 补滚数动画（测试中直接调用以避开 jsdom hashchange 不稳定问题）。
@@ -110,6 +109,6 @@ test('总线联动：SonderBus 数据变更重绘后数字重新滚数（空窗�
   h.window.dispatchEvent(new h.window.HashChangeEvent('hashchange'));
   h.goto('home');
   h.window.dispatchEvent(new h.window.HashChangeEvent('hashchange'));
-  await wait(300);
+  await waitFor(() => gameNum() && gameNum().textContent === '1', '总线联动后数字应滚至 1');
   assert.equal(gameNum().textContent, '1', '总线联动后数字应滚至 1，实际: ' + gameNum().textContent);
 });
