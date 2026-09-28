@@ -1,7 +1,7 @@
 # Personal Work & Life App · Product Requirements Document (PRD)
 
-> Version: v6.3.2
-> Status: v6.3.2 is the latest released version (see CHANGELOG)
+> Version: v6.3.4
+> Status: v6.3.4 is the latest released version (see CHANGELOG)
 > Online:
 >
 > Main site (GitHub Pages, auto-deployed on push to main):
@@ -41,6 +41,8 @@ Historical records, kept in Chinese. See the Chinese `PRD.md`.
 | **v6.1** | 深度审查修复（10 项）：C-1 lint 补盲区（js 子目录 + .mjs 纳入检查）+ C-2 ESLint 8→9 迁移（flat config 等价，删除废弃 .eslintrc.json）+ C-4 memo 存储键统一（sonder_data_v1）+ C-7 自定义壁纸迁入 IndexedDB（释放 5MB LS 配额，旧数据自动迁移/降级）+ C-8 加密密码下限 4→6 位 + T-1 CI E2E 三端化 + U-1 Toast 无障碍（aria-live/role）+ U-2 导入覆盖确认按钮语义一致 + 测试稳定性根治（--test-force-exit + 超时 60s）+ 文档同步；测试基线 696 → 704 项 |
 | **v6.2** | 「液态玻璃 × 水墨」视觉深化（方向 C，大胆幅度）+ 2 项 UX 修复：①主题切换/壁纸操作生产环境弹"页面发生错误"横幅（applyTheme/applyWallpaper 误置测试门闩，移入常驻 hooks）；②壳层宣纸纹理（SVG 灰度纸粒+纵横纤维+纸角泛黄）与墨黑山水颗粒（双频墨粒+顶部微亮/底部压暗）；③玻璃卡片液态厚度精修（底部内影+顶部内发光+高光白芯，浅深分强度）；④水墨交互（hover 墨晕环+点击墨压+标题笔触线）；⑤动效统一（墨晕过渡/浮现走 --ease-ink）；全部视觉改动隔离于新增 css/style-glass-ink.css 可整体回滚；测试基线 706 项 + E2E 30 项全绿 |
 | **v6.3** | v6.x 架构升级（Repository 分层 + Domain 规则层 + store 职责拆分，Phase 1-7）：新增 js/repositories/ 9 个薄包装 Repository（task/book/dev/settings/clients/games/memos/news/design，统一 get/getAll/create/update/remove，行为与直调 Store 一致含 commit/事件/undo）+ js/domain/task-domain.js（任务完成/重开语义纯函数）+ store.js 按职责拆出 store-undo/store-persistence/store-migration/store-import-export（1831 → 约 1090 行，写锁收口 ADR-013 落于 store-persistence）+ 页面迁移（today/home/memos/news/designs/dev/reading/settings/consulting/games 分批经 Repository 边界）+ UX 修复（自媒体/新闻状态下拉中文化、移动端日期时间、顶部时钟秒级跳动）+ 文档体系对齐（新建 docs/ARCHITECTURE.md）；测试基线 706 → 770 项 |
+| **v6.3.4** | Code-review fix list P2 (no functional changes): unused timer variables cleaned up in desktop-pet.js (ESLint `no-unused-vars` down to zero) + doc sync; test baseline 776 all green |
+| **v6.3.3** | Performance & code quality (no functional changes): desktop-pet AnimationLoop frame throttling (60/90/120 tiers) + 200ms global-search debounce + deepClone via structuredClone (cyclic refs/Date/Blob support) + magic numbers extracted to named constants + console.error funneled through error-guard reporting + 6 desktop-pet tests; test baseline 770 → 776 |
 | **v6.3.2** | Security infrastructure consolidation (no functional changes): main branch protection (required checks + strict + enforce_admins + no force-push/delete + linear history) + Test Gate pull_request trigger + Dependabot routine upgrades disabled (alerts & security updates kept) + redundant socket.yml removed (Socket App owns supply-chain scanning) + scanning pipeline consolidated (CodeQL / Semgrep / OSV-Scanner / Socket / Dependabot alerts) + README acknowledgments table for security scanners; test baseline 770 all green |
 | **v6.3.1** | Docs & security scanning (no functional changes): README badge overhaul (static version → dynamic release badge + last-commit + CI + tests-770) + third-party automated review phase 1 (CodeQL scan + Dependabot weekly + npm audit gate in Test Gate; 0 known dependency vulnerabilities) |
 
@@ -112,7 +114,7 @@ Sidebar
   - Gomoku board ≤720px: width `min(97vw,480px)`, 2px cell gap, 8px padding, square cells, 86% stone fill; further compressed ≤360px; never overflows horizontally (covers iPhone SE)
   - Minesweeper on phones: width `max(100%, cols×26px)` in a horizontal-scroll container, cells ≥26px touch size
   - Safe area `env(safe-area-inset-bottom)`, `100vh→100dvh` fallback (old iOS/Android), touch targets ≥44px, 16px inputs prevent iOS zoom-on-focus, `color-scheme` synced for forms and scrollbars
-- **PWA friendly**: `viewport-fit=cover` + `apple-mobile-web-app-capable`, installable as an App; Service Worker offline cache (current cache version sonder-v123, `npm run sync-sw` syncs the asset list and bumps the version); navigation requests network-first (refresh gets the new version, offline falls back to cached home), static assets cache-first.
+- **PWA friendly**: `viewport-fit=cover` + `apple-mobile-web-app-capable`, installable as an App; Service Worker offline cache (current cache version sonder-v125, `npm run sync-sw` syncs the asset list and bumps the version); navigation requests network-first (refresh gets the new version, offline falls back to cached home), static assets cache-first.
 
 ---
 
@@ -240,9 +242,9 @@ Sidebar
 9. Six games: Tic-tac-toe / Gomoku (AI 3 levels / 2-player, undo/resign/new-game confirm flow, full rule regression locked) + Guess the Number / Minesweeper / Guess the Idiom / Brain Teasers (records merged into battle records, incl. solo mode & notes, AI difficulty shown; mini-game best records unified).
 10. Data & Settings: export/import/stats (completion denominator = today's due tasks)/clear records/theme/module toggles/frame rate (60/90/120)/data migration (IndexedDB)/encryption (wizard+lock+password-free session+resilience)/desktop notifications/weekly report one-click copy/wallpaper upload.
 11. Unified interaction: modal rules, double-confirm, Esc close, Toast, stacked-dialog prevention, overlay focus management (set/trap/restore).
-12. Reliability: PWA offline (cache sonder-v123 auto-sync; network-first navigation, refresh gets new version), dual-write dual-store (per-collection keys), >4.5MB storage warning bar, red crisis bar with forced export when both write backends fail, XSS sanitization across modules (incl. attribute injection & form key escaping), optional encryption, performance (per-collection incremental serialization/search index cache/AI pruning/derived-key cache), error reporting & shell fallback.
+12. Reliability: PWA offline (cache sonder-v125 auto-sync; network-first navigation, refresh gets new version), dual-write dual-store (per-collection keys), >4.5MB storage warning bar, red crisis bar with forced export when both write backends fail, XSS sanitization across modules (incl. attribute injection & form key escaping), optional encryption, performance (per-collection incremental serialization/search index cache/AI pruning/derived-key cache), error reporting & shell fallback.
 13. Engineering: eslint passing, zero-build type contracts (d.ts + tsc), innerHTML assignment-point whitelist audit, state dual-track contract, store domain split (10 domain files) + Repository data boundary + Domain rule layer, index.html as the single script source of truth.
-14. **770 automated tests passing** (full-suite verification across versions).
+14. **776 automated tests passing** (full-suite verification across versions).
 
 ---
 
@@ -274,7 +276,7 @@ Sidebar
 14. Export JSON → modify data → import restore → data matches the export (overwrite warning shown before import).
 15. Persistence: any data entry survives refresh, tab close, and browser restart.
 16. Works via phone external links and offline local index.html; data stays in the local browser only.
-17. Engineering acceptance: `npm test` (770), `npm run typecheck`, `npm run lint` all pass.
+17. Engineering acceptance: `npm test` (776), `npm run typecheck`, `npm run lint` all pass.
 
 ---
 
@@ -290,10 +292,10 @@ Sidebar
   - Games: `games-logic.js` (pure game rules & 3-level AI: tic-tac-toe full search, gomoku heuristic scoring + hard-level lookahead; guess-number/minesweeper/idiom/brain-teaser rules & question bank) + `games-shared.js` (shared state & AI scheduling, must load first) + `games-mini.js` (mini-game views & records) + `games-battle.js` (battle views, undo/resign/new-game/records, AI move pacing & worker scheduling) + `games-view.js` (render pure functions) + `games.js` (page orchestration: render dispatch/game select/records/test hooks) + `game-worker.js` (Gomoku AI Web Worker, async non-blocking; falls back to sync when Worker unavailable; stale replies discarded)
   - Search: `search.js` (global index + cache, fuzzy match, grouped jump, ink highlight)
   - Extended rendering: `markdown.js` (tech-note Markdown rendering & code copy)
-  - Shell: `app.js` (routing/theme-follow/frame-rate/warning bar/crisis bar/nav fallback/offline indicator), `error-guard.js` (global error net & reporting), `sw.js` (Service Worker offline cache, current sonder-v123, auto-synced by script; navigation network-first), `manifest.json` (PWA manifest & icons)
+  - Shell: `app.js` (routing/theme-follow/frame-rate/warning bar/crisis bar/nav fallback/offline indicator), `error-guard.js` (global error net & reporting), `sw.js` (Service Worker offline cache, current sonder-v125, auto-synced by script; navigation network-first), `manifest.json` (PWA manifest & icons)
   - Types: `globals.d.ts` (Pages/SonderStore public methods/UI globals + Repository/Domain/domain-type contracts, 80+ type interfaces)
 - **Theme system**: CSS custom properties + light/dark dual themes; `@supports` degrades frosted glass on unsupported browsers; wallpaper as independent img element + `object-fit: cover` + opacity variable; text/accent tokens meet WCAG AA.
 - **Data compatibility**: field normalization on read (defaults for missing, clamping for invalid + 9 legacy field migrations), smooth migration of historical data; IndexedDB & localStorage dual-write, newest-by-save-time on conflict; encryption switch fully backward compatible (no-op when off); future ciphertext versions preserved verbatim.
 - **Mobile board details**: 15-column board uses grid; `.game-board.big` compresses gaps/padding at the phone breakpoint with `min-height: 0` square cells; width `min(97vw, 480px)` never overflows; minesweeper `max(100%, cols×26px)` + horizontal scroll keeps cells ≥26px; board cells are intrinsic game hot zones (whole board must stay visible), all other UI touch targets ≥44px.
 - **Engineering defense**: eslint (no un-commented empty catch), zero-build TypeScript checking (JSDoc + tsc --noEmit), innerHTML assignment-point whitelist audit (12 manual entries, rest cleared or escaped), contract tests (contract/behavior/state/innerhtml/type-sync), index.html as single script source of truth (parsed by harness), `scripts/sync-sw.js` auto-syncs SW asset list & bumps cache version.
-- **Automated tests**: jsdom + `node --test` (glob full suite) + fake-indexeddb; covering storage, encryption (races/edges/future-version resilience/derived cache), per-collection persistence (per-key read-write/migration/backfill/encrypted bundle), write-lock yield protocol (ADR-013/014), Repository boundaries, Domain rules, UI, all modules, styles, motion, wallpaper, mobile auto-adaptation, performance, game engine (win detection/forbidden-move/AI strategy/six games/Worker behavior), interaction regression (dialog stacking, undo semantics, end-game locking, board compression), PWA, search, offline indicator, XSS sanitization (incl. attribute injection), IndexedDB dual-write & quota warning, persistence crisis fallback, notifications, contrast, CSS-variable contract, weekly report — currently **770 passing** (`npm test`).
+- **Automated tests**: jsdom + `node --test` (glob full suite) + fake-indexeddb; covering storage, encryption (races/edges/future-version resilience/derived cache), per-collection persistence (per-key read-write/migration/backfill/encrypted bundle), write-lock yield protocol (ADR-013/014), Repository boundaries, Domain rules, UI, all modules, styles, motion, wallpaper, mobile auto-adaptation, performance, game engine (win detection/forbidden-move/AI strategy/six games/Worker behavior), interaction regression (dialog stacking, undo semantics, end-game locking, board compression), PWA, search, offline indicator, XSS sanitization (incl. attribute injection), IndexedDB dual-write & quota warning, persistence crisis fallback, notifications, contrast, CSS-variable contract, weekly report — currently **776 passing** (`npm test`).
