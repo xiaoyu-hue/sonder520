@@ -958,7 +958,7 @@
         s.style.left = (20 + Math.random() * 60) + '%';
         s.style.top = (30 + Math.random() * 40) + '%';
         el.appendChild(s);
-        var sparkleTimer = fxTimer(self, function () { if (s.parentNode) s.parentNode.removeChild(s); }, 700);
+        fxTimer(self, function () { if (s.parentNode) s.parentNode.removeChild(s); }, 700);
       })(i);
     }
   };
@@ -972,7 +972,7 @@
     t.className = 'dp-fx-coin';
     t.textContent = '+' + amount;
     el.appendChild(t);
-    var fxTimer2 = fxTimer(this, function () { if (t.parentNode) t.parentNode.removeChild(t); }, 850);
+    fxTimer(this, function () { if (t.parentNode) t.parentNode.removeChild(t); }, 850);
   };
 
   /** 成就解锁光环：角色外框脉冲发光 */
@@ -982,7 +982,7 @@
     if (!el) return;
     var self3 = this;
     el.classList.add('dp-fx-glow');
-    var fxTimer3 = fxTimer(this, function () { if (!self3._destroyed && el) el.classList.remove('dp-fx-glow'); }, 950);
+    fxTimer(this, function () { if (!self3._destroyed && el) el.classList.remove('dp-fx-glow'); }, 950);
   };
 
   /** 互动爱心飘散：在角色周围创建 3 颗爱心 */
@@ -1003,7 +1003,7 @@
         h.style.fontSize = (10 + Math.random() * 5) + 'px';
         h.style.color = ['#ff6b8a', '#ff4757', '#e84393'][idx % 3];
         el.appendChild(h);
-        var fxTimer4 = fxTimer(self4, function () { if (h.parentNode) h.parentNode.removeChild(h); }, 700);
+        fxTimer(self4, function () { if (h.parentNode) h.parentNode.removeChild(h); }, 700);
       })(i);
     }
   };
@@ -1205,7 +1205,7 @@
     drawEyeShape(this.eyeR, 'closed', 'right', 0.08);
     this.el.classList.add('dp-eyes-closed');
     var self = this;
-    var restoreTimer = fxTimer(this, function () {
+    fxTimer(this, function () {
       if (!self.el || self._destroyed) return;
       self.el.classList.remove('dp-eyes-closed');
       /* 恢复当前情绪的眼睛形状 */
