@@ -3,6 +3,18 @@
 本项目所有重要变更均记录于此。格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循语义化版本（SemVer）。完整版本演进另见 [PRD.md](docs/PRD.md) 的版本历史表。
 
+## [v6.3.4] - 2026-09-28（代码审查修复清单 P2）
+
+### 🐛 Bug 修复
+
+- **未使用变量清理**：移除 `desktop-pet.js` 中 5 个未使用的定时器变量（`sparkleTimer`、`fxTimer2`、`fxTimer3`、`fxTimer4`、`restoreTimer`），修复 ESLint `no-unused-vars` 警告
+
+### 🧪 测试
+
+- 全量测试：776 个用例全部通过（无变化）
+
+---
+
 ## [v6.3.3] - 2026-09-23（性能优化与代码质量）
 
 ### ⚡ 性能

@@ -19,7 +19,7 @@
 ![PWA](https://img.shields.io/badge/PWA-Support-green)
 ![Zero-Dependency](https://img.shields.io/badge/Zero-Dependency-6B728C)
 ![CI](https://github.com/xiaoyu-hue/sonder520/actions/workflows/deploy.yml/badge.svg)
-![Tests](https://img.shields.io/badge/tests-770_passing-2ea44f?style=flat)
+![Tests](https://img.shields.io/badge/tests-776_passing-2ea44f?style=flat)
 
 </div>
 
@@ -42,7 +42,7 @@
 | 🎨 **水墨风格** | 宣纸/墨黑双主题，液态玻璃卡片设计 |
 | 📱 **浏览器内三端响应式** | 桌面/平板/手机三端响应式布局，PWA 离线可用 |
 | 🎮 **内置游戏** | 井字棋、五子棋、扫雷等 6 款迷你游戏 |
-| 🧪 **测试覆盖** | 772 项测试通过（单元测试 + 契约测试 + 集成测试 + E2E） |
+| 🧪 **测试覆盖** | 776 项测试通过（单元测试 + 契约测试 + 集成测试 + E2E） |
 
 ### 🔐 数据与隐私
 
@@ -123,7 +123,7 @@ IDB (主存储) + localStorage (副本) + Crypto (加密)
 
 ### 质量保障
 
-- ✅ **772 项测试**通过（单元测试 + 契约测试 + 集成测试 + E2E）
+- ✅ **776 项测试**通过（单元测试 + 契约测试 + 集成测试 + E2E）
 - ✅ **零构建**类型检查（JSDoc + TypeScript）
 - ✅ **ESLint** 代码规范
 - ✅ **14 份 ADR** 架构决策记录
