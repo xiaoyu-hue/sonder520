@@ -94,7 +94,7 @@
 
 - **10 页面**：`home / today / memo / selfmedia / dev / consulting / reading / news / design / settings`，经 ModuleFactory 标准模块协议（memos/news/designs 走 Repository 包装）。
 - **扩展**：`desktop-pet-*.js`（小莫灵家族：数据/逻辑/页面）、`games-*.js`（六款游戏：logic/shared/view/mini/battle/page）+ `game-worker.js`（五子棋 AI Worker）。
-- **壳层**：`app.js`（路由/主题/帧率/警示条/离线指示）、`error-guard.js`（错误上报）、`search.js`（全局搜索）、`quotes.js`（每日金句）、`markdown.js`、`motion.js`（微动效）、`sw-register.js` + `sw.js`（PWA 离线，缓存版本 `sonder-v123`，`npm run sync-sw` 自动同步）。
+- **壳层**：`app.js`（路由/主题/帧率/警示条/离线指示）、`error-guard.js`（错误上报）、`search.js`（全局搜索）、`quotes.js`（每日金句）、`markdown.js`、`motion.js`（微动效）、`sw-register.js` + `sw.js`（PWA 离线，缓存版本 `sonder-v125`，`npm run sync-sw` 自动同步）。
 - **ui.js**：弹窗/Toast/表单 + 统一 sanitize 净化（XSS 防线，`selectValues` 支持 `{value,label}` 对象选项）。
 
 ## 6. 关键加载顺序（index.html，51 个脚本）
