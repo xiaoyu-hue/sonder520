@@ -157,6 +157,26 @@ v6.3.4 - SECURITY.md 添加
 3. **每个版本只打一个 tag**：不要在多个 commit 上打同一个 tag
 4. **清理混乱的旧 tag**：删除前确认指向正确的 commit
 
+## 文档提交规则（重要）
+
+**以下文档禁止推送到 GitHub：**
+- 审查报告（COMPREHENSIVE_REVIEW.md, CODE_REVIEW.md 等）
+- 计划方案（IMPLEMENTATION_PLAN.md, THEME_SYNC_PLAN.md 等）
+- 工作总结（FIX_SUMMARY.md, THEME_SYNC_COMPLETE.md 等）
+- 临时文档（*.tmp, *.temp 等）
+
+**可以推送的文档：**
+- CHANGELOG.md / CHANGELOG.en.md
+- README.md / README.en.md
+- ARCHITECTURE.md / ARCHITECTURE.en.md
+- PRD.md / PRD.en.md
+- TESTING.md
+- API.md / API.en.md
+- GLOBAL.md
+- LICENSE, CODE_OF_CONDUCT, CONTRIBUTING 等标准文档
+
+**原因**：审查报告和计划方案是内部工作文档，推送会污染仓库。
+
 ## 特殊说明
 
 - 本项目已有多份完整文档（CHANGELOG, CODE_OF_CONDUCT, CONTRIBUTING, SECURITY）
