@@ -286,7 +286,14 @@ Welcome! Please read [CODE_OF_CONDUCT.en.md](CODE_OF_CONDUCT.en.md) and [AGENTS.
 
 ## 📄 License
 
-This project uses the [MIT License](LICENSE) — free to use, modify, and distribute.
+This project uses a **split licensing** structure:
+
+| Part | License |
+|------|---------|
+| Source code (`js/`, `css/`, `scripts/`, `tests/`, `e2e/`, build & config) | [MIT](LICENSE) — free to use, modify, and commercialize, provided the copyright notice is retained |
+| Documentation (the markdown files under `docs/`, plus this README) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) — free to use and commercialize, with attribution to xiaoyu-hue |
+
+> **Why split?** MIT is designed for software: it permits unrestricted commercial use and does not require attribution. That is fine for code, but for original written documentation the author prefers to keep the attribution requirement. So the code stays MIT while the docs use CC BY 4.0 (also commercially usable, only attribution required).
 
 ---
 
