@@ -45,7 +45,27 @@ npm run build
 
 # 2. 确认文档已同步（见 docs/DOC_SYNC.md）
 
-# 3. 打 tag（格式：vMAJOR.MINOR.PATCH，指向功能 commit）
+# 3. 推送代码（⚠️ main 已开启分支保护，禁止直推）
+
+# ❌ 错误做法（会报 GH006: Protected branch update failed）：
+#    git push origin main --tags
+#
+# ✅ 正确做法：推特性分支 → 建 PR → 等检查通过 → 合并
+git remote set-url origin "https://${GITHUBTOKEN}@github.com/xiaoyu-hue/sonder520.git"
+git checkout -b <type>/<简短描述>      # 如 fix/osv-brace-expansion
+git push origin <type>/<简短描述>
+
+# 然后在 GitHub 网页建 PR（token 权限不含 pull_requests:write，无法用 API 建）
+#   https://github.com/xiaoyu-hue/sonder520/pull/new/<分支名>
+# 等待 3 项必需检查全部变绿：
+#   - Scan (security-audit + owasp-top-ten)
+#   - Test / Typecheck / Lint
+#   - Analyze (javascript)
+# 全绿后点 Merge pull request（无需他人批准，required_approving_review_count = 0）
+# 合并后删掉远程特性分支：
+git push origin --delete <type>/<简短描述>
+
+# 4. 打 tag 并推送（tag 不受分支保护限制，可直接推；必须指向已合并的提交）
 git tag -a vX.Y.Z <commit-hash> -m "vX.Y.Z: 一句话摘要
 
 ## feat
@@ -63,9 +83,7 @@ git tag -a vX.Y.Z <commit-hash> -m "vX.Y.Z: 一句话摘要
 ## breaking
 - 无（完全向后兼容）"
 
-# 4. 推送（用环境变量 GITHUBTOKEN）
-git remote set-url origin "https://${GITHUBTOKEN}@github.com/xiaoyu-hue/sonder520.git"
-git push origin main --tags
+git push origin vX.Y.Z
 
 # 5. 创建 GitHub Release（API，非 git tag）
 curl -s -X POST -H "Authorization: token ${GITHUBTOKEN}" \
@@ -79,6 +97,20 @@ curl -s -X POST -H "Authorization: token ${GITHUBTOKEN}" \
     "prerelease": false
   }'
 ```
+
+### ⚠️ main 分支保护规则（2026-10-02 起）
+
+| 规则 | 配置 | 影响 |
+|------|------|------|
+| 必须走 PR | 开启 | `git push origin main` 会被拒绝（GH006） |
+| 必需状态检查 | 3 项 | 检查未全绿时 Merge 按钮不可点 |
+| 必需批准数 | 0 | **不需要他人审批**，检查通过即可自己合并 |
+| 生效范围 | everyone | **对管理员也生效**，无绕过通道 |
+
+**3 项必需检查**：`Scan (security-audit + owasp-top-ten)`、`Test / Typecheck / Lint`、`Analyze (javascript)`
+
+> **注意**：Git tag **不受**分支保护约束，`git push origin vX.Y.Z` 可直接推送。
+
 
 ### 版本格式规范
 
