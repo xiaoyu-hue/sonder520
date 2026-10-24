@@ -183,7 +183,9 @@ IDB (主存储) + localStorage (副本) + Crypto (加密)
 
 ### 在线使用（推荐）
 
-访问 https://xiaoyu-hue.github.io/sonder520/ 立即使用，无需安装。
+访问
+https://sonder520.pages.dev/
+立即使用，无需安装。
 
 ### 本地运行
 
