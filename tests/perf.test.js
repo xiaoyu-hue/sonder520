@@ -75,7 +75,7 @@ test('性能：搜索索引按 _rev 缓存，重复查询不重建', async () =>
     seed: {
       version: 1, settings: { modules: {} },
       tasks: [{ id: 't1', title: '缓存实验', note: '', date: '', priority: '低', done: false }],
-      memos: [], posts: [], devProjects: [], clients: [], books: [], news: [], designs: [], gameRecords: []
+      memos: [], posts: [], devProjects: [], clients: [], books: [], news: [], designs: []
     }
   });
   const input = h.$('#globalSearch');

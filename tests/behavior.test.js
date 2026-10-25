@@ -181,7 +181,7 @@ test('normalize: 旧数据缺数组字段自动补默认，首页 summarize 与�
     news: [{ id: 'n1', title: '旧新闻' }],
     devProjects: [{ id: 'd1', name: '旧项目' }],
     designs: [{ id: 'x1', type: 'idea' }],
-    books: [], excerpts: [], gameRecords: []
+    books: [], excerpts: []
   };
   const { store, goto } = boot({ seed });
   assert.doesNotThrow(() => store.summarize(), '旧数据 summarize 不得崩溃');

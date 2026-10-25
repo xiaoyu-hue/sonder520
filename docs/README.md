@@ -48,6 +48,10 @@
 
 AI Agent 协作过程中的历史计划与设计文档存档，保持原样不改动。
 
+- [specs/](./superpowers/specs/)：历史设计规格（含三端适配与质量设计）
+- [reviews/](./superpowers/reviews/)：历史代码审查报告
+  - [REVIEW_REPORT-2026-09-23.md](./superpowers/reviews/REVIEW_REPORT-2026-09-23.md)：2026-09-23 综合审查快照（历史状态，不代表当前代码）
+
 ---
 
-**维护约定：** 新增文档请按类别放入对应子文件夹（决策 → adr/，方案 → plans/，规格 → specs/），并在本索引补一行。
+**维护约定：** 新增文档请按类别放入对应子文件夹（决策 → adr/，方案 → plans/，规格 → specs/，审查 → superpowers/reviews/），并在本索引补一行。

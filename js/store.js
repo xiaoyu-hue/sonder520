@@ -59,9 +59,9 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
   var COLL_PREFIX = 'sonder_col_';
   var COLL_SUFFIX = '_v1';
   function colLsKey(id) { return COLL_PREFIX + id + COLL_SUFFIX; }
-  /* 核心集合（defaultState 固定 14 项）；工厂模块集合经 _registerCollection 动态并入 */
+  /* 核心集合（defaultState 固定 12 项）；工厂模块集合经 _registerCollection 动态并入 */
   var CORE_COLLECTIONS = ['settings', 'memos', 'tasks', 'posts', 'devProjects', 'devNotes',
-    'devSnippets', 'clients', 'books', 'excerpts', 'news', 'designs', 'gameRecords', 'miniRecords'];
+    'devSnippets', 'clients', 'books', 'excerpts', 'news', 'designs'];
   var COLLECTIONS = CORE_COLLECTIONS.slice();
   /* settings 集合的序列化形态：{version, settings}（版本号随 settings 走，不单独立 key） */
   function colPayload(state, col) {

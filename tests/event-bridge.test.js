@@ -37,7 +37,7 @@ test('EVENT：data 生成器与 /data/<集合> 字面量等价（string/number k
   assert.equal(B.EVENT.data('memos'), '/data/memos');
   assert.equal(B.EVENT.data('tasks'), '/data/tasks');
   assert.equal(B.EVENT.data('devProjects'), '/data/devProjects');
-  assert.equal(B.EVENT.data('miniRecords'), '/data/miniRecords');
+  assert.equal(B.EVENT.data('designs'), '/data/designs');
   assert.equal(B.EVENT.data(7), '/data/7');
   assert.equal(B.EVENT.data(''), '/data/');
 });
