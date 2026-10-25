@@ -40,7 +40,7 @@ test('真源反转：savedAt 同刻平局 → IDB 版本胜出', async () => {
   const lsMap = granularLS({ memos: seed.memos }, TIE);
   /* 补齐其余集合空串，防 _readLocalColsRaw 视角缺 key */
   ['settings', 'tasks', 'posts', 'devProjects', 'devNotes', 'devSnippets', 'clients',
-    'books', 'excerpts', 'news', 'designs', 'gameRecords', 'miniRecords']
+    'books', 'excerpts', 'news', 'designs']
     .forEach(k => { if (!(COL(k) in lsMap)) lsMap[COL(k)] = k === 'settings' ? JSON.stringify({ version: 1, settings: {} }) : '[]'; });
 
   const h2 = boot({ idb: f, idbKeyRange: IDBKeyRange, rawLS: lsMap });
@@ -63,7 +63,7 @@ test('真源反转：LS 严格较新仍由 LS 接管', async () => {
   seed.memos = [{ id: 'ls-new', text: 'LS新', time: '', archived: false }];
   const lsMap = granularLS({ memos: seed.memos }, '2999-01-01T00:00:00.000Z');
   ['settings', 'tasks', 'posts', 'devProjects', 'devNotes', 'devSnippets', 'clients',
-    'books', 'excerpts', 'news', 'designs', 'gameRecords', 'miniRecords']
+    'books', 'excerpts', 'news', 'designs']
     .forEach(k => { if (!(COL(k) in lsMap)) lsMap[COL(k)] = k === 'settings' ? JSON.stringify({ version: 1, settings: {} }) : '[]'; });
 
   const h2 = boot({ idb: f, idbKeyRange: IDBKeyRange, rawLS: lsMap });

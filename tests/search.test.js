@@ -22,8 +22,7 @@ function seed() {
     clients: [{ id: 'c1', name: '水墨工坊', contact: '', note: '', projects: [], followups: [], income: [] }],
     books: [{ id: 'b1', title: '水墨画入门', author: '周某', status: 'reading', progress: 30, notes: [] }],
     news: [{ id: 'n1', title: '水墨动画新作发布', url: '', source: '设计周刊', tags: [], status: 'unread', time: '' }],
-    designs: [{ id: 'x1', type: 'idea', title: '水墨动效灵感', link: '', category: '动效', note: '', stage: '', time: '' }],
-    gameRecords: []
+    designs: [{ id: 'x1', type: 'idea', title: '水墨动效灵感', link: '', category: '动效', note: '', stage: '', time: '' }]
   };
 }
 

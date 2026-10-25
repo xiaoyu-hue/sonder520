@@ -20,8 +20,7 @@ function seedXss() {
       id: 'n1', title: '新闻标题<script>x</script>', url: 'javascript:alert(9)', source: '来源<i>', tags: [],
       status: 'unread', time: ''
     }],
-    designs: [{ id: 'x1', type: 'idea', title: '灵感"双重引号"', link: 'data:text/html,<script>alert(10)</script>', category: '', note: '', stage: '', time: '' }],
-    gameRecords: []
+    designs: [{ id: 'x1', type: 'idea', title: '灵感"双重引号"', link: 'data:text/html,<script>alert(10)</script>', category: '', note: '', stage: '', time: '' }]
   };
 }
 

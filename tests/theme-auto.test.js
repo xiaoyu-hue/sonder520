@@ -98,7 +98,7 @@ test('刷新后：手动选择仍生效（data-theme 保留）', async () => {
   a.window.document.querySelector('input[name="theme"][value="dark"]').click();
   const raw = JSON.parse(a.window.localStorage.getItem('sonder_col_settings_v1'));
   assert.equal(raw.settings.theme, 'dark');
-  const b = boot({ seed: { version: raw.version || 1, settings: raw.settings, tasks: [], memos: [], posts: [], clients: [], books: [], news: [], designs: [], gameRecords: [] }, matchMedia: true });
+  const b = boot({ seed: { version: raw.version || 1, settings: raw.settings, tasks: [], memos: [], posts: [], clients: [], books: [], news: [], designs: [] }, matchMedia: true });
   b.hooks.applyTheme();
   assert.equal(b.window.document.documentElement.getAttribute('data-theme'), 'dark', '刷新后应沿用手动深色');
 });
