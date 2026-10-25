@@ -187,6 +187,7 @@
   }
 
   function render() {
+    hideBootSkeleton(); /* 首屏渲染即收起骨架屏 */
     var key = currentPageKey();
     var container = document.getElementById('content');
     container.innerHTML = '';
@@ -510,6 +511,56 @@
       var t = /** @type {HTMLElement} */ (e.target);
       if (t && (gs.contains(t) || (t.closest && t.closest('#gsearchPanel')))) return;
       gs.classList.remove('open');
+    });
+  })();
+
+  /* 启动骨架屏：首屏 render 后淡出移除（见 index.html #bootSkeleton） */
+  function hideBootSkeleton() {
+    var sk = document.getElementById('bootSkeleton');
+    if (!sk || sk.hasAttribute('data-hidden')) return;
+    sk.setAttribute('data-hidden', '1');
+    sk.classList.add('sk-fade');
+    setTimeout(function () { sk.hidden = true; }, 260);
+  }
+
+  /* 移动端下拉刷新：触顶下拉刷新当前页（本地优先：重渲染当前页以反映最新内存态） */
+  (function bindPullToRefresh() {
+    var main = document.querySelector('.main');
+    var content = document.getElementById('content');
+    var indicator = document.getElementById('ptrIndicator');
+    if (!main || !content || !indicator) return;
+    if (!window.matchMedia || !window.matchMedia('(max-width: 720px)').matches) return;
+    var startY = 0, pulling = false, dist = 0, THRESHOLD = 64;
+    main.addEventListener('touchstart', function (e) {
+      var te = /** @type {TouchEvent} */ (e);
+      if ((content.scrollTop || 0) <= 0 && (window.scrollY || 0) <= 0) {
+        startY = te.touches[0].clientY; pulling = true; dist = 0;
+      }
+    }, { passive: true });
+    main.addEventListener('touchmove', function (e) {
+      if (!pulling) return;
+      var te = /** @type {TouchEvent} */ (e);
+      var dy = te.touches[0].clientY - startY;
+      if (dy <= 0) { dist = 0; indicator.classList.remove('show'); content.style.transform = ''; return; }
+      dist = Math.min(dy * 0.5, 90);
+      content.style.transform = 'translateY(' + dist + 'px)';
+      indicator.classList.toggle('show', dist >= THRESHOLD);
+    }, { passive: true });
+    main.addEventListener('touchend', function () {
+      if (!pulling) return;
+      pulling = false;
+      content.style.transform = '';
+      if (dist >= THRESHOLD) {
+        indicator.classList.add('show', 'loading');
+        setTimeout(function () {
+          render(); /* 重新渲染当前页 */
+          indicator.classList.remove('loading');
+          setTimeout(function () { indicator.classList.remove('show'); }, 420);
+        }, 320);
+      } else {
+        indicator.classList.remove('show');
+      }
+      dist = 0;
     });
   })();
   todayLine();
