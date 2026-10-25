@@ -337,7 +337,7 @@ https://sonder520.netlify.app/
   - 模块：`home / today / memo / selfmedia / dev / consulting / reading / news / design / settings` 各一个文件
   - 搜索：`search.js`（全局索引 + 缓存、模糊匹配、分组跳转、水墨高亮定位）
   - 扩展渲染：`markdown.js`（技术笔记 Markdown 渲染与代码复制）
-  - 壳层：`app.js`（路由/主题跟随/帧率档位/警示条/危机警示条/导航降级/离线状态指示）、`error-guard.js`（全局错误安全网与上报）、`sw.js`（Service Worker 离线缓存，当前 sonder-v125，脚本自动同步；导航网络优先）、`manifest.json`（PWA 清单与图标）
+  - 壳层：`app.js`（路由/主题跟随/帧率档位/警示条/危机警示条/导航降级/离线状态指示）、`error-guard.js`（全局错误安全网与上报）、`sw.js`（Service Worker 离线缓存，当前 sonder-v127，脚本自动同步；导航网络优先）、`manifest.json`（PWA 清单与图标）
   - 类型：`globals.d.ts`（Pages/SonderStore 全部公开方法/UI 全局接口 + Repository/Domain/领域类型契约，80+ 类型接口）
 - **主题系统**：CSS 自定义属性 + 深浅双主题；`@supports` 为不支持 `backdrop-filter` 的浏览器降低层级；壁纸独立 img 元素 + `object-fit: cover` + 透明度变量；文字/强调色 token 化并满足 WCAG AA。
 - **数据兼容**：读取时做字段归一化（缺失补默认、非法值夹取 + 9 处旧字段迁移），支持历史版本数据平安迁移；IndexedDB 与 localStorage 双写双存，冲突按保存时间取新；加密开关对旧数据完全兼容（未启用时无感）；未来加密版本密文原样保留不破坏。
