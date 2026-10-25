@@ -469,6 +469,10 @@ interface Window {
   __sonderErrors: { list: SonderErrorEntry[]; readonly total: number; clear(): void; report(errOrMsg: string | Error, type?: string): void };
   __readingDbg: any;
   __todayDbg: any;
+  /* 设置页「检查更新」：SW 广播的当前运行版本号（如 'sonder-v140'） */
+  __SW_VERSION?: string;
+  /* 手动检查更新 API（js/sw-register.js 注入） */
+  SonderSW: { check(): Promise<SonderSWCheckResult>; getVersion(): string | null };
 }
 
 interface SonderCryptoApi {
@@ -684,4 +688,12 @@ interface SonderDesignsRepository {
   query(filter?: (r: Record<string, unknown>) => boolean, sort?: (a: Record<string, unknown>, b: Record<string, unknown>) => number): Array<Record<string, unknown>>;
   render(fn: () => void): void;
   destroy(): void;
+}
+
+/* 设置页「检查更新」返回结果（js/sw-register.js） */
+interface SonderSWCheckResult {
+  state: 'found' | 'latest' | 'refresh' | 'no-sw' | 'unsupported' | 'neterr';
+  ver?: string;   /* latest 时返回当前版本号 */
+  run?: string;   /* found 时：当前运行版本 */
+  server?: string; /* found 时：服务器最新版本 */
 }

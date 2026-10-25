@@ -6,6 +6,12 @@
 (function () {
   'use strict';
   if (!('serviceWorker' in navigator)) return;
+
+  /* SW 把自己版本号广播给页面，存到 window.__SW_VERSION，供「设置-检查更新」显示/比较 */
+  navigator.serviceWorker.addEventListener('message', function (e) {
+    if (e.data && e.data.type === 'SW_VERSION') window.__SW_VERSION = e.data.v;
+  });
+
   window.addEventListener('load', function () {
     navigator.serviceWorker.register('./sw.js').then(function (reg) {
       if (reg.waiting) showUpdate();
@@ -30,4 +36,38 @@
     if (btn) btn.addEventListener('click', function () { window.location.reload(); });
     if (close) close.addEventListener('click', function () { banner.hidden = true; });
   }
+
+  /* 手动「检查更新」：去服务器拉取最新 sw.js，比对版本。
+   * 返回 Promise<{state}>：found=有新版本(将刷新应用) / latest=已最新 /
+   * refresh=无法判定版本(直接刷新页面拿新版) / no-sw=无SW环境(刷新即可) /
+   * unsupported=环境不支持 / neterr=网络错误 */
+  function fetchServerVersion() {
+    return fetch('./sw.js', { cache: 'no-store' })
+      .then(function (res) { return res.text(); })
+      .then(function (txt) {
+        var m = txt.match(/var CACHE\s*=\s*'([^']+)'/);
+        return m ? m[1] : null;
+      })
+      .catch(function () { return null; });
+  }
+  /**
+   * 手动检查更新：去服务器比对最新 sw.js 版本。
+   * @returns {Promise<SonderSWCheckResult>}
+   */
+  function checkUpdate() {
+    if (!('serviceWorker' in navigator)) return Promise.resolve(/** @type {SonderSWCheckResult} */ ({ state: 'unsupported' }));
+    return navigator.serviceWorker.getRegistration().then(function (reg) {
+      if (!reg) return { state: 'no-sw' };
+      return fetchServerVersion().then(function (server) {
+        if (server === null) return { state: 'neterr' };
+        var running = window.__SW_VERSION || null;
+        if (running === null || running !== server) {
+          if (reg.update) { try { reg.update(); } catch (e) { /* 忽略 */ } }
+          return { state: running === null ? 'refresh' : 'found', run: running, server: server };
+        }
+        return { state: 'latest', ver: server };
+      });
+    });
+  }
+  window.SonderSW = { check: checkUpdate, getVersion: function () { return window.__SW_VERSION || null; } };
 })();
