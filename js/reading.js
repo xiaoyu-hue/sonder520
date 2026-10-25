@@ -110,9 +110,24 @@
     render(ctx);
   }
 
+  /* 分段控件：书单 / 我的书摘（书摘不再占底部 Tab，由「更多」进入；两视图共享保证对称） */
+  function segBar(ctx) {
+    var UI = ctx.UI;
+    var el = UI.el(
+      '<div class="seg" role="tablist">' +
+      '<button type="button" data-seg="reading"' + (routeIs('excerpts') ? '' : ' class="active"') + '>书单</button>' +
+      '<button type="button" data-seg="excerpts"' + (routeIs('excerpts') ? ' class="active"' : '') + '>我的书摘</button>' +
+      '</div>'
+    );
+    el.querySelector('[data-seg="reading"]').addEventListener('click', function () { ctx.navigate('reading'); });
+    el.querySelector('[data-seg="excerpts"]').addEventListener('click', function () { ctx.navigate('excerpts'); });
+    return el;
+  }
+
   function render(ctx) {
     var container = currentEl, store = ctx.store, UI = ctx.UI;
     container.innerHTML = '';
+    container.appendChild(segBar(ctx));
     container.appendChild(UI.el('<div class="hbar"><button class="btn primary" id="rdAdd">＋ 新建书</button></div>'));
     container.querySelector('#rdAdd').addEventListener('click', function () { openBook(ctx); });
 
@@ -275,6 +290,7 @@
   function renderExcerpts(container, ctx) {
     var UI = ctx.UI, store = ctx.store;
     container.innerHTML = '';
+    container.appendChild(segBar(ctx));
     var excerpts = repoOf(store).getExcerpts();
     var groups = S.excerptsByBook(excerpts);
     if (!groups.length) {

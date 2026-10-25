@@ -1,0 +1,82 @@
+/* style-stage1.css — 移动端改造 · 阶段 1 新增组件
+ * 内容：更多全屏面板 / 右下悬浮新建(FAB) / 阅读分段控件 / 面板打开锁滚动
+ * 仅做精细化，不换水墨×液态玻璃风格；改动集中于此文件，便于整体 revert。 */
+
+/* 桌面侧栏：标签与图标同行（沿用原竖排菜单观感），仅行内小字 */
+.nav button .lbl { font-size: inherit; color: inherit; }
+
+/* 更多面板打开时锁定底层滚动 */
+body.more-open { overflow: hidden; }
+/* 面板为半透明玻璃，底层 FAB 会透出红色色块：打开期间隐藏，关闭自动恢复 */
+body.more-open #fab { display: none !important; }
+
+/* ---------------- 更多全屏面板 ---------------- */
+.more-panel {
+  position: fixed; inset: 0; z-index: 60;
+  display: flex; flex-direction: column;
+  background: var(--glass-2);
+  -webkit-backdrop-filter: blur(28px) saturate(1.6);
+  backdrop-filter: blur(28px) saturate(1.6);
+  opacity: 0; transform: translateY(10px); pointer-events: none;
+  transition: opacity var(--dur-base, 200ms) var(--ease, ease), transform var(--dur-base, 200ms) var(--ease, ease);
+}
+.more-panel.open { opacity: 1; transform: none; pointer-events: auto; }
+.more-head {
+  display: flex; align-items: center; gap: 10px;
+  padding: calc(env(safe-area-inset-top) + 14px) 16px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.more-back {
+  width: 40px; height: 40px; flex: 0 0 40px; display: flex; align-items: center; justify-content: center;
+  border: 1px solid var(--border); border-radius: 12px; background: var(--glass); color: var(--text); cursor: pointer;
+  transition: background var(--dur-fast, 120ms) var(--ease, ease);
+}
+.more-back:active { background: var(--accent-soft); }
+.more-back .ico svg { width: 20px; height: 20px; }
+.more-title {
+  font-family: "STKaiti", "KaiTi", "楷体", serif; font-size: 18px; font-weight: 700; letter-spacing: 1px;
+}
+.more-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+  padding: 18px 16px; overflow-y: auto;
+}
+.more-item {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+  padding: 18px 8px; border: 1px solid var(--border); border-radius: 16px;
+  background: var(--glass); color: var(--text); cursor: pointer;
+  box-shadow: inset 0 1px 0 var(--border-hi);
+  transition: transform var(--dur-fast, 120ms) var(--ease, ease), background var(--dur-base, 200ms) var(--ease, ease);
+}
+.more-item:active { transform: scale(.97); background: var(--glass-2); }
+.more-item .ico svg { width: 24px; height: 24px; }
+.more-item .lbl { font-size: 12px; font-weight: 500; }
+.more-settings {
+  margin: 4px 16px calc(16px + env(safe-area-inset-bottom));
+  flex-direction: row; justify-content: flex-start; gap: 12px; padding: 14px 16px;
+}
+.more-settings .ico svg { width: 22px; height: 22px; }
+.more-settings .lbl { font-size: 14px; }
+
+/* ---------------- 右下悬浮新建 (FAB) ---------------- */
+.fab {
+  position: fixed; right: 16px; bottom: calc(68px + env(safe-area-inset-bottom));
+  width: 52px; height: 52px; border-radius: 18px; display: none; align-items: center; justify-content: center;
+  border: 1px solid var(--border-hi); background: var(--accent); color: #fff;
+  box-shadow: 0 8px 24px rgba(194, 59, 46, 0.35); cursor: pointer; z-index: 40;
+  transition: transform var(--dur-fast, 120ms) var(--ease, ease);
+}
+.fab:active { transform: scale(.94); }
+.fab .ico { display: flex; }
+.fab .ico svg { width: 24px; height: 24px; stroke: #fff; }
+
+/* ---------------- 分段控件（阅读：书单 / 我的书摘） ---------------- */
+.seg {
+  display: inline-flex; padding: 3px; gap: 2px;
+  background: var(--glass-2); border: 1px solid var(--border); border-radius: var(--r-pill, 999px);
+}
+.seg button {
+  border: 0; background: transparent; padding: 6px 16px; border-radius: var(--r-pill, 999px);
+  font-size: 13px; color: var(--muted); cursor: pointer;
+  transition: background var(--dur-base, 200ms) var(--ease, ease), color var(--dur-base, 200ms) var(--ease, ease);
+}
+.seg button.active { background: var(--accent); color: #fff; box-shadow: 0 2px 8px rgba(194, 59, 46, 0.25); }

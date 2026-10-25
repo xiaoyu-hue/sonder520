@@ -161,6 +161,7 @@ interface SonderPage {
   title: string;
   render(container: HTMLElement, ctx: SonderCtx): void;
   add?(ctx: SonderCtx): void;
+  fab?(): void;
   destroy?(ctx: SonderCtx): void;
 }
 

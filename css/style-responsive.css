@@ -251,26 +251,36 @@ input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border-radius
     z-index: 10;
   }
   .brand { display: none; }
-  .nav { flex-direction: row; width: 100%; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+  /* 底部 TabBar：5+1，固定、玻璃、不横滑（Material3/Apple HIG：3–5 主入口、禁横滑、文字必现） */
+  .nav { flex-direction: row; width: 100%; gap: 2px; overflow: visible; scrollbar-width: none; }
   .nav::-webkit-scrollbar { display: none; }
   .nav button {
-    flex: 1 0 auto; width: auto; min-height: 44px;
-    justify-content: center; font-size: 0; padding: 10px 12px;
+    flex: 1 1 0; min-width: 0; min-height: 44px;
+    flex-direction: column; justify-content: center; align-items: center; gap: 3px;
+    padding: 6px 2px; font-size: 10px; line-height: 1; border-radius: 12px;
   }
-  .nav button .ico { font-size: 20px; }
+  .nav button .ico { width: 22px; height: 22px; }
+  .nav button .ico svg { width: 22px; height: 22px; }
+  .nav button .lbl { font-size: 10px; font-weight: 500; letter-spacing: .02em; color: inherit; }
   .nav button.active {
-    background: linear-gradient(180deg, var(--accent-soft), rgba(194, 59, 46, 0.05));
-    box-shadow: inset 0 -3px 0 var(--accent), inset 0 1px 0 var(--border-hi), 0 6px 18px rgba(194, 59, 46, 0.16);
+    background: linear-gradient(180deg, var(--accent-soft), rgba(194, 59, 46, 0.06));
+    box-shadow: inset 0 2px 0 var(--accent), inset 0 1px 0 var(--border-hi), 0 6px 18px rgba(194, 59, 46, 0.16);
+    color: var(--accent);
   }
-  .topbar { min-height: 54px; height: auto; padding: env(safe-area-inset-top) 14px 2px 14px; flex-wrap: wrap; }
-  /* 移动端日期时间：独立一行右对齐小字（搜索+备忘占第一行） */
+  /* AppBar 单行：标题 + 内联日期 + 右侧操作，不换行（日期不再独占一行） */
+  .topbar { min-height: 56px; height: auto; flex-wrap: nowrap; padding: env(safe-area-inset-top) 12px 2px; gap: 8px; }
+  .topbar .title { order: 1; font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .topbar .date {
-    display: block; width: 100%; order: 3; margin: 0; padding: 2px 0 6px;
-    font-size: 12px; text-align: right; color: var(--muted); white-space: nowrap;
+    order: 2; display: inline-flex; width: auto; flex: 0 1 auto; min-width: 0; margin: 0 0 0 6px; padding: 0;
+    font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
-  .topbar .btn { padding: 6px 12px; }
-  .btn, .small-btn { min-height: 44px; }
-  .topbar .btn { min-height: 44px; }
+  .topbar .gsearch { order: 3; margin-left: auto; }
+  .topbar .gsearch input { display: none; } /* 移动端收为图标，点击展开 */
+  .topbar .gsearch.open input { display: block; width: 100%; }
+  .topbar .btn { order: 4; padding: 6px 10px; font-size: 12px; }
+  .nav button, .topbar .btn { min-height: 44px; }
+  /* 首页概览磁贴：移动端收为 2 列紧凑磁贴 */
+  .grid-cards.cols-4 { grid-template-columns: repeat(2, 1fr); }
 
   .hbar { gap: 8px; }
   .hbar input, .hbar select, .hbar .tool { flex: 1; min-width: 0; font-size: 16px; }

@@ -5,8 +5,19 @@ const { boot, waitFor } = require('./harness.js');
 const S = require('../js/store.js');
 const TODAY = S.todayStr();
 
-function navTexts(h) {
-  return Array.from(h.window.document.querySelectorAll('#nav button')).map(b => b.textContent);
+/* 模块入口现位于「更多」面板（5+1 导航）：打开面板后读取各入口文字。
+ * 面板按当前模块开关实时构建，ensureMoreOpen 保证每次都从干净状态重建，反映最新开关。 */
+function ensureMoreOpen(h) {
+  const doc = h.window.document;
+  const panel = doc.getElementById('morePanel');
+  const moreBtn = Array.from(doc.querySelectorAll('#nav button')).find(b => (b.textContent || '').includes('更多'));
+  if (!moreBtn) return;
+  if (panel.classList.contains('open')) moreBtn.click(); /* 先收起，确保下次点击重建 */
+  moreBtn.click();
+}
+function moreTexts(h) {
+  ensureMoreOpen(h);
+  return Array.from(h.window.document.querySelectorAll('#morePanel [data-go]')).map(b => b.textContent);
 }
 
 test('设置：切换深色主题并持久化', () => {
@@ -22,16 +33,16 @@ test('设置：关闭/开启模块开关影响侧边栏', () => {
   const h = boot();
   const doc = h.window.document;
   h.goto('settings');
-  assert.ok(navTexts(h).some(t => t.includes('自媒体')));
+  assert.ok(moreTexts(h).some(t => t.includes('自媒体')));
   doc.querySelector('[data-mod="selfmedia"]').click();
   assert.equal(h.store.state.settings.modules.selfmedia, false);
-  assert.ok(!navTexts(h).some(t => t.includes('自媒体')), '关闭后侧边栏应隐藏自媒体');
+  assert.ok(!moreTexts(h).some(t => t.includes('自媒体')), '关闭后更多面板应隐藏自媒体');
   // 重新打开
   const cb = h.window.document.querySelector('[data-mod="selfmedia"]');
   assert.ok(cb, '设置页应保留开关');
   cb.click();
   assert.equal(h.store.state.settings.modules.selfmedia, true);
-  assert.ok(navTexts(h).some(t => t.includes('自媒体')));
+  assert.ok(moreTexts(h).some(t => t.includes('自媒体')));
 });
 
 test('设置：统计与各模块数据一致', () => {

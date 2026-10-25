@@ -162,7 +162,15 @@
     '</div>';
   }
 
-  Pages.home = { title: '首页总览', render: render };
+  Pages.home = {
+    title: '首页总览',
+    render: render,
+    /* FAB：滚动并聚焦快速备忘输入框 */
+    fab: function () {
+      var el = document.getElementById('hmMemo');
+      if (el) { el.scrollIntoView({ block: 'center' }); el.focus(); }
+    }
+  };
 
   /* 数据变更自动重绘 */
   (function () {

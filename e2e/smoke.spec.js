@@ -72,7 +72,8 @@ test('工作流: 今日新建任务 -> 全局搜索命中 -> 跳转高亮', asyn
 
 test('数据: 设置页导出备份可下载 JSON 文件', async ({ page }) => {
   await page.goto('/');
-  await page.click('#nav button:has-text("数据与设置")');
+  await page.click('#nav button:has-text("更多")');
+  await page.click('#morePanel [data-go="settings"]');
   const dl = page.waitForEvent('download');
   await page.click('#bkExport');
   const d = await dl;
