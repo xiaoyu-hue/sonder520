@@ -268,21 +268,23 @@ input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border-radius
     color: var(--accent);
   }
   /* AppBar 双行：标题+操作单行（不挤），完整日期时间独占第二行，绝不截断 */
-  .topbar { min-height: 56px; height: auto; flex-wrap: wrap; align-items: center; padding: env(safe-area-inset-top) 12px 6px; gap: 4px 8px; }
+  .topbar { min-height: 56px; height: auto; flex-wrap: wrap; align-items: center; padding: env(safe-area-inset-top) 12px 10px; gap: 6px 8px; }
   .topbar .title { order: 1; flex: 1 1 auto; min-width: 0; font-size: 17px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  /* 日期时间整行显示：换行至第二行，保持「年月日·周 时:分:秒」完整不省略 */
+  /* 日期时间整行显示：换行至第二行，保持「年月日·周 时:分:秒」完整不省略。
+   * 与标题同左内距；行间距由顶栏 row-gap 6px 提供，下方 10px 内距兜底，避免「悬空」贴住内容。 */
   .topbar .date {
-    order: 5; flex: 1 1 100%; width: auto; min-width: 0; margin: 2px 0 0; padding: 0;
+    order: 5; flex: 1 1 100%; width: auto; min-width: 0; margin: 0; padding: 0;
     font-size: 11px; letter-spacing: .01em; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
-  /* 移动端搜索：收为 40x40 可点图标，点击展开为全宽输入框（修复此前容器零宽不可点） */
+  /* 移动端搜索：收为 44x44 可点图标（与右侧「备忘」按钮等高，消除一高一矮的错位）；
+   * 底色/描边与「备忘」按钮同款，两个操作读成一个视觉组；点击展开为全宽输入框。 */
   .topbar .gsearch {
     order: 3; margin-left: auto; flex: 0 0 auto;
-    width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;
-    border-radius: 999px; background: var(--surface-2);
+    width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;
+    border-radius: 999px; background: var(--accent-soft); border: 1px solid var(--border);
   }
   .topbar .gsearch input { display: none; }
-  .topbar .gsearch .gsearch-ico { position: static; transform: none; pointer-events: auto; opacity: .8; display: inline-flex; }
+  .topbar .gsearch .gsearch-ico { position: static; transform: none; pointer-events: auto; opacity: .75; display: inline-flex; }
   .topbar .gsearch .gsearch-ico svg { width: 19px; height: 19px; }
   .topbar .gsearch.open { width: auto; flex: 1 1 auto; padding: 0 10px; background: var(--surface-1); }
   .topbar .gsearch.open input { display: block; width: 100%; }
