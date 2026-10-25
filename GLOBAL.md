@@ -116,10 +116,10 @@ curl -s -X POST -H "Authorization: token ${GITHUBTOKEN}" \
 
 | 元素 | 格式 | 示例 |
 |------|------|------|
-| Git Tag | `vMAJOR.MINOR.PATCH` | `v6.4.0` |
-| package.json version | `vMAJOR.MINOR.PATCH` | `"version": "6.4.0"` |
-| CHANGELOG 标题 | `## [vX.Y.Z]` | `## [v6.4.0]` |
-| GitHub Release tag_name | 必须与 Git Tag 完全一致 | `v6.4.0` |
+| Git Tag | `vMAJOR.MINOR.PATCH` | `v6.5.0` |
+| package.json version | `vMAJOR.MINOR.PATCH` | `"version": "6.5.0"` |
+| CHANGELOG 标题 | `## [vX.Y.Z]` | `## [v6.5.0]` |
+| GitHub Release tag_name | 必须与 Git Tag 完全一致 | `v6.5.0` |
 
 ### 历史版本参考
 
@@ -130,6 +130,7 @@ v6.3.2 - ESLint 清理
 v6.3.3 - 作者文档瘦身
 v6.3.4 - SECURITY.md 添加
 v6.4.0 - 移除娱乐游戏与桌面宠物
+v6.5.0 - 移动端「大厂气质」改造 + 手动检查更新
 ```
 
 ---
@@ -149,7 +150,7 @@ v6.4.0 - 移除娱乐游戏与桌面宠物
 ```
 /var/minis/workspace/sonder520/
 ├── index.html              # 主应用入口
-├── package.json            # 依赖配置（version: 6.4.0）
+├── package.json            # 依赖配置（version: 6.5.0）
 ├── sw.js                   # Service Worker（PWA）
 ├── manifest.json           # PWA 配置
 ├── js/                     # 源代码目录
