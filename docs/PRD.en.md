@@ -1,7 +1,7 @@
 # Personal Work & Life App · Product Requirements Document (PRD)
 
-> Version: v6.4.0
-> Status: v6.4.0 is the latest released version (see CHANGELOG); entertainment games and the desktop pet module were removed in this version
+> Version: v6.5.0
+> Status: v6.5.0 is the latest released version (see CHANGELOG); this version ships the mobile "big-tech polish" overhaul and a manual update check
 > Online:
 >
 > Main site (GitHub Pages, auto-deployed on push to main):
@@ -45,6 +45,7 @@ Historical records, kept in Chinese. See the Chinese `PRD.md`.
 | **v6.3.3** | Performance & code quality (no functional changes): desktop-pet AnimationLoop frame throttling (60/90/120 tiers) + 200ms global-search debounce + deepClone via structuredClone (cyclic refs/Date/Blob support) + magic numbers extracted to named constants + console.error funneled through error-guard reporting + 6 desktop-pet tests; test baseline 770 → 776 |
 | **v6.3.2** | Security infrastructure consolidation (no functional changes): main branch protection (required checks + strict + enforce_admins + no force-push/delete + linear history) + Test Gate pull_request trigger + Dependabot routine upgrades disabled (alerts & security updates kept) + redundant socket.yml removed (Socket App owns supply-chain scanning) + scanning pipeline consolidated (CodeQL / Semgrep / OSV-Scanner / Socket / Dependabot alerts) + README acknowledgments table for security scanners; test baseline 770 all green |
 | **v6.3.1** | Docs & security scanning (no functional changes): README badge overhaul (static version → dynamic release badge + last-commit + CI + tests-770) + third-party automated review phase 1 (CodeQL scan + Dependabot weekly + npm audit gate in Test Gate; 0 known dependency vulnerabilities) |
+| **v6.5.0** | Mobile "big-tech polish" overhaul + manual update check: new `css/style-tokens.css` design tokens and `js/icons.js` (17 line-art SVG icons replace emoji app-wide); bottom navigation rebuilt as 5 tabs + More panel (6 entries), single-row app bar + FAB + reading segmented control; first-paint skeletons, pull-to-refresh and a PWA update banner added; new "About & Updates" card in Settings with a "Check for updates" button (SW broadcasts its version); app bar refinements (SVG search/plus, two-row full date/time never truncated, action group unified in height and color); SW cache `sonder-v142`; test baseline 573 all green |
 | **v6.4.0** | Removed entertainment games & desktop pet (back to the essence of a personal tool): deleted 7 game js files + `game-worker.js` + `games-repository.js`, 3 desktop-pet js files + `desktop-pet.css`; pages 13 → 11, Repositories 9 → 8, home overview cards 7 → 6; removed Store methods `addGameRecord`/`clearGameRecords`/`setGameDifficulty`/`setDesktopPet`/`getMiniRecord`/`updateMiniRecord` and `state.gameRecords`/`miniRecords`; global search no longer indexes game records; SW cache `sonder-v127`; test baseline 568 all green |
 
 (Further historical summaries from v5.0 onward are kept in the Chinese PRD.)

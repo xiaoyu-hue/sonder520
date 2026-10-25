@@ -1,7 +1,7 @@
 # 个人工作生活 App · 产品需求文档（PRD）
 
-> 版本：v6.4.0
-> 状态：v6.4.0 为最新发布版（见 CHANGELOG）；本版已移除娱乐游戏与桌面宠物模块
+> 版本：v6.5.0
+> 状态：v6.5.0 为最新发布版（见 CHANGELOG）；本版完成移动端「大厂气质」改造并新增手动检查更新
 > 在线地址：
 
 主站（GitHub Pages，push main 自动部署更新）:
@@ -44,6 +44,7 @@ https://sonder520.netlify.app/
 | **v6.3.3** | **性能与代码质量（无功能变更）：桌面玩偶 AnimationLoop 帧率节流（60/90/120 三档）+ 全局搜索 200ms 防抖 + deepClone 改用 structuredClone（支持循环引用/Date/Blob）+ 魔法数字提取为命名常量 + console.error 统一收口到 error-guard 上报 + desktop-pet 补 6 项测试；测试基线 770 → 776 项** |
 | **v6.3.2** | **安全基建收口（无功能变更）：main 分支保护（必检全绿 + strict + enforce_admins + 禁强推/删除 + 线性历史）+ Test Gate 补 pull_request 触发 + 停用 Dependabot 常规升级（保留告警与安全修复）+ 移除冗余 socket.yml（Socket App 接管供应链扫描）+ 扫描管线收口（CodeQL / Semgrep / OSV-Scanner / Socket / Dependabot alerts）+ README 致谢区补安全扫描表；测试基线 770 项全绿** |
 | **v6.3.1** | **文档与安全扫描（无功能变更）：README 徽章补齐与升级（静态 version → 动态 release 徽章 + last-commit + CI + tests-770）+ 第三方自动审查阶段 1（CodeQL 代码扫描 + Dependabot 每周依赖 + Test Gate 补 npm audit 门禁，实测依赖 0 漏洞）** |
+| **v6.5.0** | **移动端「大厂气质」改造 + 手动检查更新：新增 `css/style-tokens.css` 设计令牌与 `js/icons.js`（17 枚线性 SVG 图标替换全站 emoji）；底部导航重构为 5 Tab + 更多面板（6 入口），顶栏单行 + FAB + 阅读分段控件；新增首屏骨架屏、下拉刷新、PWA 更新提示横幅；设置页新增「关于与更新」卡片与「检查更新」按钮（SW 广播版本号）；顶栏精修（搜索/加号 SVG 化、双行完整日期时间不截断、操作组等高同色）；SW 缓存 `sonder-v142`；测试基线 573 项全绿** |
 | **v6.4.0** | **移除娱乐游戏与桌面宠物（回归个人工具本质）：删除 7 个游戏 js + `game-worker.js` + `games-repository.js`、3 个 desktop-pet js + `desktop-pet.css`；页面 13 → 11、Repository 9 → 8、首页概览卡 7 → 6；移除 Store 方法 `addGameRecord`/`clearGameRecords`/`setGameDifficulty`/`setDesktopPet`/`getMiniRecord`/`updateMiniRecord` 与 `state.gameRecords`/`miniRecords`；全局搜索移除战绩索引；SW 缓存 `sonder-v127`；测试基线 568 项全绿** |
 
 ### v5.0 更新摘要（本版）

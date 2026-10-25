@@ -36,8 +36,8 @@
 | 🌐 **Pure Frontend** | HTML/CSS/Vanilla JS, zero build, zero runtime dependencies |
 | 🔒 **Privacy First** | Data stored only in local browser, optional encryption |
 | 🎨 **Ink-Wash Style** | Rice-paper / Ink-black dual themes, liquid glass card design |
-| 📱 **Responsive in-browser (3 viewports)** | Desktop/Tablet/Phone responsive layout, PWA offline support |
-| 🧪 **Test Coverage** | 568 tests passing (Unit + Contract + Integration + E2E) |
+| 📱 **Responsive in-browser (3 viewports)** | Desktop/Tablet/Phone responsive layout, PWA offline support; mobile 5-tab navigation + More panel, skeletons, pull-to-refresh, update banner, and a manual "Check for updates" entry in Settings |
+| 🧪 **Test Coverage** | 573 tests passing (Unit + Contract + Integration + E2E) |
 
 ### 🔐 Data & Privacy
 
@@ -110,7 +110,7 @@ IDB (Primary Storage) + localStorage (Fallback Copy) + Crypto (Encryption)
 
 ### Quality Assurance
 
-- ✅ **568 tests** passing (Unit + Contract + Integration + E2E)
+- ✅ **573 tests** passing (Unit + Contract + Integration + E2E)
 - ✅ **Zero-build** type checking (JSDoc + TypeScript)
 - ✅ **ESLint** code standards
 - ✅ **13 ADRs** Architecture Decision Records
@@ -244,7 +244,13 @@ npm run sync-sw
 
 ## 📈 Changelog
 
-### v6.4.0 (Current)
+### v6.5.0 (Current)
+
+- **Mobile "big-tech polish" overhaul**: 17 line-art SVG icons replace emoji app-wide; bottom navigation rebuilt as 5 tabs + More panel; skeletons, pull-to-refresh and a PWA update banner added; two-row app bar (full date/time never truncated, action group unified in height and color)
+- **Manual "Check for updates"**: new "About & Updates" card in Settings shows the current version and checks/applies updates with one tap
+- **Tests**: 573 tests all green (new navigation IA test)
+
+### v6.4.0
 
 - **Remove Entertainment & Desktop Pet**: Games (Tic-Tac-Toe / Gomoku / Minesweeper / Guess Number / Idiom / Brain Teaser) and the desktop pet module are fully deleted, returning to the essence of a personal tool and clearing the boundary for a future AI Agent framework
 - **Test convergence**: 568 tests all green (pure entertainment cases removed, contract/consistency guards kept)
