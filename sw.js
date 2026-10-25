@@ -4,7 +4,7 @@
  * 内容变了而版本没升说明部署流程漏跑 sync-sw。 */
 'use strict';
 
-var CACHE = 'sonder-v139';
+var CACHE = 'sonder-v141';
 
 var ASSETS = [
   './',
@@ -68,7 +68,7 @@ var ASSETS = [
   './assets/icon-maskable-512.png',
   './assets/apple-touch-icon.png'
 ];
-var ASSET_SIG = '4961d28e16e1';
+var ASSET_SIG = '6500f66072b8';
 
 /* install：预缓存全部资源，立即接管。
  * Request(cache:'reload') 绕过 HTTP 缓存直取网络——GH Pages max-age=600 下
@@ -90,7 +90,23 @@ self.addEventListener('activate', function (e) {
           .map(function (k) { return caches.delete(k); })
       );
     }).then(function () { return self.clients.claim(); })
+    .then(function () { broadcastVersion(); })
   );
+});
+
+/* 把当前 SW 版本号（即 CACHE 名）广播给页面，供「设置-检查更新」显示当前版本并比较。 */
+function broadcastVersion() {
+  self.clients.matchAll({ includeUncontrolled: true }).then(function (cs) {
+    cs.forEach(function (c) { c.postMessage({ type: 'SW_VERSION', v: CACHE }); });
+  });
+}
+self.addEventListener('message', function (e) {
+  if (e.data && e.data.type === 'GET_VERSION') {
+    var targets = e.source ? [e.source] : [];
+    Promise.resolve(targets).then(function (list) {
+      list.forEach(function (c) { c.postMessage({ type: 'SW_VERSION', v: CACHE }); });
+    });
+  }
 });
 
 /* fetch：导航请求（页面）Network First —— 有网先拿新版并回写缓存，刷新即更新；

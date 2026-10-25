@@ -318,6 +318,60 @@
         UI.toast('迁移失败，请导出备份', 'err');
       });
     });
+
+    /* 关于与更新：显示当前 PWA 版本，并提供手动「检查更新」入口 */
+    container.appendChild(UI.el('<div class="section-title">关于与更新</div>'));
+    var aboutCard = UI.el(
+      '<div class="card">' +
+      '<div class="row" style="align-items:center">' +
+      '<div style="min-width:0">' +
+      '<div class="small">Sonder 开源 · 本地优先 · 离线可用（MIT）</div>' +
+      '<div class="muted small" id="swVersionLine">当前版本：' + (window.__SW_VERSION ? window.__SW_VERSION : '检测中…') + '</div>' +
+      '<div class="muted small" id="swCheckStatus" style="min-height:16px"></div>' +
+      '</div>' +
+      '<button class="btn primary" id="btnCheckUpdate" type="button" style="margin-left:auto;display:inline-flex;align-items:center;gap:6px">' +
+      '<svg class="ico-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>' +
+      '<span>检查更新</span></button>' +
+      '</div></div>'
+    );
+    container.appendChild(aboutCard);
+    var btnCheck = aboutCard.querySelector('#btnCheckUpdate');
+    var statusEl = aboutCard.querySelector('#swCheckStatus');
+    var verLine = aboutCard.querySelector('#swVersionLine');
+    btnCheck.addEventListener('click', function () {
+      btnCheck.disabled = true;
+      btnCheck.querySelector('span').textContent = '检查中…';
+      statusEl.textContent = '';
+      var SW = window.SonderSW;
+      if (!SW) { btnCheck.disabled = false; btnCheck.querySelector('span').textContent = '检查更新'; UI.toast('更新模块未就绪'); return; }
+      SW.check().then(function (r) {
+        btnCheck.disabled = false;
+        btnCheck.querySelector('span').textContent = '检查更新';
+        if (window.__SW_VERSION) verLine.textContent = '当前版本：' + window.__SW_VERSION;
+        if (r.state === 'found') {
+          statusEl.textContent = '发现新版本，正在应用更新…';
+          UI.toast('发现新版本，正在应用更新…');
+          setTimeout(function () { window.location.reload(); }, 900);
+        } else if (r.state === 'latest') {
+          statusEl.textContent = '已是最新版本' + (r.ver ? '（' + r.ver + '）' : '');
+          UI.toast('已是最新版本' + (r.ver ? '（' + r.ver + '）' : ''));
+        } else if (r.state === 'refresh' || r.state === 'no-sw') {
+          statusEl.textContent = '正在刷新以获取最新版本…';
+          window.location.reload();
+        } else if (r.state === 'unsupported') {
+          statusEl.textContent = '当前环境不支持离线更新';
+          UI.toast('当前环境不支持离线更新（请用 HTTPS 或支持的浏览器）');
+        } else {
+          statusEl.textContent = '检查失败，请检查网络';
+          UI.toast('检查更新失败，请检查网络');
+        }
+      }).catch(function () {
+        btnCheck.disabled = false;
+        btnCheck.querySelector('span').textContent = '检查更新';
+        statusEl.textContent = '检查失败，请检查网络';
+        UI.toast('检查更新失败，请检查网络');
+      });
+    });
   }
 
   function statsCard(store, UI) {
