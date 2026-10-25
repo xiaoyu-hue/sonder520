@@ -8,9 +8,13 @@
   /* 导航顺序；可被"数据与设置"开关隐藏的为业务模块 */
   var TOGGLEABLE = { today: 1, memo: 1, selfmedia: 1, dev: 1, consulting: 1, reading: 1, news: 1, design: 1, excerpts: 1 };
   var NAV = ['home', 'today', 'memo', 'selfmedia', 'dev', 'consulting', 'reading', 'excerpts', 'news', 'design', 'settings'];
+  /* 线性 SVG 图标（js/icons.js）；模块缺失时降级为空字符串，不阻断导航渲染 */
+  var I = (typeof SonderIcons !== 'undefined') ? SonderIcons : { icon: function () { return ''; } };
   var ICONS = {
-    home: '🏠', today: '📅', memo: '📝', selfmedia: '📣', dev: '💻',
-    consulting: '🤝', reading: '📚', excerpts: '📖', news: '📰', design: '🎨', settings: '⚙️'
+    home: I.icon('home'), today: I.icon('calendar'), memo: I.icon('note'),
+    selfmedia: I.icon('mega'), dev: I.icon('code'), consulting: I.icon('users'),
+    reading: I.icon('book'), excerpts: I.icon('bookmark'), news: I.icon('news'),
+    design: I.icon('pen'), settings: I.icon('settings')
   };
 
   var ctx = {
@@ -254,7 +258,7 @@
     lockScreenEl = UI.el(
       '<div id="lockScreen" style="position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;background:var(--bg);backdrop-filter:blur(6px)">' +
       '<div style="width:min(92vw,360px);text-align:center;padding:28px 24px;border:1px solid var(--border);border-radius:16px;background:var(--glass-2)">' +
-      '<div style="font-size:34px;line-height:1">🔒</div>' +
+      '<div class="lock-ico">' + I.icon('lock') + '</div>' +
       '<h2 style="margin:10px 0 2px;color:var(--text)">Sonder 已锁定</h2>' +
       '<p class="muted small" style="margin:0 0 16px">数据已加密存储于本机</p>' +
       '<input type="password" id="lockPwd" placeholder="输入密码解锁" autocomplete="off" style="width:100%;padding:11px 14px;border:1px solid var(--border);border-radius:10px;background:var(--bg);color:var(--text);font-size:16px;box-sizing:border-box">' +

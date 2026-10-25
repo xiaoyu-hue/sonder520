@@ -454,6 +454,7 @@ interface Window {
   SonderMemosRepository: SonderRepositoryFactory;
   SonderNewsRepository: SonderRepositoryFactory;
   SonderDesignsRepository: SonderRepositoryFactory;
+  SonderIcons: SonderIconsApi;
   SonderMarkdown: { render(src: string): string; esc(s: unknown): string };
   SonderCrypto: SonderCryptoApi;
   /* Phase 7：任务领域规则（纯函数，无 DOM/存储） */
@@ -547,6 +548,13 @@ interface SonderBusApi {
   emit(path: string, detail?: unknown): void;
   reset(): void;
 }
+
+/* 线性 SVG 图标（js/icons.js）：icon(name) 返回内联 <svg> 字符串 */
+interface SonderIconsApi {
+  icon(name: string): string;
+  names: string[];
+}
+declare var SonderIcons: SonderIconsApi;
 
 /* 部分代码直接裸用全局名（非 window. 前缀），声明为全局变量 */
 declare var SonderStore: SonderStoreFactory;

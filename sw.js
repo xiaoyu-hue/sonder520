@@ -4,11 +4,12 @@
  * 内容变了而版本没升说明部署流程漏跑 sync-sw。 */
 'use strict';
 
-var CACHE = 'sonder-v129';
+var CACHE = 'sonder-v131';
 
 var ASSETS = [
   './',
   './index.html',
+  './css/style-tokens.css',
   './css/style-base.css',
   './css/style-animations.css',
   './css/style-modules.css',
@@ -17,6 +18,7 @@ var ASSETS = [
   './css/style-glass-ink.css',
   './js/encryption.js',
   './js/event-bus.js',
+  './js/icons.js',
   './js/store-stats.js',
   './js/store.js',
   './js/framework/ModuleFactory.js',
@@ -64,7 +66,7 @@ var ASSETS = [
   './assets/icon-maskable-512.png',
   './assets/apple-touch-icon.png'
 ];
-var ASSET_SIG = '93ca55cddedf';
+var ASSET_SIG = 'bc8f17718878';
 
 /* install：预缓存全部资源，立即接管。
  * Request(cache:'reload') 绕过 HTTP 缓存直取网络——GH Pages max-age=600 下

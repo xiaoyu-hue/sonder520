@@ -1,0 +1,78 @@
+/* style-tokens.css - 设计 token（阶段 0）
+ * 只新增变量，不改既有 --bg / --text / --accent / --ease / --shadow，
+ * 避免影响现有水墨视觉；后续组件逐步改用这里的 token。
+ * 命名：--sp-N 间距 / --r-* 圆角 / --fs-* 字号 / --lh-* 行高 / --sh-N 阴影 / --dur-* 时长 */
+:root {
+  /* 间距（4 的倍数 / 8pt 栅格） */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+
+  /* 圆角 */
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 16px;
+  --r-pill: 999px;
+
+  /* 字号 / 行高 */
+  --fs-cap: 11px;
+  --fs-meta: 12px;
+  --fs-body: 14px;
+  --fs-title: 17px;
+  --fs-hero: 21px;
+  --lh-body: 1.5;
+  --lh-title: 1.25;
+
+  /* 阴影（墨色 tint，避免纯黑发脏） */
+  --sh-1: 0 2px 8px rgba(60, 45, 30, 0.08);
+  --sh-2: 0 8px 24px rgba(60, 45, 30, 0.10);
+  --sh-3: 0 16px 48px rgba(60, 45, 30, 0.14);
+
+  /* 动效 */
+  --dur-fast: 120ms;
+  --dur-base: 200ms;
+  --dur-slow: 320ms;
+
+  /* 触控最小尺寸 */
+  --tap: 44px;
+
+  /* 表面（复用既有玻璃变量，方便后续统一替换） */
+  --surface-1: var(--glass);
+  --surface-2: var(--glass-2);
+}
+
+/* 线性图标（js/icons.js 输出）统一尺寸与对齐，替换原 emoji 字形 */
+.ico svg,
+.module-icon svg {
+  display: block;
+  width: 20px;
+  height: 20px;
+}
+.module-icon svg {
+  width: 22px;
+  height: 22px;
+}
+.nav button .ico svg {
+  width: 20px;
+  height: 20px;
+}
+/* 首页主卡片图标（今日计划/快速备忘）：40×40 圆角容器内 20px 线性图标 */
+.card-icon svg {
+  display: block;
+  width: 20px;
+  height: 20px;
+}
+/* 锁屏图标：居中 36px */
+.lock-ico svg {
+  display: block;
+  width: 36px;
+  height: 36px;
+  margin: 0 auto;
+}
+/* emoji 时代的字号规则保留（部分测试锁定），但 SVG 走宽高，不再受字号影响 */
+.nav button .ico {
+  line-height: 0;
+}

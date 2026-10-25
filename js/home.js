@@ -60,7 +60,7 @@
         '<div class="main-card card-animate-in">',
           '<div class="card-header">',
             '<div class="card-header-left">',
-              '<div class="card-icon">📋</div>',
+              '<div class="card-icon">' + cardIco('calendar') + '</div>',
               '<div>',
                 '<div class="card-title">今日计划</div>',
                 '<div class="card-subtitle">待办 ' + sum.tasks.current + ' · 已完成 ' + sum.tasks.doneToday + ' · 过期 ' + sum.tasks.overdue + '</div>',
@@ -77,7 +77,7 @@
         '<div class="main-card card-animate-in">',
           '<div class="card-header">',
             '<div class="card-header-left">',
-              '<div class="card-icon">📝</div>',
+              '<div class="card-icon">' + cardIco('note') + '</div>',
               '<div><div class="card-title">快速备忘</div></div>',
             '</div>',
           '</div>',
@@ -95,14 +95,14 @@
       
       '<div class="section-title" style="margin-top:24px">各模块概览</div>',
       '<div class="grid-cards cols-4">',
-        moduleCard(UI, 'selfmedia', sum.selfmedia.total, '自媒体', '待发布 ' + sum.selfmedia.pending, '📱'),
-        moduleCard(UI, 'dev', sum.dev.total, '开发工作', '进行中 ' + sum.dev.active, '💻'),
-        moduleCard(UI, 'consulting', sum.consulting.total, '咨询工作', '待跟进 ' + sum.consulting.followups, '🎯'),
-        moduleCard(UI, 'reading', sum.reading.total, '阅读计划', '在读 ' + sum.reading.reading, '📚'),
-        moduleCard(UI, 'news', sum.news.total, '看新闻计划', '待读 ' + sum.news.unread, '📰'),
-        moduleCard(UI, 'design', sum.design.total, '设计计划', '进行中 ' + sum.design.active, '🎨'),
+        moduleCard(UI, 'selfmedia', sum.selfmedia.total, '自媒体', '待发布 ' + sum.selfmedia.pending, 'mega'),
+        moduleCard(UI, 'dev', sum.dev.total, '开发工作', '进行中 ' + sum.dev.active, 'code'),
+        moduleCard(UI, 'consulting', sum.consulting.total, '咨询工作', '待跟进 ' + sum.consulting.followups, 'users'),
+        moduleCard(UI, 'reading', sum.reading.total, '阅读计划', '在读 ' + sum.reading.reading, 'book'),
+        moduleCard(UI, 'news', sum.news.total, '看新闻计划', '待读 ' + sum.news.unread, 'news'),
+        moduleCard(UI, 'design', sum.design.total, '设计计划', '进行中 ' + sum.design.active, 'pen'),
         '<div class="module-card card-animate-in" data-go="home" style="opacity:0.6;cursor:default">',
-          '<div class="module-icon">✨</div>',
+          '<div class="module-icon">' + cardIco('more') + '</div>',
           '<div class="module-title">更多功能</div>',
           '<div class="module-desc">持续更新中...</div>',
         '</div>',
@@ -142,9 +142,15 @@
     });
   }
 
-  function moduleCard(UI, go, num, lab, sub, icon) {
+  /* 卡片图标统一走线性 SVG（js/icons.js）；模块缺失时降级为空字符串，不阻断渲染 */
+  function cardIco(name) {
+    return (typeof SonderIcons !== 'undefined') ? SonderIcons.icon(name) : '';
+  }
+
+  function moduleCard(UI, go, num, lab, sub, iconName) {
+    var ico = cardIco(iconName);
     return '<div class="module-card card-animate-in" data-go="' + go + '">'+
-      '<div class="module-icon">' + icon + '</div>'+
+      '<div class="module-icon">' + ico + '</div>'+
       '<div class="module-title">' + UI.esc(lab) + '</div>'+
       '<div class="module-desc">' + UI.esc(sub) + '</div>'+
       '<div class="module-stats">'+
