@@ -19,7 +19,7 @@
 ![PWA](https://img.shields.io/badge/PWA-Support-green)
 ![Zero-Dependency](https://img.shields.io/badge/Zero-Dependency-6B728C)
 ![CI](https://github.com/xiaoyu-hue/sonder520/actions/workflows/deploy.yml/badge.svg)
-![Tests](https://img.shields.io/badge/tests-776_passing-2ea44f?style=flat)
+![Tests](https://img.shields.io/badge/tests-568_passing-2ea44f?style=flat)
 
 </div>
 
@@ -41,8 +41,7 @@
 | 🔒 **隐私优先** | 数据仅存于本地浏览器，支持可选加密 |
 | 🎨 **水墨风格** | 宣纸/墨黑双主题，液态玻璃卡片设计 |
 | 📱 **浏览器内三端响应式** | 桌面/平板/手机三端响应式布局，PWA 离线可用 |
-| 🎮 **内置游戏** | 井字棋、五子棋、扫雷等 6 款迷你游戏 |
-| 🧪 **测试覆盖** | 776 项测试通过（单元测试 + 契约测试 + 集成测试 + E2E） |
+| 🧪 **测试覆盖** | 568 项测试通过（单元测试 + 契约测试 + 集成测试 + E2E） |
 
 ### 🔐 数据与隐私
 
@@ -64,7 +63,7 @@
 
 ## 📋 功能特性
 
-### 12 个核心模块
+### 11 个核心模块
 
 | 模块 | 功能 | 特色 |
 |------|------|------|
@@ -77,7 +76,6 @@
 | 📚 **阅读** | 书单管理、阅读计时、书摘 | 进度追踪、读书分享 |
 | 📰 **资讯** | 文章收藏、未读管理 | 链接跳转、分类整理 |
 | 🎨 **设计** | 灵感收集、设计项目 | 阶段性管理 |
-| 🎮 **娱乐** | 6 款迷你游戏 | 井字棋、五子棋、扫雷等 |
 | 📊 **数据统计** | 多维度数据可视化 | 完成率、进度图表 |
 | ⚙️ **设置** | 主题、壁纸、加密、备份 | 个性化定制 |
 
@@ -90,11 +88,11 @@
 > 注：Sonder-Frame 是本项目内部自研的轻量框架，非通用开源框架，专为个人工具类应用设计。
 
 ```
-Application (应用层 · 10 页面)
+Application (应用层 · 11 页面)
     ↓
 Domain (领域规则层 · task-domain 纯函数)
     ↓
-Repository (数据访问边界 · 9 个薄包装)
+Repository (数据访问边界 · 8 个薄包装)
     ↓
 ModuleFactory + Store 领域文件 (标准模块工厂 + 10 领域扩展)
     ↓
@@ -117,16 +115,15 @@ IDB (主存储) + localStorage (副本) + Crypto (加密)
 | **IndexedDB** | 主数据存储（真源） |
 | **localStorage** | 副本存储 + 跨标签信号 |
 | **Crypto API** | PBKDF2 + AES-GCM-256 加密 |
-| **Web Worker** | 五子棋 AI 异步计算 |
 | **PWA** | 离线可用、安装到桌面 |
 | **Playwright** | E2E 测试（三端：桌面/平板/手机） |
 
 ### 质量保障
 
-- ✅ **776 项测试**通过（单元测试 + 契约测试 + 集成测试 + E2E）
+- ✅ **568 项测试**通过（单元测试 + 契约测试 + 集成测试 + E2E）
 - ✅ **零构建**类型检查（JSDoc + TypeScript）
 - ✅ **ESLint** 代码规范
-- ✅ **14 份 ADR** 架构决策记录
+- ✅ **13 份 ADR** 架构决策记录
 - ✅ **PWA** 离线支持 + 版本更新
 - ✅ **架构分层**：Domain 规则层 + Repository 数据边界 + Store 领域扩展（10 文件）
 
@@ -153,7 +150,7 @@ IDB (主存储) + localStorage (副本) + Crypto (加密)
 ### 对比度合规
 
 - 所有文本对比度 ≥4.5:1（WCAG AA 标准）
-- 扫雷数字在两种主题下均清晰可读
+- 图表数字在两种主题下均清晰可读
 - 测试锁定对比度 token
 
 ---
@@ -260,7 +257,12 @@ npm run sync-sw
 
 ## 📈 更新日志
 
-### v6.3.3（当前版本）
+### v6.4.0（当前版本）
+
+- **移除娱乐与桌面宠物**：彻底删除游戏（井字棋/五子棋/扫雷/猜数字/猜成语/脑筋急转弯）与桌面宠物模块，回归个人工具本质，为后续 AI Agent 框架接入腾出边界
+- **测试收敛**：568 项测试全绿（删除纯娱乐用例，保留契约/一致性护栏）
+
+### v6.3.3
 
 - **v6.x 架构升级**：Repository 数据边界（9 个）+ Domain 规则层（task-domain）+ store.js 职责拆分（10 领域扩展文件）
 - **UX 修复**：状态下拉中文化、移动端日期时间、顶部时钟秒级跳动
@@ -343,7 +345,7 @@ Sonder520 是零依赖自研实现，但架构并非凭空发明——它站在�
 | [Ink & Switch《Local-First Software》](https://www.inkandswitch.com/local-first/) 与本地优先社区 | 本地设备为主数据副本、离线可用 | IndexedDB 真源 + localStorage 副本 + 双写双存 + PWA 离线 |
 | [TypeScript 团队](https://www.typescriptlang.org) | JSDoc 类型注解 + tsc 零构建检查 | `globals.d.ts` + `tsc --noEmit`，无编译步骤即得类型契约 |
 | 社区通用模块规范 | UMD（Universal Module Definition） | 全部领域/Repository/Domain 文件浏览器 + Node 双环境可加载 |
-| [W3C / MDN 开放标准](https://developer.mozilla.org) | WebCrypto（PBKDF2 + AES-GCM-256）、IndexedDB、Web Worker、Service Worker、backdrop-filter、CSS 自定义属性 | 加密、持久化、AI Worker、PWA、液态玻璃视觉全部基于浏览器原生能力 |
+| [W3C / MDN 开放标准](https://developer.mozilla.org) | WebCrypto（PBKDF2 + AES-GCM-256）、IndexedDB、Service Worker、backdrop-filter、CSS 自定义属性 | 加密、持久化、PWA、液态玻璃视觉全部基于浏览器原生能力 |
 
 ### 视觉与设计灵感
 

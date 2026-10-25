@@ -69,14 +69,12 @@ test('总线：open 数据链：createStore → 变更 → 广播对应路径', 
     s.addExcerpt({ bookId: '', text: '摘录', bookTitle: '未知' });
     s.addNews({ title: '新闻' });
     s.addDesign({ title: '设计' });
-    s.addGameRecord({ kind: 'tictactoe', winner: 'X' });
-    s.updateMiniRecord('guessnum', { best: 3 });
     s.setTheme('dark');
     s.clearAll();
     assert.deepEqual(emitted, [
       '/data/memos', '/data/tasks', '/data/posts', '/data/devProjects', '/data/devNotes',
       '/data/devSnippets', '/data/clients', '/data/books', '/data/excerpts', '/data/news',
-      '/data/designs', '/data/gameRecords', '/data/miniRecords', '/data/settings', '/data/all'
+      '/data/designs', '/data/settings', '/data/all'
     ]);
   } finally {
     if (original) globalThis.SonderBus = original; else delete globalThis.SonderBus;

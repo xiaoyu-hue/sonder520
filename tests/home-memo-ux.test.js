@@ -72,11 +72,11 @@ test('首页：今日任务勾选完成 → 落库并从今日列表移除', () 
   assert.equal(h.window.document.querySelector('[data-tid="' + t.id + '"]'), null, '已完成任务移出今日列表');
 });
 
-test('首页：概览区渲染 7 张模块卡且可跳转', () => {
+test('首页：概览区渲染 6 张模块卡且可跳转', () => {
   const h = boot();
   h.goto('home');
   const cards = h.window.document.querySelectorAll('.module-card[data-go]:not([data-go="home"])');
-  assert.equal(cards.length, 7, '7 个模块概览卡');
+  assert.equal(cards.length, 6, '6 个模块概览卡');
   assert.ok(h.window.document.querySelector('[data-go="today"]'), '有进入今日计划按钮');
   const go = h.window.document.querySelector('.module-card[data-go="news"]');
   assert.ok(go, '新闻卡存在');

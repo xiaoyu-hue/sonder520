@@ -37,7 +37,7 @@ IDB（Primary） + localStorage（Fallback/元数据） + Crypto
 - **EventBridge**：事件名集中为常量表并带 payload 契约（谁发/谁听/结构/缺字段怎么办）；on 返回 unsubscribe；只能用于跨模块弱耦合，模块内部用直接调用；destroy 必须完整清理（listener/timer/unsubscribe）。
 - **VisualEngine**：用户输入默认不可信——textContent 优先，innerHTML 必须过 sanitize，customRender 承担额外 XSS 审查；复用现有设计 token（墨色/宣纸/液态玻璃/水墨），不创造第二套视觉语言。
 - **ModuleConfig 必须验证**：validate → normalize → freeze；非法配置立即失败。字段类型第一版只许 text/textarea/date/boolean/number/select/array。
-- **Specialized Module 例外**：游戏（五子棋/扫雷）、Dashboard、统计、拖拽日历、复杂编辑器允许独立实现，只共享 TrustLayer/EventBridge/VisualEngine。
+- **Specialized Module 例外**：Dashboard、统计、拖拽日历、复杂编辑器允许独立实现，只共享 TrustLayer/EventBridge/VisualEngine。
 
 ## 数据与迁移协议
 
@@ -53,7 +53,7 @@ IDB（Primary） + localStorage（Fallback/元数据） + Crypto
 - **迁移基线 584 项测试是迁移安全网，不是旧包袱**——不得因"更干净"而大规模删除；旧测试验证行为则保留，仅验证废弃内部实现才可重写。
 - 分层保持：Unit / Contract（createModule 必须成功且有 add/getById/query/update/delete/destroy）/ Integration（Factory+TrustLayer、Factory+VisualEngine、Module+EventBridge）/ E2E（用户可见行为：新建→刷新→还在）。
 - 迁移前 `npm test` 必须过；迁移后必须再过；失败先判断（真 bug / 依赖旧内部实现 / 有意行为改变），**禁止"先改测试"逃避**；必须确认行为改变是否有意。
-- 测试预算参考：全量约 124s（motion Toast 5.4s / games-worker 3.3s / today 3.2s 最慢），超时阈值 30s。
+- 测试预算参考：全量约 36s（motion Toast 5.4s / today 3.2s 最慢），超时阈值 30s。
 
 ## 框架克制（防过度设计）
 

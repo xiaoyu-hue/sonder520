@@ -1,5 +1,4 @@
 /* e2e/responsive.spec.js - 三端视口冒烟（桌面/手机/平板）
- * 断言：无横向溢出滚动（游戏容器内滚动除外）、导航可见可点、弹窗不出屏
  */
 const { test, expect } = require('@playwright/test');
 

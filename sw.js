@@ -4,7 +4,7 @@
  * 内容变了而版本没升说明部署流程漏跑 sync-sw。 */
 'use strict';
 
-var CACHE = 'sonder-v125';
+var CACHE = 'sonder-v127';
 
 var ASSETS = [
   './',
@@ -14,7 +14,6 @@ var ASSETS = [
   './css/style-modules.css',
   './css/style-responsive.css',
   './css/style-cards.css',
-  './css/desktop-pet.css',
   './css/style-glass-ink.css',
   './js/encryption.js',
   './js/event-bus.js',
@@ -34,7 +33,6 @@ var ASSETS = [
   './js/store-content.js',
   './js/repositories/book-repository.js',
   './js/repositories/clients-repository.js',
-  './js/repositories/games-repository.js',
   './js/store-settings.js',
   './js/repositories/settings-repository.js',
   './js/repositories/memo-repository.js',
@@ -55,15 +53,6 @@ var ASSETS = [
   './js/reading.js',
   './js/news.js',
   './js/design.js',
-  './js/games-logic.js',
-  './js/games-view.js',
-  './js/games-shared.js',
-  './js/games-mini.js',
-  './js/games-battle.js',
-  './js/games.js',
-  './js/desktop-pet-data.js',
-  './js/desktop-pet.js',
-  './js/desktop-pet-page.js',
   './js/settings.js',
   './js/sw-register.js',
   './js/app.js',
@@ -73,10 +62,9 @@ var ASSETS = [
   './assets/icon-192.png',
   './assets/icon-512.png',
   './assets/icon-maskable-512.png',
-  './assets/apple-touch-icon.png',
-  './js/game-worker.js'
+  './assets/apple-touch-icon.png'
 ];
-var ASSET_SIG = 'e424842bb836';
+var ASSET_SIG = 'b57cd30a9ffa';
 
 /* install：预缓存全部资源，立即接管。
  * Request(cache:'reload') 绕过 HTTP 缓存直取网络——GH Pages max-age=600 下

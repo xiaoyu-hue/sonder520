@@ -28,15 +28,6 @@ test('响应式：平板图标栏（721-960px）', () => {
   assert.ok(/@media \(min-width:\s*721px\) and \(max-width:\s*960px\)\s*\{[^@]*?\.sidebar\s*\{[^}]*width:\s*70px/s.test(CSS), '平板侧栏折叠为图标栏');
 });
 
-test('响应式：棋盘与格子适配', () => {
-  assert.ok(/\.game-board\s*\{[^}]*width:\s*min\(92vw,\s*480px\)/s.test(CSS), '五子棋盘自适应宽度');
-  assert.ok(/\.game-board\.small\s*\{[^}]*repeat\(3,\s*1fr\)/s.test(CSS), '井字棋盘三列');
-  assert.ok(/\.game-board\.big \.cell\s*\{[^}]*min-height:\s*0/s.test(CSS), '大棋盘格子不受固定格高限制');
-  assert.ok(/\.ms-board\s*\{[^}]*max-width:\s*min\(100%,\s*540px\)/s.test(CSS), '扫雷棋盘限宽');
-  assert.ok(/\.ms-cell\s*\{[^}]*min-height:\s*clamp\(16px,\s*6vw,\s*32px\)/s.test(CSS), '扫雷格自适应');
-  assert.ok(/\.cell\s*\{[^}]*aspect-ratio:\s*1\/1/s.test(CSS), '对弈格子保持正方形');
-});
-
 test('响应式：超小屏与横屏兜底', () => {
   assert.ok(/@media \(max-width:\s*360px\)/, '360px 超小屏段存在');
   assert.ok(/@media \(max-width:\s*900px\) and \(max-height:\s*480px\)/, '手机横屏段存在');

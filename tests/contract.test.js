@@ -7,7 +7,7 @@ const { boot } = require('./harness.js');
  * 每个注册页面必须提供 title 与 render(container, ctx)。
  * 新增页面时必须同步更新 PAGES 列表（否则测试报警）。 */
 
-const PAGES = ['home', 'today', 'memo', 'selfmedia', 'dev', 'consulting', 'reading', 'excerpts', 'news', 'design', 'game', 'desktop-pet', 'settings'];
+const PAGES = ['home', 'today', 'memo', 'selfmedia', 'dev', 'consulting', 'reading', 'excerpts', 'news', 'design', 'settings'];
 
 test('契约: 所有注册页面都有 title 与 render 函数', () => {
   const { window } = boot({});
@@ -50,10 +50,9 @@ const STORE_METHODS = [
   'addBookNote', 'removeBookNote',
   'addNews', 'updateNews', 'removeNews',
   'addDesign', 'updateDesign', 'removeDesign',
-  'addGameRecord', 'clearGameRecords',
   /* settings 领域 */
   'setTheme', 'setWallpaperOpacity', 'getCustomWallpaper', 'setCustomWallpaper', 'clearCustomWallpaper',
-  'setTaskReminder', 'setModuleEnabled', 'setGameDifficulty', 'setFrameRate'
+  'setTaskReminder', 'setModuleEnabled', 'setFrameRate'
 ];
 
 test('契约: store 实例具备全部公开方法', () => {
@@ -94,32 +93,16 @@ test('契约: 各领域创建方法返回的记录带必要字段', () => {
   assert.ok(b.id && b.status && b.progress >= 0, 'addBook 记录应有 id/status/progress');
   const x = store.addDesign({ title: '契约设计' });
   assert.ok(x.id && x.type === 'idea', 'addDesign 记录应有 id/type');
-  const r = store.addGameRecord({ kind: 'tictactoe', winner: 'X' });
-  assert.equal(r.kind, 'tictactoe');
-  assert.equal(r.mode, 'ai');
-  assert.equal(r.player, 'player', 'pvp 以外的对局 player 默认 player');
-  assert.ok(r.id && r.date && r.time, 'addGameRecord 记录应有 id/date/time');
-});
-
-test('契约: 单人游戏记录按 solo 模式保存', () => {
-  const { store } = boot({});
-  const r = store.addGameRecord({ kind: 'minesweeper', winner: 'player', difficulty: 'mid' });
-  assert.equal(r.mode, 'solo');
-  assert.equal(r.difficulty, 'mid', '单人游戏保留自身档位');
-  assert.ok(r.note === null, '无 note 时为空');
-  const r2 = store.addGameRecord({ kind: 'guessnum', winner: 'player', note: '答案 42' });
-  assert.equal(r2.note, '答案 42', 'note 应原样保存');
 });
 
 test('契约: summarize 返回固定形状', () => {
   const { store } = boot({});
   const s = store.summarize();
-  ['date', 'tasks', 'selfmedia', 'dev', 'consulting', 'reading', 'news', 'design', 'game'].forEach(k => {
+  ['date', 'tasks', 'selfmedia', 'dev', 'consulting', 'reading', 'news', 'design'].forEach(k => {
     assert.ok(k in s, 'summarize 应含 ' + k);
   });
   assert.equal(typeof s.date, 'string');
   assert.ok('total' in s.tasks && 'doneToday' in s.tasks && 'remaining' in s.tasks, 'tasks 块应有 total/doneToday/remaining');
-  assert.ok('total' in s.game && 'wins' in s.game && 'draws' in s.game, 'game 块应有 total/wins/draws');
 });
 
 test('契约: exportBackup 明文模式返回 JSON 字符串，importBackup 可回读', () => {
@@ -141,11 +124,9 @@ test('契约: exportBackup 明文模式返回 JSON 字符串，importBackup 可�
 test('契约: Node require 路径也加载了全部领域扩展', () => {
   const S = require('../js/store.js');
   const api = S.createStore({ getItem: () => null, setItem: () => { }, removeItem: () => { } });
-  ['addTask', 'addPost', 'addDevProject', 'addClient', 'addBook', 'addNews', 'addDesign', 'addGameRecord', 'setTheme'].forEach(name => {
+  ['addTask', 'addPost', 'addDevProject', 'addClient', 'addBook', 'addNews', 'addDesign', 'setTheme'].forEach(name => {
     assert.equal(typeof api[name], 'function', 'Node 端缺少领域方法: ' + name);
   });
-  const r = api.addGameRecord({ kind: 'idiom', winner: 'player' });
-  assert.equal(r.mode, 'solo', 'Node 端领域方法行为一致');
 });
 
 test('契约: _h 白名单提供领域文件所需 helper', () => {

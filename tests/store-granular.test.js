@@ -46,7 +46,6 @@ test('legacy 拆分：整份 seed 启动后集合 key 就位且旧 key 保留', 
   const tasks = JSON.parse(st.getItem(COL('tasks')));
   assert.equal(tasks[0].title, '旧任务');
   assert.ok(st.getItem(COL('settings')), 'settings 集合 key 应就位');
-  assert.ok(st.getItem(COL('miniRecords')), 'miniRecords 集合 key 应就位');
 });
 
 test('legacy 拆分幂等：半成品重跑覆盖且标记后不再依赖整份', async () => {

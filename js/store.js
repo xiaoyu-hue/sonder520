@@ -12,7 +12,6 @@
  *   store-import-export.js  备份导出/导入/清空（readSnapshot/exportBackup/importBackup/clearAll）
  *   store-tasks.js          快速备忘 + 今日计划
  *   store-media.js          自媒体 + 开发工作 + 技术笔记/代码片段
- *   store-content.js        咨询 + 阅读/书摘 + 新闻 + 设计 + 游戏记录
  *   store-settings.js       主题/壁纸/提醒/模块开关/难度/帧率
  * 领域文件通过 SonderStore.Store 与 _h（core helper 白名单）注入；新增领域方法
  * 请写入对应领域文件而非本文件，并同步在 globals.d.ts 中声明签名。
@@ -198,37 +197,13 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     /* 主题：auto=跟随系统（默认）| light | dark */
     theme: 'auto',
     wallpaperOpacity: 40,
-    gameDifficulty: 'normal',
     frameRate: 120,
     modules: {
       today: true, memo: true, selfmedia: true, dev: true,
       consulting: true, reading: true, news: true, design: true,
-      game: true, 'desktop-pet': true
     },
     quotaNoticeDismissed: false,
     taskReminder: false,
-    desktopPet: {
-      enabled: true,
-      mode: 'duo',
-      resident: 'xiaomo',
-      size: 84,
-      layout: 'bottom-right',
-      positions: {
-        xiaomo: { x: null, y: null },
-        xiaoyu: { x: null, y: null },
-        lanling: { x: null, y: null }
-      },
-      coins: 0,
-      affection: { xiaomo: 0, xiaoyu: 0, lanling: 0 },
-      inventory: {},
-      totalFed: { xiaomo: 0, xiaoyu: 0, lanling: 0 },
-      rewardedTaskIds: [],
-      achievements: {
-        unlocked: [],
-        stats: { totalTasksDone: 0, lastActiveDay: null, streakDays: 0, totalFeeds: 0 }
-      },
-      schemaVersion: 1
-    }
   };
 
   /* 工厂注册的标准模块集合（ModuleFactory.createModule → _registerCollection）。
@@ -251,9 +226,6 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
       excerpts: [],
       news: [],
       designs: [],
-      gameRecords: [],
-      /* 单人小游戏最佳纪录（原独立 localStorage key，P3e 并入统一 state：加密/备份/导出随之覆盖） */
-      miniRecords: {}
     };
     EXTRA_COLLECTIONS.forEach(function (k) { base[k] = []; });
     return base;
@@ -367,59 +339,11 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     for (var k in node) sanitizeStateIds(node[k]);
   }
 
-  /* ---------- 桌面玩偶深合并迁移（自包含，store.js 加载先于 desktop-pet.js） ---------- */
-  var DP_ROLE_IDS = ['xiaomo', 'xiaoyu', 'lanling'];
-  var DP_MODES = ['single', 'duo', 'trio'];
-
-  function mergeDesktopPetDefaults(raw) {
-    var dflt = DEFAULT_SETTINGS.desktopPet;
-    var out = deepClone(dflt);
-    if (!raw || typeof raw !== 'object') return out;
-    if (typeof raw.enabled === 'boolean') out.enabled = raw.enabled;
-    if (DP_MODES.indexOf(raw.mode) !== -1) out.mode = raw.mode;
-    if (DP_ROLE_IDS.indexOf(raw.resident) !== -1) out.resident = raw.resident;
-    if (typeof raw.size === 'number') out.size = Math.max(48, Math.min(160, Math.round(raw.size)));
-    if (raw.layout === 'bottom-right' || raw.layout === 'bottom-left' || raw.layout === 'auto') out.layout = raw.layout;
-    if (raw.positions && typeof raw.positions === 'object') {
-      DP_ROLE_IDS.forEach(function (id) {
-        var p = raw.positions[id];
-        out.positions[id] = (p && typeof p === 'object')
-          ? { x: typeof p.x === 'number' ? p.x : null, y: typeof p.y === 'number' ? p.y : null }
-          : { x: null, y: null };
-      });
-    }
-    if (typeof raw.coins === 'number') out.coins = Math.max(0, Math.round(raw.coins));
-    if (raw.affection && typeof raw.affection === 'object') {
-      DP_ROLE_IDS.forEach(function (id) {
-        if (typeof raw.affection[id] === 'number') out.affection[id] = Math.max(0, Math.round(raw.affection[id]));
-      });
-    }
-    if (raw.inventory && typeof raw.inventory === 'object') out.inventory = deepClone(raw.inventory);
-    if (raw.totalFed && typeof raw.totalFed === 'object') {
-      DP_ROLE_IDS.forEach(function (id) {
-        if (typeof raw.totalFed[id] === 'number') out.totalFed[id] = Math.max(0, Math.round(raw.totalFed[id]));
-      });
-    }
-    if (Array.isArray(raw.rewardedTaskIds)) out.rewardedTaskIds = raw.rewardedTaskIds.slice(0, 500);
-    if (raw.achievements && typeof raw.achievements === 'object') {
-      if (Array.isArray(raw.achievements.unlocked)) out.achievements.unlocked = raw.achievements.unlocked.slice();
-      var st = raw.achievements.stats || {};
-      out.achievements.stats = {
-        totalTasksDone: typeof st.totalTasksDone === 'number' ? Math.max(0, st.totalTasksDone) : 0,
-        lastActiveDay: typeof st.lastActiveDay === 'string' ? st.lastActiveDay : null,
-        streakDays: typeof st.streakDays === 'number' ? Math.max(0, st.streakDays) : 0,
-        totalFeeds: typeof st.totalFeeds === 'number' ? Math.max(0, st.totalFeeds) : 0
-      };
-    }
-    return out;
-  }
-
   function mergeSettings(dflt, raw) {
     var s = deepClone(dflt);
     if (isPlainObject(raw)) {
       if (raw.theme === 'light' || raw.theme === 'dark' || raw.theme === 'auto') s.theme = raw.theme;
       if (typeof raw.wallpaperOpacity === 'number') s.wallpaperOpacity = clampOpacity(raw.wallpaperOpacity);
-      if (raw.gameDifficulty === 'easy' || raw.gameDifficulty === 'normal' || raw.gameDifficulty === 'hard') s.gameDifficulty = raw.gameDifficulty;
       if (raw.frameRate === 60 || raw.frameRate === 90) s.frameRate = raw.frameRate;
       else if (raw.frameRate === 120) s.frameRate = 120;
       if (typeof raw.quotaNoticeDismissed === 'boolean') s.quotaNoticeDismissed = raw.quotaNoticeDismissed;
@@ -429,7 +353,6 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
           if (typeof raw.modules[k] === 'boolean') s.modules[k] = raw.modules[k];
         }
       }
-      s.desktopPet = mergeDesktopPetDefaults(raw.desktopPet);
     }
     return s;
   }
@@ -592,7 +515,6 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
   /* ==================== TrustLayer: 持久化核心 ==================== */
   /* --- LS 副本层 --- */
 
-
   /* 让位：放弃本次旧快照覆盖，改为吸收 localStorage 中的最新 LS 快照（其他标签已写更新）。
    * 与被动收敛（_bindStorageWatch）共用 _absorbLocalSnapshot 核心；
    * 差异仅在：让位需先广播 /store/yielded（UI 弹"未保存修改已被放弃"提示）。 */
@@ -617,8 +539,6 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
 
   /* 全量序列化：逐集合与缓存比较，返回变更 map（全部未变 → null） */
   /* 全量序列化（不去重）：强制返回全部注册集合 map（加解密切换/迁移/导入等需全量场景） */
-
-
 
   /* 加密落盘：AES-GCM 异步（微任务级，用户操作间隙完成），逐集合独立 bundle（每集合新 iv）。
    * 串行队列保证加密按调用顺序落盘：encryptText 为异步，连续多次并发保存
@@ -656,7 +576,6 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     return self._encChain;
   };
 
-
   /* 密文 entry 附带盐（IDB extra）；盐缺失返回空对象 */
   /** @this {{ _storage: any }} */
   Store.prototype._encSaltExtra = function () {
@@ -666,9 +585,6 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
       return salt ? { salt: salt } : {};
     } catch (e) { return {}; }
   };
-
-
-
 
   /* 把存储字符串解析为 state 对象；密文格式（e===1）需已解锁并解密，失败一律返回 null 不动数据 */
   /* ==================== TrustLayer: 解密解析 ==================== */
@@ -687,7 +603,6 @@ var STORAGE_WALLPAPER_KEY = 'sonder_wallpaper_v1';
     }
     return Promise.resolve(parsed);
   };
-
 
   /* 当前数据体积（字节）。接近 5MB 上限时前端显示警示条。
    * 以最近一次各集合落盘串长度求和为准（密文模式 _colJson 存密文→天然反映加密体积）；

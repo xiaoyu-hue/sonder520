@@ -1,7 +1,7 @@
 # Personal Work & Life App · Product Requirements Document (PRD)
 
-> Version: v6.3.4
-> Status: v6.3.4 is the latest released version (see CHANGELOG)
+> Version: v6.4.0
+> Status: v6.4.0 is the latest released version (see CHANGELOG); entertainment games and the desktop pet module were removed in this version
 > Online:
 >
 > Main site (GitHub Pages, auto-deployed on push to main):
@@ -45,6 +45,7 @@ Historical records, kept in Chinese. See the Chinese `PRD.md`.
 | **v6.3.3** | Performance & code quality (no functional changes): desktop-pet AnimationLoop frame throttling (60/90/120 tiers) + 200ms global-search debounce + deepClone via structuredClone (cyclic refs/Date/Blob support) + magic numbers extracted to named constants + console.error funneled through error-guard reporting + 6 desktop-pet tests; test baseline 770 → 776 |
 | **v6.3.2** | Security infrastructure consolidation (no functional changes): main branch protection (required checks + strict + enforce_admins + no force-push/delete + linear history) + Test Gate pull_request trigger + Dependabot routine upgrades disabled (alerts & security updates kept) + redundant socket.yml removed (Socket App owns supply-chain scanning) + scanning pipeline consolidated (CodeQL / Semgrep / OSV-Scanner / Socket / Dependabot alerts) + README acknowledgments table for security scanners; test baseline 770 all green |
 | **v6.3.1** | Docs & security scanning (no functional changes): README badge overhaul (static version → dynamic release badge + last-commit + CI + tests-770) + third-party automated review phase 1 (CodeQL scan + Dependabot weekly + npm audit gate in Test Gate; 0 known dependency vulnerabilities) |
+| **v6.4.0** | Removed entertainment games & desktop pet (back to the essence of a personal tool): deleted 7 game js files + `game-worker.js` + `games-repository.js`, 3 desktop-pet js files + `desktop-pet.css`; pages 13 → 11, Repositories 9 → 8, home overview cards 7 → 6; removed Store methods `addGameRecord`/`clearGameRecords`/`setGameDifficulty`/`setDesktopPet`/`getMiniRecord`/`updateMiniRecord` and `state.gameRecords`/`miniRecords`; global search no longer indexes game records; SW cache `sonder-v127`; test baseline 568 all green |
 
 (Further historical summaries from v5.0 onward are kept in the Chinese PRD.)
 
@@ -53,14 +54,13 @@ Historical records, kept in Chinese. See the Chinese `PRD.md`.
 ## 1. Product Goal & Use Cases
 
 ### Product Goal
-A work & life management app for personal use only: gather scattered personal work (self-media, development, consulting, reading, news, design) and everyday items (today's plan, quick memos) together with leisure (six mini games) into one local tool, reducing context-switching and chaotic ad-hoc notes.
+A work & life management app for personal use only: gather scattered personal work (self-media, development, consulting, reading, news, design) and everyday items (today's plan, quick memos) into one local tool, reducing context-switching and chaotic ad-hoc notes.
 
 ### Use Cases
 - Open it in a desktop browser and instantly see what to do today.
 - Have a passing thought → jot it into "Quick Memo".
 - Plan and handle tasks daily via "Today's Plan", using the 🍅 focus countdown to enter focused state.
 - Each work module records progress independently without interference, while the home page gives a global overview.
-- Play Gomoku, Tic-tac-toe, Guess the Number, Minesweeper, Guess the Idiom, or Brain Teasers on the phone during spare time; records are saved automatically.
 
 ### Core Principles
 - Pure frontend: data is stored only in the visitor's own browser (localStorage/IndexedDB), never uploaded to any server.
@@ -74,10 +74,10 @@ A work & life management app for personal use only: gather scattered personal wo
 
 ### App Shell
 - **Side navigation**: app name/logo + 10 navigation entries, current page highlighted.
-  - Home, Today's Plan, Self-Media, Dev Work, Consulting, Reading Plan, News Plan, Design Plan, Games, Data & Settings
+  - Home, Today's Plan, Quick Memo, Self-Media, Dev Work, Consulting, Reading Plan, Excerpts, News Plan, Design Plan, Data & Settings
   - Desktop: full sidebar; tablet (721–960px): collapses to a 70px icon rail; phone portrait (≤720px): bottom liquid-glass nav bar (horizontally scrollable, 44px touch targets, safe-area inset support).
 - **Top bar**: current module name, today's date, global "+" quick-create button, global "Quick Memo" entry, global search box.
-- **Content area**: each module renders independently; switching navigation preserves per-page state (game board state survives page switches).
+- **Content area**: each module renders independently; switching navigation preserves per-page state.
 - **Modal rules**: add/edit/delete-confirm all use a centered overlay + translucent scrim, Esc to close; bottom-sheet style on phones; WCAG focus management (set/trap/restore).
 - **Ultra-wide screens**: >1240px content is centered at a max width of 1240px.
 
@@ -92,7 +92,6 @@ Sidebar
 ├── Reading Plan
 ├── News Plan
 ├── Design Plan
-├── Games
 └── Data & Settings
 ```
 
@@ -111,10 +110,8 @@ Sidebar
   - Phone ≤720px: bottom liquid-glass nav
   - Tiny screens ≤360px: compressed spacing, no overflow; `.row` wraps
   - Phone landscape: top bar and nav shrink
-  - Gomoku board ≤720px: width `min(97vw,480px)`, 2px cell gap, 8px padding, square cells, 86% stone fill; further compressed ≤360px; never overflows horizontally (covers iPhone SE)
-  - Minesweeper on phones: width `max(100%, cols×26px)` in a horizontal-scroll container, cells ≥26px touch size
   - Safe area `env(safe-area-inset-bottom)`, `100vh→100dvh` fallback (old iOS/Android), touch targets ≥44px, 16px inputs prevent iOS zoom-on-focus, `color-scheme` synced for forms and scrollbars
-- **PWA friendly**: `viewport-fit=cover` + `apple-mobile-web-app-capable`, installable as an App; Service Worker offline cache (current cache version sonder-v125, `npm run sync-sw` syncs the asset list and bumps the version); navigation requests network-first (refresh gets the new version, offline falls back to cached home), static assets cache-first.
+- **PWA friendly**: `viewport-fit=cover` + `apple-mobile-web-app-capable`, installable as an App; Service Worker offline cache (current cache version sonder-v127, `npm run sync-sw` syncs the asset list and bumps the version); navigation requests network-first (refresh gets the new version, offline falls back to cached home), static assets cache-first.
 
 ---
 
@@ -130,7 +127,6 @@ Sidebar
    - Reading Plan: reading count / total
    - News Plan: unread count / total
    - Design Plan: project count / in-progress design count
-   - Games: matches played / wins & draws
    - Click any card to jump to that module.
 
 ---
@@ -147,7 +143,6 @@ Sidebar
 | Reading Plan | Manage book list: reading/want/read, reading timer, notes, excerpts |
 | News Plan | Save articles to read: title/link/source, unread/read/favorited |
 | Design Plan | Collect inspiration, manage design projects and stages |
-| Games | Tic-tac-toe / Gomoku / Guess the Number / Minesweeper / Guess the Idiom / Brain Teasers: AI duel, local 2-player, undo, resign, auto records |
 | Data & Settings | Stats overview, export/backup/restore, encryption toggle, theme & module toggles, notifications & reports |
 
 ---
@@ -186,24 +181,13 @@ Sidebar
 - Data: inspiration records (link/idea), inspiration categories, design projects, project stages (concept/in-progress/finalized).
 - Operations: add inspiration, browse by category, add project, advance stage.
 
-### Games
-- Data: match records (game/mode/winner/forfeit/AI difficulty/note/time), stats summary (matches/wins/draws), mini-game best records (unified miniRecords storage).
-- Operations:
-  - Game selection: Tic-tac-toe 3×3 / Gomoku 15×15 / Guess the Number / Minesweeper / Guess the Idiom / Brain Teasers.
-  - Battle games (Tic-tac-toe/Gomoku): AI duel (first or second move) / local 2-player; three AI levels (easy/normal/hard), persisted.
-  - Move: click a cell; in AI mode the AI replies automatically (320ms delay on first move, 220ms after, simulating thinking pace).
-  - Undo (AI mode): instant, no confirm, multiple turns; undoing while the AI is thinking cancels its pending move.
-  - Undo (2-player): the player who just moved may retract it, opponent confirms; no undo after the game ends.
-  - Resign: double-confirm, opponent wins; in AI mode the AI wins; winner attribution matches records.
-  - New game: double-confirm when stones are placed, board cleared; rapid re-clicks on "New Game"/mode switch never stack multiple dialogs.
-  - Mini games: Guess the Number (7 tries/hint/best record), Minesweeper (3 difficulties/safe first click/safe first flag/no-deadlock reveal), Guess the Idiom (3 tries/hint chars), Brain Teasers (reveal answer/fun questions); records auto-saved.
-  - Back to game select: double-confirm when the current game is unfinished; double-confirm to clear records.
-- AI behavior: Tic-tac-toe is full search (never loses); Gomoku is heuristic scoring (prioritize own five-in-a-row, block opponent's open fours/live fours, attack weighted above defense, hard level adds one-ply lookahead).
-- Match state survives navigation; returning continues the game (interrupted AI auto-continues); records auto-persist; home overview and stats page stay in sync.
+### Games (removed in v6.4.0)
+
+> The entertainment games module (Tic-tac-toe / Gomoku / Guess the Number / Minesweeper / Guess the Idiom / Brain Teasers) and the desktop pet module were physically removed in v6.4.0, returning to the essence of a personal tool and clearing the boundary for a future AI Agent framework. Match records, stats and mini-game best records (`miniRecords`) were removed together; see `CHANGELOG.md` and the version history for details.
 
 ### Data & Settings
 - Data: app settings (theme, module toggles, animation frame rate, notification toggle, encryption state), statistics.
-- Operations: switch theme (follow-system/manual), toggle modules, enable/disable encryption (wizard + lock screen + password-free session), upload/restore wallpaper, adjust opacity, generate weekly report (one-click copy), desktop notification permission, export backup (plaintext or encrypted), import restore, view stats (**completion-rate denominator = today's due tasks: done + todo + overdue**), clear game records, data migration (IndexedDB).
+- Operations: switch theme (follow-system/manual), toggle modules, enable/disable encryption (wizard + lock screen + password-free session), upload/restore wallpaper, adjust opacity, generate weekly report (one-click copy), desktop notification permission, export backup (plaintext or encrypted), import restore, view stats (**completion-rate denominator = today's due tasks: done + todo + overdue**), data migration (IndexedDB).
 
 ---
 
@@ -212,7 +196,6 @@ Sidebar
 - **Today's Plan** is the core execution layer for daily tasks; the home page only shows its summary with quick check-off.
 - **Quick Memo** is the global instant-capture entry; the home page shows the latest memo, full history lives in the module.
 - **Work modules** are independent record units; the home page aggregates key numbers via overview cards, clicking enters the module.
-- **Games** is the leisure module: match state survives navigation (continue on return), records feed home overview & stats.
 - **Data & Settings** controls global appearance, module visibility, and backup/restore; it does not participate in daily business data.
 - Data is stored uniformly; modules are not forcibly linked; Today's Plan and work modules have no automatic interplay.
 
@@ -231,7 +214,7 @@ Sidebar
 
 ## 9. Features Completed in This Version
 
-1. Sidebar + top bar shell, 10 switchable pages with preserved state; global search box (real-time fuzzy match/grouped/jump-highlight, index covers book excerpts & game records).
+1. Sidebar + top bar shell, 11 switchable pages with preserved state; global search box (real-time fuzzy match/grouped/jump-highlight, index covers book excerpts).
 2. Phone bottom nav + tablet icon rail + desktop ultra-wide (>1240px centered max-width) full-platform adaptation; safe area / dvh / touch / no-zoom all in place.
 3. Themes (Rice Paper/Ink Black, follow-system overridable), custom wallpaper upload & opacity (0–100%, slider debounced), frosted glass, micro-motion, low-end performance & fallbacks; dual-theme contrast WCAG AA.
 4. Daily quote rotation by date (may show your own book excerpts), graceful degradation when library missing.
@@ -239,12 +222,11 @@ Sidebar
 6. Today's Plan: CRUD/sort/check-off/grouping, 4-level priority color dots, 🍅 25-min floating focus countdown (browser notification on finish), date filter state preserved across pages.
 7. One-tap memo: save-instantly, history, archive.
 8. Six content modules with per-module CRUD/filter/stats; self-media CSV export (formula-injection safe) + calendar drag scheduling + channels + read-count line chart; dev notes Markdown rendering & code copy; reading timer & "My Excerpts" page; consulting income records.
-9. Six games: Tic-tac-toe / Gomoku (AI 3 levels / 2-player, undo/resign/new-game confirm flow, full rule regression locked) + Guess the Number / Minesweeper / Guess the Idiom / Brain Teasers (records merged into battle records, incl. solo mode & notes, AI difficulty shown; mini-game best records unified).
-10. Data & Settings: export/import/stats (completion denominator = today's due tasks)/clear records/theme/module toggles/frame rate (60/90/120)/data migration (IndexedDB)/encryption (wizard+lock+password-free session+resilience)/desktop notifications/weekly report one-click copy/wallpaper upload.
-11. Unified interaction: modal rules, double-confirm, Esc close, Toast, stacked-dialog prevention, overlay focus management (set/trap/restore).
-12. Reliability: PWA offline (cache sonder-v125 auto-sync; network-first navigation, refresh gets new version), dual-write dual-store (per-collection keys), >4.5MB storage warning bar, red crisis bar with forced export when both write backends fail, XSS sanitization across modules (incl. attribute injection & form key escaping), optional encryption, performance (per-collection incremental serialization/search index cache/AI pruning/derived-key cache), error reporting & shell fallback.
-13. Engineering: eslint passing, zero-build type contracts (d.ts + tsc), innerHTML assignment-point whitelist audit, state dual-track contract, store domain split (10 domain files) + Repository data boundary + Domain rule layer, index.html as the single script source of truth.
-14. **776 automated tests passing** (full-suite verification across versions).
+9. Data & Settings: export/import/stats (completion denominator = today's due tasks)/theme/module toggles/frame rate (60/90/120)/data migration (IndexedDB)/encryption (wizard+lock+password-free session+resilience)/desktop notifications/weekly report one-click copy/wallpaper upload.
+10. Unified interaction: modal rules, double-confirm, Esc close, Toast, stacked-dialog prevention, overlay focus management (set/trap/restore).
+11. Reliability: PWA offline (cache sonder-v127 auto-sync; network-first navigation, refresh gets new version), dual-write dual-store (per-collection keys), >4.5MB storage warning bar, red crisis bar with forced export when both write backends fail, XSS sanitization across modules (incl. attribute injection & form key escaping), optional encryption, performance (per-collection incremental serialization/search index cache/derived-key cache), error reporting & shell fallback.
+12. Engineering: eslint passing, zero-build type contracts (d.ts + tsc), innerHTML assignment-point whitelist audit, state dual-track contract, store domain split (10 domain files) + Repository data boundary + Domain rule layer, index.html as the single script source of truth.
+13. **568 automated tests passing** (full-suite verification across versions).
 
 ---
 
@@ -268,15 +250,13 @@ Sidebar
 6. Self-media: calendar view supports drag/long-press scheduling; published cards accept reads/likes and appear in the line chart; CSV export prefixes = + - @ fields.
 7. Encryption: Settings wizard → lock-screen unlock → data is ciphertext → export/import of encrypted backup requires the password; wrong password never corrupts ciphertext; no-op when disabled; after manually writing future-version ciphertext (v2), refresh still prompts unlock and ciphertext is preserved verbatim.
 8. Settings completion rate = today's due done / (done + todo + overdue), consistent with the task list.
-9. Games: all six games complete a round and record to battle records (incl. solo mode, notes, AI difficulty); Gomoku/Tic-tac-toe undo/resign/new-game follow the rules; no undo after game end; re-clicking resign adds no record; rapid "New Game" clicks show a single confirm; Minesweeper first click is always safe (safe even with a pre-placed flag, flag position kept), no-deadlock reveal, correct win/loss.
-10. Gomoku mobile: 375px phone shows square cells fitting within the viewport, no distortion, no horizontal scroll; 360px-class screens still allow normal moves; Minesweeper cells ≥26px clickable.
-11. Ultra-wide: 2560px desktop shows content centered at max 1240px, not spread edge to edge.
-12. Tablet 760px: sidebar collapses to icon rail; phone portrait: bottom nav + sheet modals; landscape shrinks the top bar.
-13. Theme follows system (manual override); wallpaper upload works, opacity adjustable, default restorable; body/accent text contrast ≥4.5:1 in both themes.
-14. Export JSON → modify data → import restore → data matches the export (overwrite warning shown before import).
-15. Persistence: any data entry survives refresh, tab close, and browser restart.
-16. Works via phone external links and offline local index.html; data stays in the local browser only.
-17. Engineering acceptance: `npm test` (776), `npm run typecheck`, `npm run lint` all pass.
+9. Ultra-wide: 2560px desktop shows content centered at max 1240px, not spread edge to edge.
+10. Tablet 760px: sidebar collapses to icon rail; phone portrait: bottom nav + sheet modals; landscape shrinks the top bar.
+11. Theme follows system (manual override); wallpaper upload works, opacity adjustable, default restorable; body/accent text contrast ≥4.5:1 in both themes.
+12. Export JSON → modify data → import restore → data matches the export (overwrite warning shown before import).
+13. Persistence: any data entry survives refresh, tab close, and browser restart.
+14. Works via phone external links and offline local index.html; data stays in the local browser only.
+15. Engineering acceptance: `npm test` (568), `npm run typecheck`, `npm run lint` all pass.
 
 ---
 
@@ -284,18 +264,16 @@ Sidebar
 
 - **Implementation**: pure HTML + CSS + vanilla JS, zero build, zero runtime dependencies; all assets are relative paths, deployable to any static host (Netlify / Cloudflare Pages / Vercel / GitHub Pages) and openable by double-clicking the local file.
 - **Code organization**:
-  - Data layer: `store.js` (core: Store construction, state normalization, encryption/decryption & snapshot helpers, shared helpers & `_h` whitelist) + 10 domain extension files (UMD, injected via `SonderStore.Store` & `_h`) — `store-tasks` (quick memo + today's plan), `store-media` (self-media + dev + tech notes), `store-content` (consulting + reading/excerpts + news + design + games), `store-settings` (theme/wallpaper/reminders/module toggles), `store-report` (weekly report), `store-undo` (delete undo), `store-persistence` (persistence core: LS/IDB read-write, save/_commit, write-lock funnel ADR-013), `store-migration` (legacy split migration + IDB load), `store-import-export` (backup export/import/clear) + `store-stats` (pure-function stats/aggregation) + `encryption.js` (optional encryption core: PBKDF2 600k + AES-GCM-256, ciphertext branches, lock screen, serial encryption chain, derived-key cache) + `event-bus.js` (SonderBus event bus: store changes published → pages re-render on subscription)
-  - Data access boundary (v6.x Repository layer, `js/repositories/`): 9 thin wrapper Repositories — `task / book / dev / settings / clients / games / memos / news / design`, unified get/getAll/create/update/remove (delegating to Store domain methods, identical behavior incl. commit/events/undo; memos/news/design keep CONFIG single-source in the page)
+  - Data layer: `store.js` (core: Store construction, state normalization, encryption/decryption & snapshot helpers, shared helpers & `_h` whitelist) + 10 domain extension files (UMD, injected via `SonderStore.Store` & `_h`) — `store-tasks` (quick memo + today's plan), `store-media` (self-media + dev + tech notes), `store-content` (consulting + reading/excerpts + news + design ), `store-settings` (theme/wallpaper/reminders/module toggles), `store-report` (weekly report), `store-undo` (delete undo), `store-persistence` (persistence core: LS/IDB read-write, save/_commit, write-lock funnel ADR-013), `store-migration` (legacy split migration + IDB load), `store-import-export` (backup export/import/clear) + `store-stats` (pure-function stats/aggregation) + `encryption.js` (optional encryption core: PBKDF2 600k + AES-GCM-256, ciphertext branches, lock screen, serial encryption chain, derived-key cache) + `event-bus.js` (SonderBus event bus: store changes published → pages re-render on subscription)
+  - Data access boundary (v6.x Repository layer, `js/repositories/`): 8 thin wrapper Repositories — `task / book / dev / settings / clients / memos / news / design`, unified get/getAll/create/update/remove (delegating to Store domain methods, identical behavior incl. commit/events/undo; memos/news/design keep CONFIG single-source in the page)
   - Domain rule layer (v6.x, `js/domain/`): `task-domain.js` — pure functions for task complete/reopen semantics (no double-complete, no re-open), pages persist only after TaskDomain rules pass
   - Components: `ui.js` (modals/Toast/forms, unified sanitize & URL scheme whitelist, focus management)
   - Modules: `home / today / memo / selfmedia / dev / consulting / reading / news / design / settings`, one file each
-  - Games: `games-logic.js` (pure game rules & 3-level AI: tic-tac-toe full search, gomoku heuristic scoring + hard-level lookahead; guess-number/minesweeper/idiom/brain-teaser rules & question bank) + `games-shared.js` (shared state & AI scheduling, must load first) + `games-mini.js` (mini-game views & records) + `games-battle.js` (battle views, undo/resign/new-game/records, AI move pacing & worker scheduling) + `games-view.js` (render pure functions) + `games.js` (page orchestration: render dispatch/game select/records/test hooks) + `game-worker.js` (Gomoku AI Web Worker, async non-blocking; falls back to sync when Worker unavailable; stale replies discarded)
   - Search: `search.js` (global index + cache, fuzzy match, grouped jump, ink highlight)
   - Extended rendering: `markdown.js` (tech-note Markdown rendering & code copy)
-  - Shell: `app.js` (routing/theme-follow/frame-rate/warning bar/crisis bar/nav fallback/offline indicator), `error-guard.js` (global error net & reporting), `sw.js` (Service Worker offline cache, current sonder-v125, auto-synced by script; navigation network-first), `manifest.json` (PWA manifest & icons)
+  - Shell: `app.js` (routing/theme-follow/frame-rate/warning bar/crisis bar/nav fallback/offline indicator), `error-guard.js` (global error net & reporting), `sw.js` (Service Worker offline cache, current sonder-v127, auto-synced by script; navigation network-first), `manifest.json` (PWA manifest & icons)
   - Types: `globals.d.ts` (Pages/SonderStore public methods/UI globals + Repository/Domain/domain-type contracts, 80+ type interfaces)
 - **Theme system**: CSS custom properties + light/dark dual themes; `@supports` degrades frosted glass on unsupported browsers; wallpaper as independent img element + `object-fit: cover` + opacity variable; text/accent tokens meet WCAG AA.
 - **Data compatibility**: field normalization on read (defaults for missing, clamping for invalid + 9 legacy field migrations), smooth migration of historical data; IndexedDB & localStorage dual-write, newest-by-save-time on conflict; encryption switch fully backward compatible (no-op when off); future ciphertext versions preserved verbatim.
-- **Mobile board details**: 15-column board uses grid; `.game-board.big` compresses gaps/padding at the phone breakpoint with `min-height: 0` square cells; width `min(97vw, 480px)` never overflows; minesweeper `max(100%, cols×26px)` + horizontal scroll keeps cells ≥26px; board cells are intrinsic game hot zones (whole board must stay visible), all other UI touch targets ≥44px.
 - **Engineering defense**: eslint (no un-commented empty catch), zero-build TypeScript checking (JSDoc + tsc --noEmit), innerHTML assignment-point whitelist audit (12 manual entries, rest cleared or escaped), contract tests (contract/behavior/state/innerhtml/type-sync), index.html as single script source of truth (parsed by harness), `scripts/sync-sw.js` auto-syncs SW asset list & bumps cache version.
-- **Automated tests**: jsdom + `node --test` (glob full suite) + fake-indexeddb; covering storage, encryption (races/edges/future-version resilience/derived cache), per-collection persistence (per-key read-write/migration/backfill/encrypted bundle), write-lock yield protocol (ADR-013/014), Repository boundaries, Domain rules, UI, all modules, styles, motion, wallpaper, mobile auto-adaptation, performance, game engine (win detection/forbidden-move/AI strategy/six games/Worker behavior), interaction regression (dialog stacking, undo semantics, end-game locking, board compression), PWA, search, offline indicator, XSS sanitization (incl. attribute injection), IndexedDB dual-write & quota warning, persistence crisis fallback, notifications, contrast, CSS-variable contract, weekly report — currently **776 passing** (`npm test`).
+- **Automated tests**: jsdom + `node --test` (glob full suite) + fake-indexeddb; covering storage, encryption (races/edges/future-version resilience/derived cache), per-collection persistence (per-key read-write/migration/backfill/encrypted bundle), write-lock yield protocol (ADR-013/014), Repository boundaries, Domain rules, UI, all modules, styles, motion, wallpaper, mobile auto-adaptation, performance, interaction regression (dialog stacking), PWA, search, offline indicator, XSS sanitization (incl. attribute injection), IndexedDB dual-write & quota warning, persistence crisis fallback, notifications, contrast, CSS-variable contract, weekly report — currently **568 passing** (`npm test`).
