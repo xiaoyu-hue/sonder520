@@ -1,0 +1,76 @@
+/* style-stage2.css — 移动端改造 · 阶段 2 新增组件
+ * 内容：启动骨架屏 / 下拉刷新指示器 / PWA 更新提示
+ * 仅做精细化，不换水墨×液态玻璃风格；改动集中于此文件，便于整体 revert。 */
+
+/* ---------------- 启动骨架屏 ---------------- */
+.boot-skeleton {
+  position: fixed; inset: 0; z-index: 80;
+  display: flex; flex-direction: column;
+  background: var(--bg, #f2efe6);
+  padding: calc(env(safe-area-inset-top, 0px) + 16px) 16px 16px;
+  gap: 16px;
+}
+.boot-skeleton[hidden] { display: none; }
+.boot-skeleton.sk-fade { opacity: 0; transition: opacity 0.24s var(--ease, ease); }
+.sk-topbar { display: flex; justify-content: space-between; align-items: center; }
+.sk-body { display: flex; flex-direction: column; gap: 14px; margin-top: 8px; }
+.sk-tiles { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+.sk-card { height: 76px; border-radius: var(--r-lg, 16px); }
+.sk-tile { height: 88px; border-radius: var(--r-lg, 16px); }
+.sk-line {
+  position: relative; overflow: hidden;
+  background: rgba(120, 110, 95, 0.14);
+  border-radius: var(--r-sm, 8px);
+}
+.sk-w120 { width: 120px; height: 18px; }
+.sk-w60 { width: 60px; height: 18px; }
+/* 微光扫过动画（尊重 reduce-motion） */
+.sk-line::after {
+  content: ''; position: absolute; inset: 0; transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.45), transparent);
+  animation: skShimmer 1.3s var(--ease, ease) infinite;
+}
+@keyframes skShimmer { 100% { transform: translateX(100%); } }
+@media (prefers-reduced-motion: reduce) {
+  .sk-line::after { animation: none; }
+}
+
+/* ---------------- 下拉刷新指示器 ---------------- */
+.ptr-indicator {
+  position: fixed; top: calc(env(safe-area-inset-top, 0px) + 8px); left: 50%;
+  transform: translate(-50%, -20px); z-index: 70;
+  width: 38px; height: 38px; border-radius: 999px;
+  background: var(--surface-1, #fff); box-shadow: 0 4px 14px rgba(43, 38, 32, 0.18);
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; transition: opacity var(--dur-base, 200ms) var(--ease, ease), transform var(--dur-base, 200ms) var(--ease, ease);
+  pointer-events: none;
+}
+.ptr-indicator.show { opacity: 1; transform: translate(-50%, 0); }
+.ptr-indicator.loading .ptr-spinner { animation: ptrRotate 0.8s linear infinite; }
+.ptr-spinner {
+  width: 20px; height: 20px; border-radius: 999px;
+  border: 2.5px solid rgba(194, 59, 46, 0.25); border-top-color: var(--accent, #c23b2e);
+}
+@keyframes ptrRotate { 100% { transform: rotate(360deg); } }
+
+/* ---------------- PWA 更新提示 ---------------- */
+.update-banner {
+  position: fixed; left: 12px; right: 12px;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 70px); z-index: 75;
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px; border-radius: var(--r-md, 12px);
+  background: var(--surface-1, #fff);
+  box-shadow: 0 8px 24px rgba(43, 38, 32, 0.22);
+  border: 1px solid var(--border-hi, rgba(255, 255, 255, 0.6));
+}
+.update-banner[hidden] { display: none; }
+.ub-text { flex: 1; font-size: 14px; color: var(--text, #2b2620); }
+.ub-btn {
+  flex: 0 0 auto; border: 0; cursor: pointer;
+  background: var(--accent, #c23b2e); color: #fff;
+  font-size: 13px; font-weight: 600; padding: 7px 14px; border-radius: 999px;
+}
+.ub-close {
+  flex: 0 0 auto; border: 0; background: transparent; cursor: pointer;
+  color: var(--muted, #8a8272); font-size: 16px; line-height: 1; padding: 4px 6px;
+}

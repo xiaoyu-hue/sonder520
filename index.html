@@ -32,6 +32,7 @@
   <link rel="stylesheet" href="css/style-cards.css">
   <link rel="stylesheet" href="css/style-glass-ink.css">
   <link rel="stylesheet" href="css/style-stage1.css">
+  <link rel="stylesheet" href="css/style-stage2.css">
 </head>
 <body>
   <div id="wallpaperLayer" aria-hidden="true"><img id="wallpaperImg" alt="" draggable="false"></div>
@@ -72,6 +73,29 @@
   <div id="overlayRoot"></div>
   <div id="morePanel" class="more-panel" hidden aria-hidden="true"></div>
   <button id="fab" class="fab" type="button" aria-label="新建"><span class="ico"></span></button>
+
+  <!-- 阶段2：启动骨架屏（首屏渲染前占位，render 后由 app.js 隐藏） -->
+  <div id="bootSkeleton" class="boot-skeleton" role="status" aria-live="polite" aria-label="加载中">
+    <div class="sk-topbar"><span class="sk-line sk-w120"></span><span class="sk-line sk-w60"></span></div>
+    <div class="sk-body">
+      <div class="sk-card sk-line"></div>
+      <div class="sk-card sk-line"></div>
+      <div class="sk-tiles">
+        <span class="sk-tile sk-line"></span><span class="sk-tile sk-line"></span>
+        <span class="sk-tile sk-line"></span><span class="sk-tile sk-line"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 阶段2：下拉刷新指示器（移动端触顶下拉显示） -->
+  <div id="ptrIndicator" class="ptr-indicator" aria-hidden="true"><span class="ptr-spinner"></span></div>
+
+  <!-- 阶段2：PWA 新版本更新提示 -->
+  <div id="updateBanner" class="update-banner" hidden role="alert">
+    <span class="ub-text">已发布新版本</span>
+    <button id="updateBtn" class="ub-btn" type="button">立即更新</button>
+    <button id="updateClose" class="ub-close" type="button" aria-label="稍后">✕</button>
+  </div>
 
   <script src="js/encryption.js" defer></script>
   <script src="js/event-bus.js" defer></script>

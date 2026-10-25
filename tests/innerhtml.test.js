@@ -30,7 +30,7 @@ const MANUAL_REVIEW = {
   'today.js:132': 'html 由 section() 构建：t.title/note/priority 与 pr.label 均过 esc，t.id 经 normalize 白名单收口',
   'ui.js:59': 'UI.el 框架入口（innerHTML 接收调用方已转义字符串），调用方由本清单约束',
   'app.js:139': 'buildMorePanel：MORE_LABEL 经 UI.esc，ICONS 为静态 SVG 路径，key 取自固定路由常量数组，无外部插值',
-  'app.js:491': 'FAB 图标注入：I.icon("plus") 返回自有图标库的静态 SVG 字面量，无用户输入，等同常量'
+  'app.js:492': 'FAB 图标注入：I.icon("plus") 返回自有图标库的静态 SVG 字面量，无用户输入，等同常量'
 };
 
 test('innerHTML 契约：全部赋值点清空或已转义，其余在人工审查白名单内', () => {
