@@ -100,6 +100,9 @@
     var page = Pages[key] || Pages.home;
     document.getElementById('pageTitle').textContent = page.title;
     document.title = page.title + ' · Sonder';
+    /* 顶栏时间：日期全局常驻；每秒跳动的时钟只在首页显示（其它页保持安静） */
+    var timeEl = document.getElementById('topTime');
+    if (timeEl) timeEl.style.display = (key === 'home') ? '' : 'none';
     buildNav();
     applyTheme();
     applyWallpaper();
