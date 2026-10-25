@@ -52,6 +52,12 @@ function walkAll(h) {
     h.goto(p);
     const c = h.window.document.getElementById('content');
     assert.ok(c && c.textContent.length > 0, p + ' 页面应有渲染内容');
+    /* 顶栏：日期全局常驻；每秒时钟仅首页显示 */
+    const doc = h.window.document;
+    const date = doc.getElementById('topDate');
+    const time = doc.getElementById('topTime');
+    assert.ok(date && date.textContent.length > 0, p + ' 顶栏日期应常驻');
+    assert.equal(time.style.display === 'none', p !== 'home', p + ' 顶栏时钟应仅在首页显示');
   }
 }
 
