@@ -4,7 +4,7 @@
  * 内容变了而版本没升说明部署流程漏跑 sync-sw。 */
 'use strict';
 
-var CACHE = 'sonder-v137';
+var CACHE = 'sonder-v139';
 
 var ASSETS = [
   './',
@@ -68,7 +68,7 @@ var ASSETS = [
   './assets/icon-maskable-512.png',
   './assets/apple-touch-icon.png'
 ];
-var ASSET_SIG = 'ddc9a89c5f76';
+var ASSET_SIG = '4961d28e16e1';
 
 /* install：预缓存全部资源，立即接管。
  * Request(cache:'reload') 绕过 HTTP 缓存直取网络——GH Pages max-age=600 下

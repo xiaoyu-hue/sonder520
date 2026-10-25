@@ -267,12 +267,13 @@ input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border-radius
     box-shadow: inset 0 2px 0 var(--accent), inset 0 1px 0 var(--border-hi), 0 6px 18px rgba(194, 59, 46, 0.16);
     color: var(--accent);
   }
-  /* AppBar 单行：标题 + 内联日期 + 右侧操作，不换行（日期不再独占一行） */
-  .topbar { min-height: 56px; height: auto; flex-wrap: nowrap; padding: env(safe-area-inset-top) 12px 2px; gap: 8px; }
-  .topbar .title { order: 1; font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  /* AppBar 双行：标题+操作单行（不挤），完整日期时间独占第二行，绝不截断 */
+  .topbar { min-height: 56px; height: auto; flex-wrap: wrap; align-items: center; padding: env(safe-area-inset-top) 12px 6px; gap: 4px 8px; }
+  .topbar .title { order: 1; flex: 1 1 auto; min-width: 0; font-size: 17px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  /* 日期时间整行显示：换行至第二行，保持「年月日·周 时:分:秒」完整不省略 */
   .topbar .date {
-    order: 2; display: inline-flex; width: auto; flex: 0 1 auto; min-width: 0; margin: 0 0 0 6px; padding: 0;
-    font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    order: 5; flex: 1 1 100%; width: auto; min-width: 0; margin: 2px 0 0; padding: 0;
+    font-size: 11px; letter-spacing: .01em; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
   /* 移动端搜索：收为 40x40 可点图标，点击展开为全宽输入框（修复此前容器零宽不可点） */
   .topbar .gsearch {
@@ -281,12 +282,20 @@ input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border-radius
     border-radius: 999px; background: var(--surface-2);
   }
   .topbar .gsearch input { display: none; }
-  .topbar .gsearch .gsearch-ico { position: static; transform: none; pointer-events: auto; font-size: 18px; opacity: .8; }
+  .topbar .gsearch .gsearch-ico { position: static; transform: none; pointer-events: auto; opacity: .8; display: inline-flex; }
+  .topbar .gsearch .gsearch-ico svg { width: 19px; height: 19px; }
   .topbar .gsearch.open { width: auto; flex: 1 1 auto; padding: 0 10px; background: var(--surface-1); }
   .topbar .gsearch.open input { display: block; width: 100%; }
   .topbar .gsearch.open .gsearch-ico { display: none; }
-  .topbar .btn { order: 4; padding: 6px 10px; font-size: 12px; }
+  /* 顶栏按钮：禁止折行（此前「＋ 备忘」在窄屏被拆成两行），图标+文字横排 */
+  .topbar .btn {
+    order: 4; flex: 0 0 auto; padding: 6px 10px; font-size: 12px;
+    display: inline-flex; align-items: center; gap: 4px; white-space: nowrap;
+  }
+  .topbar .btn svg { width: 14px; height: 14px; }
   .nav button, .topbar .btn { min-height: 44px; }
+  /* 顶栏变双行后更高，配额条跟随下移避免遮挡 */
+  .quota-bar { top: 82px; padding: 8px 12px; }
   /* 首页概览磁贴：移动端收为 2 列紧凑磁贴 */
   .grid-cards.cols-4 { grid-template-columns: repeat(2, 1fr); }
 
