@@ -18,6 +18,14 @@ function collectBreaches(page) {
   return arr;
 }
 
+/* 手机端顶栏搜索收成图标，需先点开再填；桌面端输入框常驻，点击为无操作，跨端安全。 */
+async function openSearch(page) {
+  const inp = page.locator('#globalSearch');
+  if (!(await inp.isVisible().catch(() => false))) {
+    await page.locator('.gsearch').click();
+  }
+}
+
 test('冒烟: 首页零错误、CSP 零违规、静态资源全部 200', async ({ page }) => {
   const breaches = collectBreaches(page);
   await page.addInitScript(() => {
@@ -62,6 +70,7 @@ test('工作流: 今日新建任务 -> 全局搜索命中 -> 跳转高亮', asyn
   await page.fill('.modal input[data-k="title"]', title);
   await page.click('.modal [data-act="ok"]');
   await expect(page.locator('#content')).toContainText(title);
+  await openSearch(page);
   await page.fill('#globalSearch', title);
   const item = page.locator('#gsearchPanel .gsearch-item').first();
   await expect(item).toBeVisible();

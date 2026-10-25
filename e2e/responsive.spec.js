@@ -12,6 +12,14 @@ async function hasHorizontalOverflow(page) {
   });
 }
 
+/** 手机端顶栏搜索收成图标，需先点开再填；桌面端输入框常驻，点击为无操作，故本函数跨端安全。 */
+async function openSearch(page) {
+  const inp = page.locator('#globalSearch');
+  if (!(await inp.isVisible().catch(() => false))) {
+    await page.locator('.gsearch').click();
+  }
+}
+
 /** 导航到指定模块并等待内容渲染。
  * 底部导航现为 5+1（4 页 + 更多）；设置等入口位于「更多」面板，需先开面板再点 data-go。 */
 async function gotoModule(page, btnText, moreRoute) {
@@ -65,6 +73,7 @@ test('响应式：各模块页面无横向溢出', async ({ page }) => {
 
 test('响应式：搜索面板在手机端全宽不出屏', async ({ page }) => {
   await page.goto('/');
+  await openSearch(page);
   await page.fill('#globalSearch', '测试');
   const panel = page.locator('#gsearchPanel');
   /* 搜索面板出现后检查不溢出 */
