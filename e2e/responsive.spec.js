@@ -12,12 +12,25 @@ async function hasHorizontalOverflow(page) {
   });
 }
 
-/** 导航到指定模块并等待内容渲染 */
-async function gotoModule(page, btnText) {
-  /* 手机/平板：底部导航可能需要滚动才能看到按钮 */
-  const btn = page.locator(`#nav button:has-text("${btnText}")`);
-  await btn.scrollIntoViewIfNeeded();
-  await btn.click();
+/** 手机端顶栏搜索收成图标，需先点开再填；桌面端输入框常驻，点击为无操作，故本函数跨端安全。 */
+async function openSearch(page) {
+  const inp = page.locator('#globalSearch');
+  if (!(await inp.isVisible().catch(() => false))) {
+    await page.locator('.gsearch').click();
+  }
+}
+
+/** 导航到指定模块并等待内容渲染。
+ * 底部导航现为 5+1（4 页 + 更多）；设置等入口位于「更多」面板，需先开面板再点 data-go。 */
+async function gotoModule(page, btnText, moreRoute) {
+  if (moreRoute) {
+    await page.click('#nav button:has-text("更多")');
+    await page.click(`#morePanel [data-go="${moreRoute}"]`);
+  } else {
+    const btn = page.locator(`#nav button:has-text("${btnText}")`);
+    await btn.scrollIntoViewIfNeeded();
+    await btn.click();
+  }
   await page.waitForTimeout(300);
 }
 
@@ -44,18 +57,23 @@ test('响应式：导航栏可见且可点击', async ({ page }) => {
 
 test('响应式：各模块页面无横向溢出', async ({ page }) => {
   await page.goto('/');
-  const modules = ['今日', '快速备忘', '数据与设置'];
+  const modules = [
+    { text: '今日' },
+    { text: '备忘' },
+    { more: 'settings' },
+  ];
   for (const mod of modules) {
-    await gotoModule(page, mod);
+    await gotoModule(page, mod.text, mod.more);
     expect(
       await hasHorizontalOverflow(page),
-      `模块「${mod}」存在横向溢出`
+      `模块「${mod.text || mod.more}」存在横向溢出`
     ).toBe(false);
   }
 });
 
 test('响应式：搜索面板在手机端全宽不出屏', async ({ page }) => {
   await page.goto('/');
+  await openSearch(page);
   await page.fill('#globalSearch', '测试');
   const panel = page.locator('#gsearchPanel');
   /* 搜索面板出现后检查不溢出 */
@@ -70,10 +88,14 @@ test('响应式：搜索面板在手机端全宽不出屏', async ({ page }) => 
 
 test('响应式：底部栏/侧栏导航功能完整', async ({ page }) => {
   await page.goto('/');
-  /* 验证至少可以导航到 3 个不同模块并返回 */
-  const targets = ['今日', '快速备忘', '数据与设置'];
+  /* 验证至少可以导航到 3 个不同模块（含更多面板入口）并返回 */
+  const targets = [
+    { text: '今日', exp: '今日' },
+    { text: '备忘', exp: '备忘' },
+    { more: 'settings', exp: '数据' },
+  ];
   for (const t of targets) {
-    await gotoModule(page, t);
-    await expect(page.locator('#pageTitle')).toContainText(t.replace('数据与设置', '数据'));
+    await gotoModule(page, t.text, t.more);
+    await expect(page.locator('#pageTitle')).toContainText(t.exp);
   }
 });

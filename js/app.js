@@ -5,12 +5,34 @@
   var Pages = window.Pages = window.Pages || {};
   var UI = window.UI;
 
-  /* 导航顺序；可被"数据与设置"开关隐藏的为业务模块 */
+  /* 可被"数据与设置"开关隐藏的为业务模块 */
   var TOGGLEABLE = { today: 1, memo: 1, selfmedia: 1, dev: 1, consulting: 1, reading: 1, news: 1, design: 1, excerpts: 1 };
-  var NAV = ['home', 'today', 'memo', 'selfmedia', 'dev', 'consulting', 'reading', 'excerpts', 'news', 'design', 'settings'];
+  /* 全部页面路由（11 页）：仅用于路由解析，不再直接渲染成导航按钮 */
+  var PAGES = ['home', 'today', 'memo', 'selfmedia', 'dev', 'consulting', 'reading', 'excerpts', 'news', 'design', 'settings'];
+  /* 底部 5 个 Tab：4 个真实页面 + 1 个「更多」按钮（打开面板，非路由） */
+  var TABS = ['home', 'today', 'memo', 'reading', 'more'];
+  /* 「更多」面板的 6 个业务模块入口（书摘跟随阅读模块开关） */
+  var MORE_GRID = ['selfmedia', 'dev', 'consulting', 'excerpts', 'news', 'design'];
+  /* Tab 固定元数据：图标 + 短标签，避免桌面长标题挤爆底部栏 */
+  var TAB_META = {
+    home:    { icon: 'home',     label: '首页' },
+    today:   { icon: 'calendar', label: '今日' },
+    memo:    { icon: 'note',     label: '备忘' },
+    reading: { icon: 'book',     label: '阅读' },
+    more:    { icon: 'grid',     label: '更多' }
+  };
+  /* 更多面板入口短标签（12px 字号下更紧凑） */
+  var MORE_LABEL = {
+    selfmedia: '自媒体', dev: '开发', consulting: '咨询',
+    excerpts: '我的书摘', news: '新闻', design: '设计', settings: '设置'
+  };
+  /* 线性 SVG 图标（js/icons.js）；模块缺失时降级为空字符串，不阻断导航渲染 */
+  var I = (typeof SonderIcons !== 'undefined') ? SonderIcons : { icon: function () { return ''; } };
   var ICONS = {
-    home: '🏠', today: '📅', memo: '📝', selfmedia: '📣', dev: '💻',
-    consulting: '🤝', reading: '📚', excerpts: '📖', news: '📰', design: '🎨', settings: '⚙️'
+    home: I.icon('home'), today: I.icon('calendar'), memo: I.icon('note'),
+    selfmedia: I.icon('mega'), dev: I.icon('code'), consulting: I.icon('users'),
+    reading: I.icon('book'), excerpts: I.icon('bookmark'), news: I.icon('news'),
+    design: I.icon('pen'), settings: I.icon('settings')
   };
 
   var ctx = {
@@ -65,26 +87,33 @@
   function currentPageKey() {
     var h = (location.hash || '').replace(/^#\/?/, '');
     var clean = h.split('/')[0];
-    return NAV.indexOf(clean) >= 0 ? clean : 'home';
+    return PAGES.indexOf(clean) >= 0 ? clean : 'home';
+  }
+
+  /* 当前激活的 Tab：在 5 个 Tab 内直接高亮；在「更多」面板内的页面则高亮「更多」 */
+  function activeTabKey() {
+    var key = currentPageKey();
+    if (TABS.indexOf(key) >= 0) return key;
+    if (MORE_GRID.indexOf(key) >= 0 || key === 'settings') return 'more';
+    return 'home';
   }
 
   function buildNav() {
     var nav = document.getElementById('nav');
+    if (!nav) return;
     nav.innerHTML = '';
-    var active = currentPageKey();
-    NAV.forEach(function (key) {
+    var active = activeTabKey();
+    TABS.forEach(function (key) {
       try {
-        if (key !== 'home' && key !== 'settings') {
-          var modKey = key === 'excerpts' ? 'reading' : key; /* 我的书摘跟随阅读模块开关 */
-          if (TOGGLEABLE[key] && !store.state.settings.modules[modKey]) return;
-        }
+        var meta = TAB_META[key];
         var b = document.createElement('button');
         b.type = 'button';
         b.dataset.route = key;
         b.className = key === active ? 'active' : '';
         if (key === active) b.setAttribute('aria-current', 'page');
-        b.innerHTML = '<span class="ico">' + (ICONS[key] || '') + '</span>' + UI.esc(Pages[key].title);
-        b.onclick = function () { ctx.navigate(key); };
+        b.innerHTML = '<span class="ico">' + (I.icon(meta.icon) || '') + '</span><span class="lbl">' + UI.esc(meta.label) + '</span>';
+        if (key === 'more') b.onclick = openMorePanel;
+        else b.onclick = (function (k) { return function () { ctx.navigate(k); }; })(key);
         nav.appendChild(b);
       } catch (e) {
         /* 单模块缺失/报错不拖垮整壳：跳过该导航项并上报（如 SW 陈旧缓存致 js 404） */
@@ -93,10 +122,75 @@
     });
   }
 
+  /* 「更多」全屏面板：6 个业务模块 + 底部「数据与设置」，遵循模块开关 */
+  function buildMorePanel() {
+    var panel = document.getElementById('morePanel');
+    if (!panel) return;
+    var html = [];
+    html.push('<div class="more-head"><button class="more-back" type="button" aria-label="返回">' + I.icon('back') + '</button><div class="more-title">更多</div></div>');
+    html.push('<div class="more-grid">');
+    MORE_GRID.forEach(function (key) {
+      var modKey = key === 'excerpts' ? 'reading' : key; /* 我的书摘跟随阅读模块开关 */
+      if (TOGGLEABLE[key] && !store.state.settings.modules[modKey]) return;
+      html.push('<button class="more-item" type="button" data-go="' + key + '"><span class="ico">' + (ICONS[key] || '') + '</span><span class="lbl">' + UI.esc(MORE_LABEL[key] || key) + '</span></button>');
+    });
+    html.push('</div>');
+    html.push('<button class="more-item more-settings" type="button" data-go="settings"><span class="ico">' + I.icon('settings') + '</span><span class="lbl">' + UI.esc(MORE_LABEL.settings || '设置') + '</span></button>');
+    panel.innerHTML = html.join('');
+    panel.querySelectorAll('[data-go]').forEach(function (el) {
+      var b = /** @type {HTMLButtonElement} */ (el);
+      b.addEventListener('click', function () { closeMorePanel(); ctx.navigate(b.dataset.go); });
+    });
+    var back = /** @type {HTMLButtonElement|null} */ (panel.querySelector('.more-back'));
+    if (back) back.onclick = closeMorePanel;
+  }
+
+  function moreKeyHandler(e) { if (e && e.key === 'Escape') closeMorePanel(); }
+
+  function openMorePanel() {
+    var panel = document.getElementById('morePanel');
+    if (!panel) return;
+    buildMorePanel();
+    panel.classList.add('open');
+    panel.removeAttribute('hidden');
+    panel.setAttribute('aria-hidden', 'false');
+    if (document.body) document.body.classList.add('more-open');
+    var back = /** @type {HTMLButtonElement|null} */ (panel.querySelector('.more-back'));
+    if (back) back.focus();
+    document.addEventListener('keydown', moreKeyHandler);
+  }
+
+  function closeMorePanel() {
+    var panel = document.getElementById('morePanel');
+    if (panel) {
+      panel.classList.remove('open');
+      panel.setAttribute('aria-hidden', 'true');
+    }
+    if (document.body) document.body.classList.remove('more-open');
+    document.removeEventListener('keydown', moreKeyHandler);
+  }
+
+  /* 右下悬浮新建按钮（FAB）：仅当当前页面提供 add()/fab() 行为且处于移动端时显示 */
+  function syncFab() {
+    var fab = document.getElementById('fab');
+    if (!fab) return;
+    var mobile = window.matchMedia && window.matchMedia('(max-width: 720px)').matches;
+    var p = Pages[currentPageKey()];
+    var hasAction = !!(p && (typeof p.fab === 'function' || typeof p.add === 'function'));
+    fab.style.display = (mobile && hasAction) ? 'flex' : 'none';
+  }
+  function onFabClick() {
+    var p = Pages[currentPageKey()];
+    if (!p) return;
+    if (typeof p.fab === 'function') { p.fab(); return; }
+    if (typeof p.add === 'function') { p.add(ctx); return; }
+  }
+
   function render() {
     var key = currentPageKey();
     var container = document.getElementById('content');
     container.innerHTML = '';
+    closeMorePanel(); /* 任何导航都先收起更多面板，避免与页面切换状态打架 */
     var page = Pages[key] || Pages.home;
     document.getElementById('pageTitle').textContent = page.title;
     document.title = page.title + ' · Sonder';
@@ -110,6 +204,7 @@
     page.render(container, ctx);
     if (window.MOTION) window.MOTION.afterRender(container);
     quotaCheck();
+    syncFab();
   }
 
   /* 存储接近上限（约 5MB）时顶部显示警示条：导出备份 / 迁移至 IndexedDB。
@@ -254,7 +349,7 @@
     lockScreenEl = UI.el(
       '<div id="lockScreen" style="position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;background:var(--bg);backdrop-filter:blur(6px)">' +
       '<div style="width:min(92vw,360px);text-align:center;padding:28px 24px;border:1px solid var(--border);border-radius:16px;background:var(--glass-2)">' +
-      '<div style="font-size:34px;line-height:1">🔒</div>' +
+      '<div class="lock-ico">' + I.icon('lock') + '</div>' +
       '<h2 style="margin:10px 0 2px;color:var(--text)">Sonder 已锁定</h2>' +
       '<p class="muted small" style="margin:0 0 16px">数据已加密存储于本机</p>' +
       '<input type="password" id="lockPwd" placeholder="输入密码解锁" autocomplete="off" style="width:100%;padding:11px 14px;border:1px solid var(--border);border-radius:10px;background:var(--bg);color:var(--text);font-size:16px;box-sizing:border-box">' +
@@ -388,6 +483,35 @@
   applyWallpaper();
   applyFrame();
   buildNav();
+  /* FAB：注入 plus 图标并绑定点击；实际显隐由 syncFab() 在每次渲染时按页面决定 */
+  (function bindFab() {
+    var fab = document.getElementById('fab');
+    if (!fab) return;
+    var ico = fab.querySelector('.ico');
+    if (ico) ico.innerHTML = I.icon('plus');
+    fab.addEventListener('click', onFabClick);
+  })();
+  /* 移动端：全局搜索收为图标，点击图标展开为全宽输入框；点击搜索区以外收起（桌面端不触发） */
+  (function bindSearchToggle() {
+    var gs = document.getElementById('gsearch');
+    if (!gs) return;
+    var mobile = function () { return !!window.matchMedia && window.matchMedia('(max-width: 720px)').matches; };
+    gs.addEventListener('click', function (e) {
+      if (!mobile()) return;
+      var t = /** @type {HTMLElement} */ (e.target);
+      if (t && (t.tagName === 'INPUT' || (t.closest && t.closest('#gsearchPanel')))) return;
+      if (gs.classList.contains('open')) return; /* 已展开时点击自身不收起，避免误关输入框 */
+      gs.classList.add('open');
+      var inp = gs.querySelector('input');
+      if (inp) inp.focus();
+    });
+    document.addEventListener('click', function (e) {
+      if (!mobile() || !gs.classList.contains('open')) return;
+      var t = /** @type {HTMLElement} */ (e.target);
+      if (t && (gs.contains(t) || (t.closest && t.closest('#gsearchPanel')))) return;
+      gs.classList.remove('open');
+    });
+  })();
   todayLine();
   setInterval(todayLine, 1000); /* 顶部时钟每秒跳动（HH:MM:SS） */
   document.addEventListener('visibilitychange', function () {

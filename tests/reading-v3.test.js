@@ -164,8 +164,12 @@ test('阅读页：摘抄金句弹窗填写句子页码后入库，书卡片可�
 
 test('我的书摘页：导航存在、按书分组展示、可删除', () => {
   const h = boot();
-  const nav = Array.from(h.window.document.querySelectorAll('#nav button')).map(b => b.textContent);
-  assert.ok(nav.some(t => t.includes('我的书摘')), '侧边栏应有我的书摘');
+  /* 书摘入口现已收进「更多」面板（不再占底部 Tab） */
+  const moreBtn = Array.from(h.window.document.querySelectorAll('#nav button')).find(b => (b.textContent || '').includes('更多'));
+  assert.ok(moreBtn, '应存在「更多」Tab');
+  moreBtn.click();
+  const moreTexts = Array.from(h.window.document.querySelectorAll('#morePanel [data-go]')).map(b => b.textContent);
+  assert.ok(moreTexts.some(t => t.includes('我的书摘')), '更多面板应有我的书摘入口');
   const a = h.store.addBook({ title: '活着' });
   const b = h.store.addBook({ title: '百年孤独' });
   h.store.addExcerpt({ bookId: a.id, text: '人是为活着本身而活着的', page: 15 });
@@ -180,6 +184,26 @@ test('我的书摘页：导航存在、按书分组展示、可删除', () => {
   h.window.document.querySelector('[data-exdel]').click();
   assert.equal(h.store.state.excerpts.length, 1);
   assert.ok(h.window.document.body.textContent.includes('我的书摘 · 共 1 条'), '删除后总数刷新');
+});
+
+test('阅读页：分段控件可在书单 / 我的书摘间切换', () => {
+  const h = boot();
+  // 阅读页（书单）默认视图
+  h.goto('reading');
+  const doc = h.window.document;
+  let seg = doc.querySelector('.seg');
+  assert.ok(seg, '阅读页应有分段控件');
+  assert.ok(seg.querySelector('[data-seg="reading"]') && seg.querySelector('[data-seg="excerpts"]'),
+    '分段控件含书单/我的书摘');
+  assert.ok(seg.querySelector('[data-seg="reading"]').classList.contains('active'), '书单视图默认高亮书单');
+  // 点击「我的书摘」应切到 #excerpts（hashchange 异步，同步仅校验 hash）
+  seg.querySelector('[data-seg="excerpts"]').click();
+  assert.ok(/excerpts/.test(h.window.location.hash || ''), '点击应切到 #excerpts');
+  // 书摘视图（同步重渲染）也应有分段控件且高亮我的书摘（两视图对称一致）
+  h.goto('excerpts');
+  seg = doc.querySelector('.seg');
+  assert.ok(seg && seg.querySelector('[data-seg="excerpts"]').classList.contains('active'),
+    '书摘视图默认高亮我的书摘');
 });
 
 test('我的书摘页：无摘抄时空状态引导', () => {

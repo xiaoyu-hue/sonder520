@@ -24,12 +24,14 @@
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23c23b2e'/%3E%3Ccircle cx='16' cy='16' r='8' fill='white'/%3E%3C/svg%3E">
   <link rel="manifest" href="manifest.json">
   <link rel="preload" as="image" href="img/wallpaper.jpg">
+  <link rel="stylesheet" href="css/style-tokens.css">
   <link rel="stylesheet" href="css/style-base.css">
   <link rel="stylesheet" href="css/style-animations.css">
   <link rel="stylesheet" href="css/style-modules.css">
   <link rel="stylesheet" href="css/style-responsive.css">
   <link rel="stylesheet" href="css/style-cards.css">
   <link rel="stylesheet" href="css/style-glass-ink.css">
+  <link rel="stylesheet" href="css/style-stage1.css">
 </head>
 <body>
   <div id="wallpaperLayer" aria-hidden="true"><img id="wallpaperImg" alt="" draggable="false"></div>
@@ -68,9 +70,12 @@
   </div>
   <div id="toastWrap" role="status" aria-live="polite"></div>
   <div id="overlayRoot"></div>
+  <div id="morePanel" class="more-panel" hidden aria-hidden="true"></div>
+  <button id="fab" class="fab" type="button" aria-label="新建"><span class="ico"></span></button>
 
   <script src="js/encryption.js" defer></script>
   <script src="js/event-bus.js" defer></script>
+  <script src="js/icons.js" defer></script>
   <script src="js/store-stats.js" defer></script>
 
   <script src="js/store.js" defer></script>

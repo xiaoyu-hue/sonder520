@@ -9,6 +9,8 @@ const CSS_FILES = [
   'css/style-base.css',
   'css/style-animations.css',
   'css/style-modules.css',
+  'css/style-tokens.css',
+  'css/style-stage1.css',
   'css/style-responsive.css',
   'css/style-glass-ink.css'
 ];
