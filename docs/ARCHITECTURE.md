@@ -110,7 +110,7 @@ encryption → event-bus → store-stats → store.js
 
 ## 7. 测试体系
 
-- **入口**：`npm test`（jsdom + `node --test` glob 全量 + fake-indexeddb），当前 **770 项**。
+- **入口**：`npm test`（jsdom + `node --test` glob 全量 + fake-indexeddb），当前 **568 项**。
 - **关键契约**：`tests/harness.js` 从 `index.html` 解析脚本顺序（**加 script 无需改 harness**）；`type-sync.test.js` 校验 `globals.d.ts` 与全部 Store 领域文件方法一致（新领域文件须加入其扫描清单）；`store-write-unified.test.js` 门禁 `_idbWriteCols` 只能在 `_storeWrite` 体内（ADR-013，指向 `store-persistence.js`）；`innerhtml.test.js` 赋值点白名单（12 处，行号随页面改动同步）。
 - **配套**：`npm run typecheck`（零构建 tsc）+ `npm run lint`（0 error）。
 
