@@ -4,7 +4,6 @@
  *
  * 职责：模块配置校验/规范化/冻结 + 标准 CRUD（add/update/remove/getById/query）
  *      + 最小 render 挂点 + destroy。
- * 不负责：IndexedDB 原始操作 / 加密 / PWA / 游戏 AI / 特殊图表 / 页面级业务流程。
  *
  * 落盘语义与既有领域方法一致：store._commit(集合id) + store._emitChange(collectionKey)，
  * 记录写入 store.state.<id> 数组（页面/搜索/周报的既有读法不受影响）。

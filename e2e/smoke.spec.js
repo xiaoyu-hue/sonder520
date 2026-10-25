@@ -1,5 +1,5 @@
 /* e2e/smoke.spec.js - 冒烟 E2E（真实 Chromium）
- * 覆盖：零错误加载 / CSP 零违规 / 静态资源完整性 / SW 注册-控制-离线可用 / 今日任务+全局搜索 / 游戏 AI 落子 / 导出备份
+ * 覆盖：零错误加载 / CSP 零违规 / 静态资源完整性 / SW 注册-控制-离线可用 / 今日任务+全局搜索 / 导出备份
  * 依赖 DOM 契约（jsdom 测试同款）：#nav button、#tplAdd、.modal[data-k]、
  * #globalSearch、#gsearchPanel .gsearch-item、.search-flash、#gBoard .cell、#gStatus、#bkExport
  */
@@ -68,16 +68,6 @@ test('工作流: 今日新建任务 -> 全局搜索命中 -> 跳转高亮', asyn
   await expect(item).toContainText(title);
   await item.click();
   await expect(page.locator('.search-flash')).toBeVisible();
-});
-
-test('游戏: 井字棋开局，AI 应自动落子', async ({ page }) => {
-  await page.goto('/');
-  await page.click('#nav button:has-text("娱乐游戏")');
-  await page.click('.lg-pick[data-pick="tictactoe"]');
-  await expect(page.locator('#gBoard')).toBeVisible();
-  const before = await page.locator('#gStatus').textContent();
-  await page.locator('#gBoard .cell').first().click();
-  await expect.poll(() => page.locator('#gStatus').textContent()).not.toBe(before);
 });
 
 test('数据: 设置页导出备份可下载 JSON 文件', async ({ page }) => {

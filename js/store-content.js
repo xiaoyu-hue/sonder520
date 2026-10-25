@@ -1,4 +1,4 @@
-/* store-content.js - SonderStore 领域扩展：咨询 + 阅读/书摘 + 新闻 + 设计 + 游戏记录
+/* store-content.js - SonderStore 领域扩展：咨询 + 阅读/书摘 + 新闻 + 设计
  * 浏览器：在 store.js 之后加载（接收 root.SonderStore.Store 与 _h）
  * Node：由 store.js 的 UMD 分支 require 并注入 (Store, _h) */
 (function (root, factory) {
@@ -238,53 +238,4 @@
     this._emitChange('designs');
   };
 
-  /* ====== 娱乐游戏 ====== */
-  /* 单人休闲游戏 kind（战绩并入对局记录，mode 记为 solo，难度按自身档位保存） */
-  var SOLO_KINDS = { guessnum: 1, minesweeper: 1, idiom: 1, brainteaser: 1 };
-  Store.prototype.addGameRecord = function (d) {
-    var solo = SOLO_KINDS[d.kind] ? true : false;
-    var kind = d.kind === 'gomoku' || d.kind === 'tictactoe' || solo ? d.kind : 'tictactoe';
-    var mode = d.mode === 'pvp' ? 'pvp' : (solo ? 'solo' : 'ai');
-    var winner = d.winner === 'draw' ? 'draw' : d.winner;
-    var r = {
-      id: h.uid(),
-      kind: kind,
-      mode: mode,
-      player: d.player || (mode === 'pvp' ? 'X' : 'player'),
-      winner: winner,
-      byResign: !!d.byResign,
-      /* 棋类难度映射为 easy/normal/hard；单人休闲游戏保留自身档位 */
-      difficulty: mode === 'pvp' ? null : (solo
-        ? (d.difficulty || null)
-        : (d.difficulty === 'easy' || d.difficulty === 'hard' ? d.difficulty : 'normal')),
-      note: d.note || null,
-      date: h.todayStr(),
-      time: h.nowISO()
-    };
-    this.state.gameRecords.unshift(r);
-    this._commit('gameRecords');
-    this._emitChange('gameRecords');
-    return r;
-  };
-  Store.prototype.clearGameRecords = function () {
-    this.state.gameRecords = [];
-    this._commit('gameRecords');
-    this._emitChange('gameRecords');
-  };
-
-  /* 单人小游戏纪录（guessnum/minesweeper/idiom/brainteaser 的 best/diff/right/wrong 等）：
-   * 原独立 localStorage key，P3e 并入 state.miniRecords 统一持久化 */
-  Store.prototype.getMiniRecord = function (kind) {
-    var o = this.state.miniRecords[kind];
-    return o && typeof o === 'object' ? h.deepClone(o) : {};
-  };
-  Store.prototype.updateMiniRecord = function (kind, patch) {
-    var o = this.state.miniRecords[kind];
-    if (!o || typeof o !== 'object') o = {};
-    Object.keys(patch || {}).forEach(function (k) { o[k] = patch[k]; });
-    this.state.miniRecords[kind] = o;
-    this._commit('miniRecords');
-    this._emitChange('miniRecords');
-    return this.getMiniRecord(kind);
-  };
 });

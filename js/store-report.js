@@ -37,11 +37,6 @@
       reading: { total: st.books.length, reading: st.books.filter(function (b) { return b.status === '在读'; }).length },
       news: { total: st.news.length, unread: st.news.filter(function (n) { return n.status !== 'read'; }).length },
       design: { total: st.designs.length, active: st.designs.filter(function (x) { return x.type === 'project' && x.stage !== '定稿'; }).length },
-      game: {
-        total: st.gameRecords.length,
-        wins: st.gameRecords.filter(function (r) { return r.winner !== 'draw' && r.winner === r.player; }).length,
-        draws: st.gameRecords.filter(function (r) { return r.winner === 'draw'; }).length
-      }
     };
   };
 

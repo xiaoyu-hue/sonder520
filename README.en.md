@@ -37,8 +37,7 @@
 | 🔒 **Privacy First** | Data stored only in local browser, optional encryption |
 | 🎨 **Ink-Wash Style** | Rice-paper / Ink-black dual themes, liquid glass card design |
 | 📱 **Responsive in-browser (3 viewports)** | Desktop/Tablet/Phone responsive layout, PWA offline support |
-| 🎮 **Built-in Games** | Tic-Tac-Toe, Gomoku, Minesweeper, and 3 more mini games |
-| 🧪 **Test Coverage** | 706 tests passing (Unit + Contract + Integration + E2E) |
+| 🧪 **Test Coverage** | 568 tests passing (Unit + Contract + Integration + E2E) |
 
 ### 🔐 Data & Privacy
 
@@ -60,7 +59,7 @@ To be honest, Sonder520 is not a universal tool. Please think twice or choose mo
 
 ## 📋 Features
 
-### 12 Core Modules
+### 11 Core Modules
 
 | Module | Function | Highlights |
 |--------|----------|------------|
@@ -73,7 +72,6 @@ To be honest, Sonder520 is not a universal tool. Please think twice or choose mo
 | 📚 **Reading** | Book list, reading timer, excerpts | Progress tracking, reading sharing |
 | 📰 **News** | Article collection, unread management | Link navigation, category sorting |
 | 🎨 **Design** | Inspiration collection, design projects | Phase-based management |
-| 🎮 **Entertainment** | 6 mini games | Tic-Tac-Toe, Gomoku, Minesweeper, etc. |
 | 📊 **Statistics** | Multi-dimensional data visualization | Completion rate, progress charts |
 | ⚙️ **Settings** | Theme, wallpaper, encryption, backup | Personalized customization |
 
@@ -107,16 +105,15 @@ IDB (Primary Storage) + localStorage (Fallback Copy) + Crypto (Encryption)
 | **IndexedDB** | Primary data storage (source of truth) |
 | **localStorage** | Fallback copy + cross-tab signaling |
 | **Crypto API** | PBKDF2 + AES-GCM-256 encryption |
-| **Web Worker** | Gomoku AI async computation |
 | **PWA** | Offline support, installable to desktop |
 | **Playwright** | E2E testing (Desktop/Tablet/Phone) |
 
 ### Quality Assurance
 
-- ✅ **699 tests** passing (Unit + Contract + Integration + E2E)
+- ✅ **568 tests** passing (Unit + Contract + Integration + E2E)
 - ✅ **Zero-build** type checking (JSDoc + TypeScript)
 - ✅ **ESLint** code standards
-- ✅ **14 ADRs** Architecture Decision Records
+- ✅ **13 ADRs** Architecture Decision Records
 - ✅ **PWA** offline support + version updates
 
 ---
@@ -142,7 +139,7 @@ IDB (Primary Storage) + localStorage (Fallback Copy) + Crypto (Encryption)
 ### Contrast Compliance
 
 - All text contrast ≥4.5:1 (WCAG AA standard)
-- Minesweeper digits readable in both themes
+- Chart digits readable in both themes
 - Test-locked contrast tokens
 
 ---
@@ -247,7 +244,12 @@ npm run sync-sw
 
 ## 📈 Changelog
 
-### v6.3 (Current)
+### v6.4.0 (Current)
+
+- **Remove Entertainment & Desktop Pet**: Games (Tic-Tac-Toe / Gomoku / Minesweeper / Guess Number / Idiom / Brain Teaser) and the desktop pet module are fully deleted, returning to the essence of a personal tool and clearing the boundary for a future AI Agent framework
+- **Test convergence**: 568 tests all green (pure entertainment cases removed, contract/consistency guards kept)
+
+### v6.3
 
 - **v6.x Architecture Upgrade**: Repository data boundary (9) + Domain rule layer (task-domain) + store.js responsibility split (10 domain extension files)
 - **UX fixes**: Chinese status dropdowns, mobile date/time, per-second clock tick
@@ -330,7 +332,7 @@ Sonder520 is a zero-dependency self-built implementation, but its architecture w
 | [Ink & Switch, "Local-First Software"](https://www.inkandswitch.com/local-first/) and the local-first community | Device-local primary copy, offline-capable | IndexedDB as source of truth + localStorage replica + dual-write + PWA offline |
 | [The TypeScript team](https://www.typescriptlang.org) | JSDoc type annotations + zero-build tsc checking | `globals.d.ts` + `tsc --noEmit` — type contracts without a build step |
 | Community-wide module convention | UMD (Universal Module Definition) | All domain/Repository/Domain files load in both browser and Node |
-| [W3C / MDN open standards](https://developer.mozilla.org) | WebCrypto (PBKDF2 + AES-GCM-256), IndexedDB, Web Worker, Service Worker, backdrop-filter, CSS custom properties | Encryption, persistence, AI worker, PWA, liquid-glass visuals — all built on native browser capabilities |
+| [W3C / MDN open standards](https://developer.mozilla.org) | WebCrypto (PBKDF2 + AES-GCM-256), IndexedDB, Service Worker, backdrop-filter, CSS custom properties | Encryption, persistence, PWA, liquid-glass visuals — all built on native browser capabilities |
 
 ### Visual & Design Inspiration
 

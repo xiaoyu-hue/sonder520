@@ -93,15 +93,3 @@ test('性能：搜索索引按 _rev 缓存，重复查询不重建', async () =>
   await typeAndWait('不存在的词xyz');
   assert.ok(h.$('#gsearchPanel').textContent.includes('空谷无音，换个词试试吧'), '空结果正常');
 });
-
-test('性能：困难五子棋候选剪枝（终盘候选超 16 时只对高分组前瞻）', () => {
-  const LG = require('../js/games-logic.js');
-  const g = LG.createGame('gomoku');
-  g.board.forEach((row, r) => row.forEach((v, c) => {
-    if ((r + c) % 2 === 0 && r >= 4 && r <= 10 && c >= 4 && c <= 10) g.board[r][c] = r % 3 === 0 ? 'X' : 'O';
-  }));
-  const mv = LG.gomokuAiMove(g, 'X', 'hard');
-  assert.ok(mv && mv.r >= 0 && mv.c >= 0 && g.board[mv.r][mv.c] === null, '剪枝后仍应给出合法落点');
-  const code = fs.readFileSync(path.join(root, 'js', 'games-logic.js'), 'utf8');
-  assert.ok(code.includes('HARD_LOOKAHEAD'), '困难模式应有前瞻预算');
-});

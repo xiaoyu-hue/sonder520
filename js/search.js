@@ -5,8 +5,7 @@
   var input = /** @type {HTMLInputElement|null} */ (document.getElementById('globalSearch'));
   var panel = document.getElementById('gsearchPanel');
   var UI = window.UI;
-  var NAV_MODULE = { today: 'today', memo: 'memo', selfmedia: 'selfmedia', dev: 'dev', consulting: 'consulting', reading: 'reading', excerpts: 'excerpts', news: 'news', design: 'design', game: 'game' };
-  var GAME_KIND = { guessnum: '猜数字', minesweeper: '扫雷', idiom: '猜成语', brainteaser: '脑筋急转弯', gomoku: '五子棋' };
+  var NAV_MODULE = { today: 'today', memo: 'memo', selfmedia: 'selfmedia', dev: 'dev', consulting: 'consulting', reading: 'reading', excerpts: 'excerpts', news: 'news', design: 'design' };
 
   function shortTime(t) {
     if (!t) return '';
@@ -48,9 +47,6 @@
     });
     (s.excerpts || []).forEach(function (x) {
       out.push({ module: 'excerpts', label: '我的书摘', id: x.id, text: x.text + ' ' + (x.bookTitle || ''), sub: (x.bookTitle || '') + (x.page ? ' · P' + x.page : '') });
-    });
-    (s.gameRecords || []).forEach(function (r) {
-      out.push({ module: 'game', label: '娱乐游戏', id: r.id, text: (GAME_KIND[r.kind] || r.kind) + ' ' + (r.note || ''), sub: (r.winner === 'draw' ? '平局' : (r.winner === r.player ? '胜利' : '失败')) + ' · ' + r.date });
     });
     return out;
   }

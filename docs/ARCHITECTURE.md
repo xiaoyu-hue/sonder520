@@ -9,10 +9,9 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│ Application 应用层（10 页面 + 壳层）                           │
+│ Application 应用层（11 页面 + 壳层）                        │
 │   home / today / memo / selfmedia / dev / consulting /      │
-│   reading / news / design / settings                        │
-│   + desktop-pet（小莫灵家族）· games（六款游戏）               │
+│   reading / excerpts / news / design / settings             │
 └─────────────────────────────────────────────────────────────┘
                             ↓ 页面只做「读规则结果 + 落盘」
 ┌─────────────────────────────────────────────────────────────┐
@@ -21,8 +20,8 @@
 └─────────────────────────────────────────────────────────────┘
                             ↓
 ┌─────────────────────────────────────────────────────────────┐
-│ Repository 数据访问边界（js/repositories/，9 个薄包装）         │
-│   task / book / dev / settings / clients / games /          │
+│ Repository 数据访问边界（js/repositories/，8 个薄包装）     │
+│   task / book / dev / settings / clients /                  │
 │   memos / news / design                                     │
 │   统一 get/getAll/create/update/remove（委托 Store 领域方法）  │
 └─────────────────────────────────────────────────────────────┘
@@ -73,7 +72,6 @@
 | `dev-repository.js` | devProjects/devNotes | |
 | `settings-repository.js` | settings | |
 | `clients-repository.js` | clients/followups/incomes | |
-| `games-repository.js` | games | |
 | `memo-repository.js` | memos | 工厂封装（Phase 5 提炼） |
 | `news-repository.js` | news | 工厂封装（Phase 5 提炼） |
 | `design-repository.js` | designs | 工厂封装（Phase 5 提炼） |
@@ -92,21 +90,20 @@
 
 ## 5. 页面与壳层
 
-- **10 页面**：`home / today / memo / selfmedia / dev / consulting / reading / news / design / settings`，经 ModuleFactory 标准模块协议（memos/news/designs 走 Repository 包装）。
-- **扩展**：`desktop-pet-*.js`（小莫灵家族：数据/逻辑/页面）、`games-*.js`（六款游戏：logic/shared/view/mini/battle/page）+ `game-worker.js`（五子棋 AI Worker）。
-- **壳层**：`app.js`（路由/主题/帧率/警示条/离线指示）、`error-guard.js`（错误上报）、`search.js`（全局搜索）、`quotes.js`（每日金句）、`markdown.js`、`motion.js`（微动效）、`sw-register.js` + `sw.js`（PWA 离线，缓存版本 `sonder-v125`，`npm run sync-sw` 自动同步）。
+- **11 页面**：`home / today / memo / selfmedia / dev / consulting / reading / excerpts / news / design / settings`，经 ModuleFactory 标准模块协议（memos/news/designs 走 Repository 包装）。
+- **壳层**：`app.js`（路由/主题/帧率/警示条/离线指示）、`error-guard.js`（错误上报）、`search.js`（全局搜索）、`quotes.js`（每日金句）、`markdown.js`、`motion.js`（微动效）、`sw-register.js` + `sw.js`（PWA 离线，缓存版本 `sonder-v127`，`npm run sync-sw` 自动同步）。
 - **ui.js**：弹窗/Toast/表单 + 统一 sanitize 净化（XSS 防线，`selectValues` 支持 `{value,label}` 对象选项）。
 
-## 6. 关键加载顺序（index.html，51 个脚本）
+## 6. 关键加载顺序（index.html，41 个脚本）
 
 ```
 encryption → event-bus → store-stats → store.js
   → ModuleFactory → store-report → store-undo → store-persistence
   → store-migration → store-import-export → store-tasks → task-repository
   → task-domain → store-media → dev-repository → store-content
-  → book/clients/games-repository → store-settings → settings-repository
+  → book/clients → store-settings → settings-repository
   → memo/news/design-repository → ui → motion → error-guard → search
-  → quotes → markdown → 页面（home…settings）→ 游戏 → 桌面玩偶 → sw-register → app
+  → quotes → markdown → 页面（home…settings）→ sw-register → app
 ```
 
 > 依赖规则：领域 store 文件必须在 `store.js` 之后；Repository 在对应 store 之后；task-domain 在 today.js 之前；`app.js` 最后（路由就绪）。

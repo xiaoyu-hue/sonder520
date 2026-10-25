@@ -58,14 +58,6 @@ test('SettingsRepository：setModuleEnabled / setTaskReminder 语义', () => {
   assert.equal(repo.getSettings().taskReminder, true, '提醒应布尔化');
 });
 
-test('SettingsRepository：setGameDifficulty 白名单（easy/hard/normal）', () => {
-  const h = boot();
-  const repo = repoOf(h);
-  assert.equal(repo.setGameDifficulty('easy'), 'easy');
-  assert.equal(repo.setGameDifficulty('hard'), 'hard');
-  assert.equal(repo.setGameDifficulty('insane'), 'normal', '非法难度回落 normal');
-});
-
 test('SettingsRepository：自定义壁纸 data URL 校验 + 清除（与旧 Store 一致）', () => {
   const h = boot();
   const repo = repoOf(h);
@@ -77,22 +69,10 @@ test('SettingsRepository：自定义壁纸 data URL 校验 + 清除（与旧 Sto
   assert.equal(repo.getCustomWallpaper(), null, '清除后为 null');
 });
 
-test('SettingsRepository：setDesktopPet 白名单浅合并（与旧 Store 一致）', () => {
-  const h = boot();
-  const repo = repoOf(h);
-  repo.setDesktopPet({ coins: 5, notAKey: 'ignored' });
-  assert.equal(repo.getSettings().desktopPet.coins, 5, '白名单 key 生效');
-  assert.equal(repo.getSettings().desktopPet.notAKey, undefined, '非白名单 key 忽略');
-  assert.equal(repo.setDesktopPet(null), undefined, '非法 patch 忽略');
-});
-
-/* Phase 4 续门禁：settings 页与游戏难度不得回退直连 settings 写 */
-test('SettingsRepository：settings.js / games-battle.js 已迁移至边界', () => {
+/* Phase 4 续门禁：settings 页不得回退直连 settings 写 */
+test('SettingsRepository：settings.js 已迁移至边界', () => {
   const src = fs.readFileSync(path.join(__dirname, '..', 'js', 'settings.js'), 'utf8');
   const direct = /store\.(setTheme|setFrameRate|setWallpaperOpacity|setModuleEnabled|setTaskReminder|setCustomWallpaper|clearCustomWallpaper|getCustomWallpaper)\(/;
   assert.ok(!direct.test(src), 'settings.js 不应直连 settings 写');
   assert.ok(!/store\.state\.settings/.test(src), 'settings.js 不应直读 state.settings');
-
-  const gb = fs.readFileSync(path.join(__dirname, '..', 'js', 'games-battle.js'), 'utf8');
-  assert.ok(!/ctx\.store\.setGameDifficulty\(/.test(gb), 'games-battle.js 不应直连 setGameDifficulty');
 });

@@ -1,17 +1,12 @@
 'use strict';
 const { test } = require('node:test');
-const { readAllCss } = require('./css-helper');
 const assert = require('node:assert');
 const path = require('node:path');
-const { boot, waitFor } = require('./harness.js');
+const { boot } = require('./harness.js');
 
 const root = path.join(__dirname, '..')
 const S = require(path.join(root, 'js', 'store.js'));
 const wait = ms => new Promise(r => setTimeout(r, ms));
-
-function cell(h, r, c) {
-  return h.window.document.querySelector('.cell[data-r="' + r + '"][data-c="' + c + '"]');
-}
 
 test('QA：今日计划刷新/保存不重复渲染且不崩溃', () => {
   const h = boot();
@@ -152,30 +147,6 @@ test('QA：overlay 焦点管理——打开落入、Tab 循环、关闭归还触
   assert.equal(doc.activeElement, trigger, '关闭后焦点归还触发元素');
 });
 
-test('QA：游戏中快速切换模式，对局状态保持合法（不重复落子）', async () => {
-  const h = boot();
-  const doc = h.window.document;
-  h.goto('game');
-  doc.querySelector('[data-pick="tictactoe"]').click();
-  const firstSel = doc.querySelector('#gFirst');
-  firstSel.value = 'O';
-  firstSel.dispatchEvent(new h.window.Event('change', { bubbles: true }));
-  await waitFor(() => doc.querySelectorAll('#gBoard .mk.x').length === 1, 'AI 先手落子');
-  assert.equal(doc.querySelectorAll('#gBoard .mk.x').length, 1, 'AI 应已先手落子');
-  cell(h, 1, 1).click();
-  doc.querySelector('[data-mode="pvp"]').click();
-  doc.querySelector('[data-act="yes"]').click();
-  await wait(30);
-  doc.querySelector('[data-mode="ai"]').click();
-  await wait(500);
-  const dbg = h.window.__gamesDbg();
-  assert.equal(dbg.mode, 'ai', '应回到 AI 模式');
-  assert.equal(dbg.game.moves, 1, '新局应只有 AI 一手');
-  assert.equal(dbg.game.turn, 'O', 'AI 落子后应轮到玩家');
-  assert.equal(doc.querySelectorAll('#gBoard .mk.x').length, 1, '旧 AI 定时器不应在新局叠加落子');
-  assert.equal(doc.querySelectorAll('#gBoard .mk.o').length, 0, '玩家不应被 AI 抢占落子');
-});
-
 test('QA：标签选项已转义（防属性注入）', () => {
   const h = boot();
   const bad = '"><img src=x>';
@@ -190,13 +161,6 @@ test('QA：标签选项已转义（防属性注入）', () => {
   const opts2 = h.window.document.querySelectorAll('#smTag option');
   assert.equal(h.window.document.querySelectorAll('#smTag img').length, 0, '选项目标签不应注入');
   assert.equal(opts2[1].value, bad);
-});
-
-test('QA：棋盘格子在不支持 aspect-ratio 的旧浏览器有最小高度回退', () => {
-  const css = readAllCss(root);
-  const block = css.slice(css.indexOf('.cell {'), css.indexOf('.cell:hover'));
-  assert.ok(block.includes('aspect-ratio: 1/1'), '应有 aspect-ratio');
-  assert.ok(block.includes('min-height'), '应有高度回退');
 });
 
 test('QA：每日金句按日期稳定、当天唯一、次日刷新', () => {
@@ -222,196 +186,4 @@ test('QA：首页问候语下方显示当日金句', () => {
   h.goto('today');
   h.goto('home');
   assert.equal(doc.querySelector('.quote-card').textContent, t1, '同日刷新应保持同一句');
-});
-
-test('QA：对局结束后不能悔棋', async () => {
-  const h = boot();
-  const doc = h.window.document;
-  h.goto('game');
-  doc.querySelector('[data-pick="tictactoe"]').click();
-  doc.querySelector('[data-mode="pvp"]').click();
-  cell(h, 0, 0).click(); cell(h, 1, 0).click();
-  cell(h, 0, 1).click(); cell(h, 1, 1).click();
-  cell(h, 0, 2).click();
-  await wait(20);
-  const dbg = h.window.__gamesDbg();
-  assert.equal(dbg.game.over, true, '应先分出胜负');
-  const movesBefore = dbg.game.moves;
-  doc.querySelector('[data-act="undo"]').click();
-  await wait(20);
-  assert.equal(doc.querySelector('[data-act="yes"]'), null, '终局后不应弹悔棋确认');
-  const after = h.window.__gamesDbg();
-  assert.equal(after.game.over, true, '终局状态不应被撤销');
-  assert.equal(after.game.moves, movesBefore, '终局后悔棋应无效果');
-});
-
-test('QA：双人悔棋文案由刚落子方发起，双方均可反复请求', async () => {
-  const h = boot();
-  const doc = h.window.document;
-  h.goto('game');
-  doc.querySelector('[data-pick="tictactoe"]').click();
-  doc.querySelector('[data-mode="pvp"]').click();
-  cell(h, 0, 0).click(); // 玩家1 X
-  cell(h, 1, 0).click(); // 玩家2 O
-  doc.querySelector('[data-act="undo"]').click();
-  const body = doc.querySelector('.modal .body').textContent;
-  assert.ok(body.includes('玩家2'), '应由刚落子的玩家2 发起悔棋: ' + body);
-  assert.ok(body.includes('玩家1'), '应向玩家1 征求同意: ' + body);
-  doc.querySelector('[data-act="no"]').click();
-  await wait(20);
-  assert.equal(doc.querySelectorAll('#gBoard .mk').length, 2, '拒绝后保留棋子');
-  cell(h, 1, 1).click(); // X
-  doc.querySelector('[data-act="undo"]').click();
-  const body2 = doc.querySelector('.modal .body').textContent;
-  assert.ok(body2.includes('玩家1'), '本轮应轮到玩家1 发起悔棋: ' + body2);
-  doc.querySelector('[data-act="yes"]').click();
-  await wait(20);
-  assert.equal(doc.querySelectorAll('#gBoard .mk').length, 2, '同意后撤销最后一步');
-});
-
-test('QA：执后手新开局 AI 先手落一子，棋盘其余为空；切换模式必清盘', async () => {
-  const h = boot();
-  const doc = h.window.document;
-  h.goto('game');
-  doc.querySelector('[data-pick="gomoku"]').click();
-  const first = doc.querySelector('#gFirst');
-  assert.ok(first, '执后手选择器应存在');
-  first.value = 'O';
-  first.dispatchEvent(new h.window.Event('change', { bubbles: true }));
-  await waitFor(() => {
-    const dbg = h.window.__gamesDbg();
-    return dbg.playerStone === 'O' && dbg.game.moves === 1 && dbg.game.turn === 'O';
-  }, 'AI 执先应已落一子');
-  let dbg = h.window.__gamesDbg();
-  assert.equal(dbg.playerStone, 'O', '已切为执后手');
-  assert.equal(dbg.game.moves, 1, 'AI 执先应已落一子');
-  assert.equal(dbg.game.turn, 'O', '应轮到玩家');
-  assert.equal(doc.querySelectorAll('#gBoard .stone').length, 1, '盘上仅 AI 一颗子，其余为空');
-
-  doc.querySelector('[data-act="new"]').click();
-  doc.querySelector('[data-act="yes"]').click();
-  await waitFor(() => {
-    const d = h.window.__gamesDbg();
-    return d.game.kind === 'gomoku' && !d.game.over && d.game.moves === 1;
-  }, '新局应初始化且 AI 已落一子');
-  dbg = h.window.__gamesDbg();
-  assert.equal(dbg.game.kind, 'gomoku', '新局仍是五子棋');
-  assert.equal(dbg.game.over, false);
-
-  doc.querySelector('[data-mode="pvp"]').click();
-  doc.querySelector('[data-act="yes"]').click();
-  await wait(50);
-  dbg = h.window.__gamesDbg();
-  assert.equal(dbg.mode, 'pvp', '应已切换为双人模式');
-  assert.equal(dbg.game.moves, 0, '切换后应为空盘');
-  doc.querySelector('[data-mode="ai"]').click();
-  await waitFor(() => {
-    const d = h.window.__gamesDbg();
-    return d.mode === 'ai' && !d.game.over && d.game.moves === 1;
-  }, 'AI 模式新盘应只有 AI 先手一子');
-  dbg = h.window.__gamesDbg();
-  assert.equal(dbg.mode, 'ai', '应已切回 AI 模式');
-  assert.equal(dbg.game.over, false);
-  assert.equal(dbg.game.moves, 1, 'AI 模式新盘只有 AI 先手一子');
-});
-
-test('QA：连点新开局/悔棋不会叠出多个确认框', async () => {
-  const h = boot();
-  const doc = h.window.document;
-  h.goto('game');
-  doc.querySelector('[data-pick="tictactoe"]').click();
-  doc.querySelector('[data-mode="pvp"]').click();
-  cell(h, 0, 0).click(); cell(h, 1, 0).click();
-  const newBtn = doc.querySelector('[data-act="new"]');
-  newBtn.click(); newBtn.click(); newBtn.click();
-  await wait(20);
-  assert.ok(doc.querySelectorAll('.overlay').length <= 1, '连点新开局只应弹一个确认框');
-  doc.querySelector('.overlay [data-act="yes"]').click();
-  await wait(20);
-  const dbg = h.window.__gamesDbg();
-  assert.equal(dbg.game.over, false);
-  assert.equal(dbg.game.moves, 0, '确认后新局应为空盘');
-  assert.equal(doc.querySelectorAll('.overlay').length, 0, '不应有残留弹窗');
-  cell(h, 0, 0).click();
-  const undoBtn = doc.querySelector('[data-act="undo"]');
-  undoBtn.click(); undoBtn.click();
-  await wait(20);
-  assert.ok(doc.querySelectorAll('.overlay').length <= 1, '连点悔棋只应有一个确认框');
-  doc.querySelector('.overlay [data-act="yes"]').click();
-  await wait(20);
-  assert.equal(doc.querySelectorAll('.overlay').length, 0, '确认后弹窗应全部关闭');
-});
-
-test('QA：AI 思考中悔棋会取消待落子并撤回一回合', async () => {
-  const h = boot();
-  const doc = h.window.document;
-  h.goto('game');
-  doc.querySelector('[data-pick="tictactoe"]').click();
-  cell(h, 0, 0).click();
-  doc.querySelector('[data-act="undo"]').click();
-  await waitFor(() => h.window.__gamesDbg().busy === false, 'AI 思考中的悔棋应已生效');
-  const dbg = h.window.__gamesDbg();
-  assert.equal(dbg.busy, false);
-  assert.equal(dbg.game.over, false);
-  assert.equal(dbg.game.moves, 0, '思考中悔棋应撤回己方与 AI 两步');
-  assert.equal(doc.querySelectorAll('#gBoard .mk').length, 0, 'AI 待落子应被取消，不再自动落子');
-});
-
-test('QA：AI 模式可连续悔棋多回合', async () => {
-  const h = boot();
-  const doc = h.window.document;
-  h.goto('game');
-  doc.querySelector('[data-pick="tictactoe"]').click();
-  cell(h, 0, 0).click();
-  await waitFor(() => h.window.__gamesDbg().game.moves === 2, 'AI 回应第一手');
-  const empty = Array.prototype.find.call(
-    doc.querySelectorAll('#gBoard .cell'),
-    el => !el.querySelector('.mk')
-  );
-  assert.ok(empty, 'AI 落子后应仍有空位');
-  empty.click();
-  await waitFor(() => h.window.__gamesDbg().game.moves === 4, 'AI 回应第二手');
-  doc.querySelector('[data-act="undo"]').click();
-  await wait(20);
-  assert.equal(h.window.__gamesDbg().game.moves, 2, '第一次悔棋回到上一个思考点');
-  doc.querySelector('[data-act="undo"]').click();
-  await wait(20);
-  assert.equal(h.window.__gamesDbg().game.moves, 0, '可连续悔棋直到空盘');
-});
-
-test('QA：双人悔棋需对方同意，拒绝不撤销', async () => {  const h = boot();
-  const doc = h.window.document;
-  h.goto('game');
-  doc.querySelector('[data-pick="tictactoe"]').click();
-  doc.querySelector('[data-mode="pvp"]').click();
-  cell(h, 0, 0).click();
-  cell(h, 0, 1).click();
-  doc.querySelector('[data-act="undo"]').click();
-  const no = doc.querySelector('[data-act="no"]');
-  assert.ok(no, '应弹出对方同意确认框');
-  no.click();
-  await wait(20);
-  assert.equal(doc.querySelectorAll('#gBoard .mk').length, 2, '对方拒绝后棋子保留');
-  doc.querySelector('[data-act="undo"]').click();
-  const yes = doc.querySelector('[data-act="yes"]');
-  assert.ok(yes, '应再次弹出确认');
-  yes.click();
-  await wait(20);
-  assert.equal(doc.querySelectorAll('#gBoard .mk').length, 1, '对方同意后撤销一步');
-});
-
-test('QA：AI 思考期间切页不劫持当前页面，切回后自动续走', async () => {
-  const h = boot();
-  const doc = h.window.document;
-  h.goto('game');
-  doc.querySelector('[data-pick="tictactoe"]').click();
-  cell(h, 0, 0).click(); /* 玩家落子，AI 220ms 后思考 */
-  h.goto('home'); /* 立即切页 */
-  await waitFor(() => !h.window.__gamesDbg().busy, 'AI 思考结束'); /* 越过 AI 延时窗口 */
-  assert.ok(!doc.querySelector('#gStatus'), '切走的页面不得出现游戏棋盘（未被劫持）');
-  assert.ok(doc.querySelector('#quickMemo') || doc.body.textContent.includes('今日'), 'home 内容保持');
-  h.goto('game'); /* 切回 */
-  await waitFor(() => doc.querySelectorAll('#gBoard .mk').length === 2, 'AI 自动续走');
-  assert.equal(doc.querySelectorAll('#gBoard .mk').length, 2, 'AI 应自动续走完成一回合');
-  assert.equal(h.window.__gamesDbg().busy, false, 'AI 思考状态复位');
 });

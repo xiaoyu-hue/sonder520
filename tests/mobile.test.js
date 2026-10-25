@@ -91,14 +91,6 @@ test('超小屏（≤360px）与手机横屏有专门适配', () => {
   assert.ok(css.includes('@media (max-width: 900px) and (max-height: 480px)'), '缺横屏断点');
 });
 
-test('五子棋大棋盘手机端：压缩边距保持方正且不溢出', () => {
-  assert.ok(css.includes('.game-board.big .cell { min-height: 0; }'), '大棋盘格子不应被旧浏览器 min-height 拉成竖条');
-  assert.ok(mobile720.includes('.game-board.big'), '720px 断点内应有五子棋棋盘适配');
-  assert.ok(/width: min\(97vw, 480px\)/.test(mobile720), '手机大棋盘应限定在可视宽度内');
-  assert.ok(mobile720.includes('gap: 2px'), '手机大棋盘应压缩格距');
-  assert.ok(css.includes('.game-board.small'), '井字棋小棋盘适配仍应保留');
-});
-
 test('窄屏防溢出：.row 允许换行（咨询卡行内容多，320px 下不应横向溢出）', () => {
   const row = css.split('.row {')[1].split('}')[0];
   assert.ok(row.includes('flex-wrap: wrap'), '.row 应支持换行');

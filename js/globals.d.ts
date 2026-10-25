@@ -72,11 +72,6 @@ interface SonderStoreImpl {
   addDesign(data: SonderDesignInput): SonderDesign;
   updateDesign(id: string | number, patch: Partial<SonderDesign>): SonderDesign | null;
   removeDesign(id: string | number): void;
-  /* ---------- 游戏 ---------- */
-  addGameRecord(data: SonderGameRecordInput): SonderGameRecord;
-  clearGameRecords(): void;
-  getMiniRecord(kind: string): Record<string, unknown>;
-  updateMiniRecord(kind: string, patch: Record<string, unknown>): Record<string, unknown>;
   /* ---------- 删除撤销（P4c） ---------- */
   undoRemove(): unknown;
   /* ---------- 设置 ---------- */
@@ -86,12 +81,10 @@ interface SonderStoreImpl {
   getCustomWallpaper(): string | null;
   clearCustomWallpaper(): void;
   setFrameRate(fps: number): string | number;
-  setGameDifficulty(difficulty: string): string;
   setTaskReminder(on: boolean): boolean;
   setModuleEnabled(key: string, on: boolean): void;
   setQuotaNoticeDismissed(on: boolean): void;
   dismissQuotaNotice(): void;
-  setDesktopPet(patch: Record<string, unknown>): void;
   enableEncryption(password: string): Promise<boolean>;
   disableEncryption(): Promise<boolean>;
   encryptionMode(): string;
@@ -191,8 +184,6 @@ interface SonderCtx {
   theme(): string;
   navigate(route: string): void;
   _container?: HTMLElement;
-  _dpUnsub?: () => void;
-  _dpBound?: boolean;
 }
 
 interface SonderFormOptions {
@@ -243,15 +234,11 @@ interface SonderState {
   excerpts: SonderExcerpt[];
   news: SonderNews[];
   designs: SonderDesign[];
-  gameRecords: SonderGameRecord[];
-  /** 单人小游戏纪录（kind → { best, diff, right, wrong, ... }），P3e 并入统一 state */
-  miniRecords: Record<string, Record<string, unknown>>;
 }
 
 interface SonderSettings {
   theme: string;
   wallpaperOpacity: number;
-  gameDifficulty: string;
   frameRate: number;
   modules: Record<string, boolean>;
   quotaNoticeDismissed: boolean;
@@ -366,18 +353,6 @@ interface SonderDesign {
 }
 interface SonderDesignInput { type?: string; title?: string; link?: string; category?: string; note?: string; stage?: string; }
 
-interface SonderGameRecord {
-  id: string;
-  kind: string;
-  mode: 'ai' | 'pvp' | 'solo';
-  player: string;
-  winner: string;
-  difficulty: string;
-  note: string | null;
-  date: string;
-  time: string;
-}
-interface SonderGameRecordInput { kind: string; winner: string; mode?: string; player?: string; difficulty?: string; note?: string | null; }
 
 interface SonderSummarize {
   date: string;
@@ -388,7 +363,6 @@ interface SonderSummarize {
   reading: { total: number; reading: number };
   news: { total: number; unread: number };
   design: { total: number; active: number };
-  game: { total: number; wins: number; draws: number };
 }
 
 /* store-stats.js 暴露的纯函数统计/聚合层（原 store.js 内实现，拆出后签名不变） */
@@ -476,20 +450,12 @@ interface Window {
   SonderDevRepository: SonderRepositoryFactory;
   SonderSettingsRepository: SonderRepositoryFactory;
   SonderClientsRepository: SonderRepositoryFactory;
-  SonderGamesRepository: SonderRepositoryFactory;
   /* Phase 5 提炼：走工厂封装的集合（memos/news/designs）正式包装为 Repository */
   SonderMemosRepository: SonderRepositoryFactory;
   SonderNewsRepository: SonderRepositoryFactory;
   SonderDesignsRepository: SonderRepositoryFactory;
   SonderMarkdown: { render(src: string): string; esc(s: unknown): string };
   SonderCrypto: SonderCryptoApi;
-  SonderGames: SonderGamesApi;
-  SonderGamesView: SonderGamesViewApi;
-  /* games.js 拆分（games-shared/mini/battle 域 + 页面层）：共享状态单例与各域 API */
-  SonderGamesShared: SonderGamesSharedApi;
-  SonderGamesMini: SonderGamesMiniApi;
-  SonderGamesBattle: SonderGamesBattleApi;
-  SonderGamesPage: SonderGamesPageApi;
   /* Phase 7：任务领域规则（纯函数，无 DOM/存储） */
   SonderTaskDomain: SonderTaskDomainApi;
   SonderQuotes: { quoteOfDay(dateStr: string): string; quotes: string[] };
@@ -499,10 +465,6 @@ interface Window {
   __sonderSearchDirect?: (e: Event) => void;
   __SONDER_TEST__?: boolean;
   __sonderErrors: { list: SonderErrorEntry[]; readonly total: number; clear(): void; report(errOrMsg: string | Error, type?: string): void };
-  __desktopPetFamily: any;
-  DesktopPetCore: any;
-  DesktopPetData: { QUOTES: any; CHARACTERS: any; SNACKS: any; ACHIEVEMENTS: any; DIALOGUES: any };
-  __gamesDbg: any;
   __readingDbg: any;
   __todayDbg: any;
 }
@@ -519,103 +481,6 @@ interface SonderCryptoApi {
   selfTest(password: string, salt: Uint8Array): Promise<boolean>;
   bytesToB64(bytes: Uint8Array): string;
   b64ToBytes(b64: string): Uint8Array;
-}
-
-interface SonderGameState {
-  kind: 'tictactoe' | 'gomoku';
-  size: number;
-  board: Array<Array<string | null>>;
-  turn: string;
-  moves: Array<{ r: number; c: number; p?: string }>;
-  winner: string | null;
-  over: boolean;
-  byResign: boolean;
-  winLine: any;
-}
-
-interface SonderGamesApi {
-  createGame(kind: string): SonderGameState;
-  place(g: SonderGameState, r: number, c: number): { ok: boolean; winner?: string; draw?: boolean; error?: string };
-  undo(g: SonderGameState): { ok: boolean; error?: string };
-  resign(g: SonderGameState, player: string): { ok: boolean };
-  tttAiMove(g: SonderGameState, player: string, difficulty: string): { r: number; c: number };
-  gomokuAiMove(g: SonderGameState, player: string, difficulty: string): { r: number; c: number };
-  guessNumStart(): any;
-  guessNumTry(g: any, input: string): any;
-  mineStart(rows: number, cols: number, mines: number): any;
-  mineLay(g: any, r: number, c: number, n: number): any;
-  mineReveal(g: any, r: number, c: number): any;
-  mineToggleFlag(g: any, r: number, c: number): any;
-  idiomStart(): any;
-  idiomTry(g: any, input: string): any;
-  IDIOM_POOL: string[];
-  brainStart(): any;
-  brainTry(g: any, input: string): any;
-  BRAIN_POOL: string[];
-}
-
-interface SonderGamesViewApi {
-  DIFF_LABEL: Record<string, string>;
-  diffOptions(sel: string): string;
-  resultHtml(g: any, isNewBest: boolean): string;
-  mineCellsHtml(g: any, UI: SonderUI): string;
-  idiomResult(g: any): string;
-  brainResult(g: any): string;
-  onLine(line: Array<[number, number]>, r: number, c: number): boolean;
-  resultText(r: any): string;
-  resultPill(r: any): string;
-  shortDate(d: string): string;
-  diffBadge(r: any): string;
-}
-
-/* games.js 拆分后的游戏域接口（games-shared / games-mini / games-battle / 页面编排） */
-interface SonderGamesSharedState {
-  game: SonderGameState | null;
-  mode: string;
-  playerStone: string;
-  difficulty: string;
-  mini: any;
-}
-
-interface SonderGamesSharedApi {
-  currentEl: HTMLElement | null;
-  currentCtx: SonderCtx | null;
-  ctxRef: { store: SonderStoreImpl | null };
-  legacyMigrated: boolean;
-  state: SonderGamesSharedState;
-  busy: boolean;
-  aiTimer: any;
-  aiWorker: Worker | null;
-  aiSeq: number;
-  aiWaitCtx: SonderCtx | null;
-  WORKER_TIMEOUT: number;
-  confirmOpen: boolean;
-  KIND_NAME: Record<string, string>;
-  /* 以下方法在字面量赋值后挂载（契约测试扫描 games-shared.js 的字面量声明），故标可选 */
-  askConfirm?(ctx: SonderCtx, message: string, okText?: string): Promise<boolean | null>;
-  aiStone?(): string;
-  playerName?(stone: string): string;
-  sym?(stone: string): string;
-  kindName?(g: any): string;
-  render?(ctx: SonderCtx): void;
-}
-
-interface SonderGamesMiniApi {
-  startMini(ctx: SonderCtx, kind: string): void;
-  miniView(ctx: SonderCtx): HTMLElement;
-  migrateMiniRecords(ctx: SonderCtx): void;
-}
-
-interface SonderGamesBattleApi {
-  gameView(ctx: SonderCtx): HTMLElement;
-  aiThink(ctx: SonderCtx): void;
-  startGame(ctx: SonderCtx, kind: string): void;
-  switchDiff(ctx: SonderCtx, v: string): void;
-  stopAiWorker(): void;
-}
-
-interface SonderGamesPageApi {
-  pickView(ctx: SonderCtx): HTMLElement;
 }
 
 interface SonderHooks {
@@ -745,9 +610,7 @@ interface SonderSettingsRepository {
   clearCustomWallpaper(): void;
   setTaskReminder(on: boolean): boolean;
   setModuleEnabled(key: string, on: boolean): void;
-  setGameDifficulty(d: string): string;
   setFrameRate(f: number): number;
-  setDesktopPet(patch: Record<string, unknown> | null): void;
 }
 interface SonderClientsRepository {
   getClient(id: string): SonderClient | null;
@@ -765,19 +628,12 @@ interface SonderClientsRepository {
   updateIncome(clientId: string, incId: string, patch: Record<string, unknown>): SonderClientIncome | null;
   removeIncome(clientId: string, incId: string): void;
 }
-interface SonderGamesRepository {
-  addRecord(d: Record<string, unknown>): Record<string, unknown>;
-  clearRecords(): void;
-  getMiniRecord(kind: string): Record<string, unknown>;
-  updateMiniRecord(kind: string, patch: Record<string, unknown>): Record<string, unknown>;
-}
 interface SonderRepositoryFactory {
   createTaskRepository(store: SonderStoreImpl): SonderTaskRepository;
   createBookRepository(store: SonderStoreImpl): SonderBookRepository;
   createDevRepository(store: SonderStoreImpl): SonderDevRepository;
   createSettingsRepository(store: SonderStoreImpl): SonderSettingsRepository;
   createClientsRepository(store: SonderStoreImpl): SonderClientsRepository;
-  createGamesRepository(store: SonderStoreImpl): SonderGamesRepository;
   /* Phase 5 提炼：三页经工厂封装，包装层接受页面 CONFIG（单源） */
   createMemosRepository(store: SonderStoreImpl, config: SonderModuleConfig): SonderMemosRepository;
   createNewsRepository(store: SonderStoreImpl, config: SonderModuleConfig): SonderNewsRepository;
@@ -820,7 +676,3 @@ interface SonderDesignsRepository {
   render(fn: () => void): void;
   destroy(): void;
 }
-
-/* Web Worker 专用全局（game-worker.js，不在 DOM/窗口作用域内）：
- * DOM lib 的 postMessage/self 重载与 worker 环境兼容，仅 importScripts 缺失需要补充。 */
-declare function importScripts(...urls: string[]): void;

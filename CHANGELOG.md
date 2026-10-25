@@ -3,6 +3,28 @@
 本项目所有重要变更均记录于此。格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循语义化版本（SemVer）。完整版本演进另见 [PRD.md](docs/PRD.md) 的版本历史表。
 
+## [v6.4.0] - 2026-10-25（移除娱乐与桌面宠物模块）
+
+### 🗑️ 移除
+
+- **娱乐游戏模块**：删除 `games.js` / `games-logic.js` / `games-shared.js` / `games-mini.js` / `games-battle.js` / `games-view.js` / `game-worker.js`、`js/repositories/games-repository.js`、`game` 页面与 6 款迷你游戏（井字棋 / 五子棋 / 扫雷 / 猜数字 / 猜成语 / 脑筋急转弯），以及 `gameRecords` 数据域
+- **桌面宠物模块**：删除 `desktop-pet.js` / `desktop-pet-page.js` / `desktop-pet-data.js`、`css/desktop-pet.css`、`desktop-pet` 页面与全局 `autoInit` 启动钩子，以及 `desktopPet` 设置项
+- **相关文档**：删除 `docs/adr/ADR-012-desktop-pet.md`、`docs/specs/desktop-pet-spec.md` 及桌面宠物 / 扫雷的 plan、spec 共 7 份
+
+### ♻️ 变更
+
+- 页面注册表 13 → 11；Repository 9 → 8；移除 Store 方法 `addGameRecord` / `clearGameRecords` / `setGameDifficulty` / `setDesktopPet` / `getMiniRecord` / `updateMiniRecord`；`state` 移除 `gameRecords` / `miniRecords`
+- 首页概览卡 7 → 6；全局搜索移除游戏战绩索引；`index.html` 脚本 51 → 41
+- Service Worker 缓存 `sonder-v126` → `sonder-v127`（内容指纹同步更新）
+- 版本号 `6.3.4` → `6.4.0`
+
+### 🧪 测试
+
+- 全量测试：**568 个用例全部通过**（删除纯娱乐 / 宠物用例，保留契约与一致性护栏）
+- `npm run typecheck` 零错误；`npm run lint` 零错误零警告
+
+---
+
 ## [v6.3.4] - 2026-09-28（代码审查修复清单 P2）
 
 ### 🐛 Bug 修复

@@ -6,11 +6,11 @@
   var UI = window.UI;
 
   /* 导航顺序；可被"数据与设置"开关隐藏的为业务模块 */
-  var TOGGLEABLE = { today: 1, memo: 1, selfmedia: 1, dev: 1, consulting: 1, reading: 1, news: 1, design: 1, game: 1, excerpts: 1, 'desktop-pet': 1 };
-  var NAV = ['home', 'today', 'memo', 'selfmedia', 'dev', 'consulting', 'reading', 'excerpts', 'news', 'design', 'game', 'desktop-pet', 'settings'];
+  var TOGGLEABLE = { today: 1, memo: 1, selfmedia: 1, dev: 1, consulting: 1, reading: 1, news: 1, design: 1, excerpts: 1 };
+  var NAV = ['home', 'today', 'memo', 'selfmedia', 'dev', 'consulting', 'reading', 'excerpts', 'news', 'design', 'settings'];
   var ICONS = {
     home: '🏠', today: '📅', memo: '📝', selfmedia: '📣', dev: '💻',
-    consulting: '🤝', reading: '📚', excerpts: '📖', news: '📰', design: '🎨', game: '🎮', 'desktop-pet': '🐾', settings: '⚙️'
+    consulting: '🤝', reading: '📚', excerpts: '📖', news: '📰', design: '🎨', settings: '⚙️'
   };
 
   var ctx = {
@@ -211,10 +211,6 @@
     if (store.needsUnlock()) { autoUnlockOnce(); }
     else { todayReminder(); }
 
-    /* 桌面玩偶自动初始化（Task 3 autoInit 接入，idbReady 后确保 store 就绪） */
-    if (window.DesktopPetCore && typeof window.DesktopPetCore.autoInit === 'function') {
-      try { window.DesktopPetCore.autoInit(); } catch (e) { /* autoInit 异常不阻断页面 */ }
-    }
   });
 
   /* ---------- 今日任务桌面提醒（设置页开关，每次打开/刷新页面触发一次） ---------- */

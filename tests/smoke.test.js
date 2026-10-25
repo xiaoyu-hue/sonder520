@@ -4,7 +4,7 @@ const assert = require('node:assert');
 const { boot } = require('./harness.js');
 const S = require('../js/store.js');
 
-const PAGES = ['home', 'today', 'memo', 'selfmedia', 'dev', 'consulting', 'reading', 'news', 'design', 'game', 'settings'];
+const PAGES = ['home', 'today', 'memo', 'selfmedia', 'dev', 'consulting', 'reading', 'news', 'design', 'settings'];
 
 function fullSeed() {
   const seed = S.defaultState();
@@ -42,10 +42,6 @@ function fullSeed() {
   seed.designs = [
     { id: 'x1', type: 'idea', title: '灵感A', link: '', category: '平面', note: '', stage: '', time: '' },
     { id: 'x2', type: 'project', title: '项目B', link: 'https://y.com', category: '', note: '', stage: '进行中', time: '' }
-  ];
-  seed.gameRecords = [
-    { id: 'g1', kind: 'gomoku', mode: 'ai', player: 'X', winner: 'X', byResign: false, difficulty: 'hard', date: '2026-08-09', time: '' },
-    { id: 'g2', kind: 'tictactoe', mode: 'pvp', player: 'X', winner: 'O', byResign: true, difficulty: null, date: '2026-08-08', time: '' }
   ];
   seed.settings = S.defaultState().settings;
   return seed;
@@ -132,25 +128,6 @@ test('冒烟：满数据遍历全部页面 + 关键交互点击不崩溃', async
   h.goto('design');
   const dEdit = doc.querySelector('[data-act="edit"]');
   if (dEdit) { dEdit.click(); assert.ok(doc.querySelector('.overlay')); doc.querySelector('[data-act="ok"]').click(); }
-
-  /* 游戏：开局-落子-认输 全流程 */
-  h.goto('game');
-  doc.querySelector('[data-pick="tictactoe"]').click();
-  const cell = (r, c) => doc.querySelector('.cell[data-r="' + r + '"][data-c="' + c + '"]');
-  cell(0, 0).click();
-  await new Promise(r => setTimeout(r, 30));
-  doc.querySelector('[data-act="resign"]').click();
-  await new Promise(r => setTimeout(r, 20));
-  doc.querySelector('[data-act="yes"]').click();
-  await new Promise(r => setTimeout(r, 60));
-  assert.equal(h.store.state.gameRecords.length, 3, '认输应产生新记录');
-
-  /* 游戏：返回选游戏页（有走子需确认） */
-  doc.querySelector('[data-act="back"]').click();
-  await new Promise(r => setTimeout(r, 20));
-  doc.querySelector('[data-act="yes"]').click();
-  await new Promise(r => setTimeout(r, 20));
-  assert.ok(doc.querySelector('[data-pick]'), '应回到选游戏界面');
 
   /* 设置：主题切换与迁移按钮点击 */
   h.goto('settings');

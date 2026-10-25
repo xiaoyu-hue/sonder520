@@ -42,7 +42,6 @@
 
 | 文档 | 说明 |
 | --- | --- |
-| [desktop-pet-spec.md](./specs/desktop-pet-spec.md) | 小莫灵家族（桌面玩偶养成系统）实现规格 v2.1 |
 | [device-acceptance.md](./specs/device-acceptance.md) | 真机验收清单 |
 
 ## 历史会话档案（superpowers/）

@@ -1,7 +1,6 @@
 /* settings-repository.js - 设置场景的数据访问边界（v6.x 架构升级 · Repository 第四刀）
  *
  * 覆盖 settings 集合：主题/帧率/壁纸透明度/自定义壁纸（IDB 主存 + LS 降级）/
- * 任务提醒/模块开关/游戏难度/桌面玩偶。
  * 本版为过渡形态——内部直接委托旧 Store 的领域方法（store-settings.js），行为完全一致
  * （含 commit/事件；壁纸的 IDB 异步落盘为 Store 内部机制，Repository 不掺和）。
  *
@@ -52,17 +51,10 @@
       setModuleEnabled: function (key, on) {
         return store.setModuleEnabled(key, on);
       },
-      setGameDifficulty: function (d) {
-        return store.setGameDifficulty(d);
-      },
       setFrameRate: function (f) {
         return store.setFrameRate(f);
-      },
-      setDesktopPet: function (patch) {
-        return store.setDesktopPet(patch);
       }
     };
   }
-
   return { createSettingsRepository: createSettingsRepository };
 });

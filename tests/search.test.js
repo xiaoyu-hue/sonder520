@@ -141,28 +141,14 @@ test('搜索：同查询重复触发不重建面板（结果缓存，_rev 未变
   assert.ok(items.length >= 2, '数据版本变化后同查询应重新过滤并含新增条目，实际: ' + items.length + ', text: ' + h.$('#gsearchPanel').textContent.substring(0, 100));
 });
 
-test('搜索：书摘与游戏战绩同样可检索、可跳转', async () => {
+test('搜索：书摘可由关键词检索、可跳转', async () => {
   const sd = seed();
   sd.excerpts = [
     { id: 'e1', bookId: 'b1', bookTitle: '水墨画入门', text: '留白不是没有，而是给想象留位', page: 5, time: '2026-08-10T08:00:00.000Z' }
   ];
-  sd.gameRecords = [
-    { id: 'g1', kind: 'minesweeper', mode: 'solo', player: 'player', winner: 'player', note: '经典 9x9 首胜', date: '2026-08-10', time: '', byResign: false }
-  ];
   const h = boot({ seed: sd });
   await typeAndWait(h, '留白');
-  let panel = h.$('#gsearchPanel');
+  const panel = h.$('#gsearchPanel');
   assert.ok(panel.textContent.includes('在【我的书摘】中找到 1 条'), '书摘应被索引');
   assert.ok(h.$('#gsearchPanel .gsearch-item[data-module="excerpts"]'), '书摘条目应带 excerpts 模块');
-
-  // 等待防抖完成后检查游戏战绩
-  await typeAndWait(h, '首胜');
-  panel = h.$('#gsearchPanel');
-  assert.ok(panel.textContent.includes('在【娱乐游戏】中找到 1 条'), '游戏战绩应被索引');
-  assert.ok(h.$('#gsearchPanel .gsearch-item[data-module="game"]'), '游戏条目应带 game 模块');
-
-  // 扫雷类别名也应命中
-  await typeAndWait(h, '扫雷');
-  panel = h.$('#gsearchPanel');
-  assert.ok(panel.textContent.includes('娱乐游戏'), '游戏类别名（扫雷）也应能命中');
 });
