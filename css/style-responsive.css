@@ -274,9 +274,17 @@ input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border-radius
     order: 2; display: inline-flex; width: auto; flex: 0 1 auto; min-width: 0; margin: 0 0 0 6px; padding: 0;
     font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
-  .topbar .gsearch { order: 3; margin-left: auto; }
-  .topbar .gsearch input { display: none; } /* 移动端收为图标，点击展开 */
+  /* 移动端搜索：收为 40x40 可点图标，点击展开为全宽输入框（修复此前容器零宽不可点） */
+  .topbar .gsearch {
+    order: 3; margin-left: auto; flex: 0 0 auto;
+    width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;
+    border-radius: 999px; background: var(--surface-2);
+  }
+  .topbar .gsearch input { display: none; }
+  .topbar .gsearch .gsearch-ico { position: static; transform: none; pointer-events: auto; font-size: 18px; opacity: .8; }
+  .topbar .gsearch.open { width: auto; flex: 1 1 auto; padding: 0 10px; background: var(--surface-1); }
   .topbar .gsearch.open input { display: block; width: 100%; }
+  .topbar .gsearch.open .gsearch-ico { display: none; }
   .topbar .btn { order: 4; padding: 6px 10px; font-size: 12px; }
   .nav button, .topbar .btn { min-height: 44px; }
   /* 首页概览磁贴：移动端收为 2 列紧凑磁贴 */

@@ -491,17 +491,25 @@
     if (ico) ico.innerHTML = I.icon('plus');
     fab.addEventListener('click', onFabClick);
   })();
-  /* 移动端：全局搜索收为图标，点击展开输入框（桌面端不触发） */
+  /* 移动端：全局搜索收为图标，点击图标展开为全宽输入框；点击搜索区以外收起（桌面端不触发） */
   (function bindSearchToggle() {
     var gs = document.getElementById('gsearch');
     if (!gs) return;
+    var mobile = function () { return !!window.matchMedia && window.matchMedia('(max-width: 720px)').matches; };
     gs.addEventListener('click', function (e) {
-      if (!window.matchMedia || !window.matchMedia('(max-width: 720px)').matches) return;
+      if (!mobile()) return;
       var t = /** @type {HTMLElement} */ (e.target);
-      if (t && (t.tagName === 'INPUT' || t.closest('#gsearchPanel'))) return;
-      var open = gs.classList.toggle('open');
+      if (t && (t.tagName === 'INPUT' || (t.closest && t.closest('#gsearchPanel')))) return;
+      if (gs.classList.contains('open')) return; /* 已展开时点击自身不收起，避免误关输入框 */
+      gs.classList.add('open');
       var inp = gs.querySelector('input');
-      if (open && inp) inp.focus();
+      if (inp) inp.focus();
+    });
+    document.addEventListener('click', function (e) {
+      if (!mobile() || !gs.classList.contains('open')) return;
+      var t = /** @type {HTMLElement} */ (e.target);
+      if (t && (gs.contains(t) || (t.closest && t.closest('#gsearchPanel')))) return;
+      gs.classList.remove('open');
     });
   })();
   todayLine();
