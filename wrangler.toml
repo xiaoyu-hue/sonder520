@@ -1,0 +1,5 @@
+# Cloudflare Pages 项目配置（Git 集成构建时读取）
+# 构建命令在 Cloudflare 控制台设置：npm run build
+name = "sonder520"
+pages_build_output_dir = "dist"
+compatibility_date = "2026-10-27"
