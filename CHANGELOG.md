@@ -3,6 +3,17 @@
 本项目所有重要变更均记录于此。格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循语义化版本（SemVer）。完整版本演进另见 [PRD.md](docs/PRD.md) 的版本历史表。
 
+## [v6.5.1] - 2026-10-27（文档许可标准化 + 部署修复）
+
+### 📝 文档
+
+- **LICENSE-DOCS 重写为七要件结构**：版权行 / `SPDX-License-Identifier: CC-BY-4.0` / 覆盖范围（`docs/`、`*.md` 正向枚举，代码与 `assets/` 第三方素材反向排除）/ 授权与条件 / 署名方式（含示例串）/ 第三方内容除外 / 未修改的官方全文。文档许可由 CC BY 4.0 明示，代码仍为 MIT。
+- **README 许可表**同步：明确「代码 MIT / 文档 CC BY 4.0」两行各自覆盖什么。
+
+### 🐛 修复
+
+- **Cloudflare Pages 构建失败**：本站是零构建纯静态站，仓库根即站点，从来没有 `npm run build`。GitHub Pages 直接发布根目录没问题，但 Cloudflare Pages 的 Git 集成会执行配置里的构建命令，找不到脚本就把提交标红。新增 `scripts/build-static.mjs`——按白名单把站点文件原样复制到 `dist/`，不做转换，保证与 GitHub Pages 逐字节一致；`wrangler.toml` 声明产物目录。
+
 ## [v6.5.0] - 2026-10-25（移动端「大厂气质」改造 + 手动检查更新）
 
 ### ✨ 新增

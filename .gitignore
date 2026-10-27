@@ -13,3 +13,6 @@ playwright-report/
 
 # 代码审查中间产物（子代理分析底稿；结论已收敛进审查报告，本地留档）
 artifacts/
+
+# Cloudflare Pages 构建产物（GitHub Pages 直接发布仓库根目录，不使用 dist/）
+dist/
